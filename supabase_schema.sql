@@ -40,6 +40,9 @@ CREATE TABLE courses (
   price_platinum DECIMAL(10,2) NOT NULL,
   deposit_amount DECIMAL(10,2) DEFAULT 0,
   image_url TEXT,
+  video_url TEXT,
+  document_url TEXT,
+  modules JSONB DEFAULT '[]'::jsonb,
   is_published BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
@@ -84,7 +87,8 @@ CREATE TABLE quizzes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   course_id UUID REFERENCES courses(id),
   title TEXT NOT NULL,
-  questions JSONB NOT NULL, -- Array of objects: {question, options, correct_index}
+  description TEXT,
+  questions JSONB NOT NULL, -- Array of objects: {question, options, correct_option}
   passing_score INTEGER DEFAULT 70,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
@@ -113,12 +117,29 @@ CREATE TABLE announcements (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
   content TEXT NOT NULL,
+  type TEXT DEFAULT 'info' CHECK (type IN ('info', 'warning', 'success', 'error')),
   target_role user_role, -- NULL for everyone
   created_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- 12. Corporate Accounts
+-- 12. FAQs
+CREATE TABLE faqs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  "order" INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- 13. Site Settings (CMS)
+CREATE TABLE site_settings (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- 14. Corporate Accounts
 CREATE TABLE corporate_accounts (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   company_name TEXT NOT NULL,
@@ -131,6 +152,7 @@ CREATE TABLE corporate_accounts (
 -- Profiles: Users can read their own profile, admins can read all
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Admins can view all profiles" ON profiles FOR SELECT USING (
   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
 );
@@ -138,7 +160,14 @@ CREATE POLICY "Admins can view all profiles" ON profiles FOR SELECT USING (
 -- Courses: Everyone can read published courses, admins can manage
 ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view published courses" ON courses FOR SELECT USING (is_published = true);
-CREATE POLICY "Admins can manage courses" ON courses ALL USING (
+CREATE POLICY "Admins can manage courses" ON courses FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- Categories: Everyone can read
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view categories" ON categories FOR SELECT USING (true);
+CREATE POLICY "Admins can manage categories" ON categories FOR ALL USING (
   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
 );
 
@@ -153,5 +182,33 @@ CREATE POLICY "Admins can view all enrollments" ON enrollments FOR SELECT USING 
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own payments" ON payments FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Admins can view all payments" ON payments FOR SELECT USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- FAQs: Everyone can read
+ALTER TABLE faqs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view faqs" ON faqs FOR SELECT USING (true);
+CREATE POLICY "Admins can manage faqs" ON faqs FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- Announcements: Everyone can read
+ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view announcements" ON announcements FOR SELECT USING (true);
+CREATE POLICY "Admins can manage announcements" ON announcements FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- Site Settings: Everyone can read
+ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view site settings" ON site_settings FOR SELECT USING (true);
+CREATE POLICY "Admins can manage site settings" ON site_settings FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- Quizzes: Authenticated users can read
+ALTER TABLE quizzes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Authenticated users can view quizzes" ON quizzes FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Admins can manage quizzes" ON quizzes FOR ALL USING (
   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
 );

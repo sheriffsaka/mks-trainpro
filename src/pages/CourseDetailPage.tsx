@@ -110,6 +110,19 @@ export const CourseDetailPage = () => {
               <p className="text-slate-600 leading-relaxed text-lg">{course.overview || course.description}</p>
             </section>
 
+            {course.video_url && (
+              <section>
+                <h2 className="text-2xl font-bold text-slate-900 mb-6">Course Preview</h2>
+                <div className="aspect-video bg-slate-900 rounded-[2rem] overflow-hidden shadow-2xl border border-slate-200">
+                  <video 
+                    src={course.video_url} 
+                    controls 
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              </section>
+            )}
+
             <section className="grid md:grid-cols-2 gap-8">
               <div className="bg-slate-50 p-8 rounded-[2rem]">
                 <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">

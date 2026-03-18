@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { MOCK_COURSES, MOCK_FAQS, MOCK_ANNOUNCEMENTS, MOCK_QUIZZES } from '../data/mockData';
+import { MOCK_COURSES, MOCK_FAQS, MOCK_ANNOUNCEMENTS, MOCK_QUIZZES, MOCK_CATEGORIES, MOCK_SITE_SETTINGS } from '../data/mockData';
 
 export const adminService = {
   // Quizzes
@@ -175,5 +175,84 @@ export const adminService = {
       faqsCount: faqs.count || 0,
       quizzesCount: quizzes.count || 0,
     };
+  },
+
+  // File Uploads
+  async uploadFile(file: File, bucket: string = 'training-assets') {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  },
+
+  // Seed Data
+  async seedDatabase() {
+    // Categories
+    const { data: existingCats } = await supabase.from('categories').select('id');
+    if (!existingCats || existingCats.length === 0) {
+      const { data: cats } = await supabase.from('categories').insert(
+        MOCK_CATEGORIES.map(({ id, ...rest }) => rest)
+      ).select();
+      
+      if (cats) {
+        // Courses
+        const { data: existingCourses } = await supabase.from('courses').select('id');
+        if (!existingCourses || existingCourses.length === 0) {
+          await supabase.from('courses').insert(
+            MOCK_COURSES.map(({ id, category_id, categories, ...rest }) => ({
+              ...rest,
+              category_id: cats.find(c => c.slug === (categories as any).slug)?.id
+            }))
+          );
+        }
+      }
+    }
+
+    // FAQs
+    const { data: existingFaqs } = await supabase.from('faqs').select('id');
+    if (!existingFaqs || existingFaqs.length === 0) {
+      await supabase.from('faqs').insert(
+        MOCK_FAQS.map(({ id, ...rest }) => rest)
+      );
+    }
+
+    // Announcements
+    const { data: existingAnnouncements } = await supabase.from('announcements').select('id');
+    if (!existingAnnouncements || existingAnnouncements.length === 0) {
+      await supabase.from('announcements').insert(
+        MOCK_ANNOUNCEMENTS.map(({ id, ...rest }) => rest)
+      );
+    }
+
+    // Quizzes
+    const { data: existingQuizzes } = await supabase.from('quizzes').select('id');
+    if (!existingQuizzes || existingQuizzes.length === 0) {
+      const { data: dbCourses } = await supabase.from('courses').select('id, slug');
+      if (dbCourses) {
+        await supabase.from('quizzes').insert(
+          MOCK_QUIZZES.map(({ id, course_id, ...rest }) => ({
+            ...rest,
+            course_id: dbCourses.find(c => c.slug === course_id)?.id
+          }))
+        );
+      }
+    }
+
+    // Site Settings
+    const { data: existingSettings } = await supabase.from('site_settings').select('key');
+    if (!existingSettings || existingSettings.length === 0) {
+      await supabase.from('site_settings').insert(MOCK_SITE_SETTINGS);
+    }
   }
 };

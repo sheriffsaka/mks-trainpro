@@ -30,6 +30,25 @@ export const MOCK_COURSES = [
     price_platinum: 850.00,
     deposit_amount: 100.00,
     image_url: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80',
+    video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    document_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    modules: [
+      {
+        title: 'Introduction to SAP',
+        lessons: [
+          { title: 'What is SAP?', type: 'video', duration: '5:20', completed: true },
+          { title: 'SAP ERP Overview', type: 'reading', duration: '10 mins', completed: true },
+        ]
+      },
+      {
+        title: 'SAP Navigation',
+        lessons: [
+          { title: 'SAP GUI Basics', type: 'video', duration: '15:45', completed: false },
+          { title: 'Transaction Codes', type: 'video', duration: '12:30', completed: false },
+          { title: 'Module 1 Quiz', type: 'quiz', duration: '15 mins', completed: false },
+        ]
+      }
+    ],
     is_published: true,
     categories: MOCK_CATEGORIES[0]
   },
@@ -59,6 +78,17 @@ export const MOCK_COURSES = [
     price_platinum: 2200.00,
     deposit_amount: 250.00,
     image_url: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80',
+    video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    document_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    modules: [
+      {
+        title: 'Implementation Methodologies',
+        lessons: [
+          { title: 'SAP Activate Framework', type: 'video', duration: '20:00', completed: false },
+          { title: 'Agile in SAP Projects', type: 'reading', duration: '15 mins', completed: false },
+        ]
+      }
+    ],
     is_published: true,
     categories: MOCK_CATEGORIES[0]
   },
@@ -88,6 +118,17 @@ export const MOCK_COURSES = [
     price_platinum: 700.00,
     deposit_amount: 50.00,
     image_url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80',
+    video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    document_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    modules: [
+      {
+        title: 'Testing Fundamentals',
+        lessons: [
+          { title: 'Why is Testing Necessary?', type: 'video', duration: '10:00', completed: false },
+          { title: 'Seven Testing Principles', type: 'reading', duration: '12 mins', completed: false },
+        ]
+      }
+    ],
     is_published: true,
     categories: MOCK_CATEGORIES[1]
   },
@@ -117,6 +158,17 @@ export const MOCK_COURSES = [
     price_platinum: 1800.00,
     deposit_amount: 200.00,
     image_url: 'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&w=800&q=80',
+    video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    document_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    modules: [
+      {
+        title: 'Automation Basics',
+        lessons: [
+          { title: 'Introduction to Selenium', type: 'video', duration: '15:00', completed: false },
+          { title: 'Locators and Selectors', type: 'video', duration: '18:00', completed: false },
+        ]
+      }
+    ],
     is_published: true,
     categories: MOCK_CATEGORIES[1]
   }
@@ -145,13 +197,13 @@ export const MOCK_FAQS = [
   {
     id: 'f2',
     question: 'Are the certifications accredited?',
-    answer: 'Yes, all our courses are accredited by recognized awarding bodies such as TQUK, City & Guilds, and SIA.',
+    answer: 'Yes, our courses are accredited by recognized bodies such as SAP, ISTQB, and BCS, ensuring your certification is valued globally.',
     order: 2
   },
   {
     id: 'f3',
     question: 'Can I pay in installments?',
-    answer: 'Yes, we offer flexible payment plans for most of our diploma courses. Please contact our support team for more details.',
+    answer: 'Yes, we offer flexible payment plans for our advanced training programs. You can start with a deposit and pay the balance in installments.',
     order: 3
   }
 ];
@@ -159,8 +211,8 @@ export const MOCK_FAQS = [
 export const MOCK_ANNOUNCEMENTS = [
   {
     id: 'a1',
-    title: 'New SIA Course Starting Soon',
-    content: 'We are launching a new SIA Door Supervision course next month. Early bird discounts available!',
+    title: 'New SAP S/4HANA Batch Starting Soon',
+    content: 'We are launching a new SAP S/4HANA Finance batch next month. Early bird discounts available for the first 10 enrollments!',
     type: 'info',
     created_at: new Date().toISOString()
   },
@@ -176,21 +228,36 @@ export const MOCK_ANNOUNCEMENTS = [
 export const MOCK_QUIZZES = [
   {
     id: 'q1',
-    title: 'Health & Safety Basics',
-    course_id: 'level-3-adult-care',
-    description: 'Test your knowledge on basic health and safety principles in the workplace.',
+    title: 'SAP Fundamentals Quiz',
+    course_id: 'sap-beginner',
+    description: 'Test your knowledge on basic SAP ERP principles and navigation.',
     questions: [
       {
-        question: 'What does PPE stand for?',
-        options: ['Personal Protective Equipment', 'Private Property Entrance', 'Public Protection Event', 'Personal Policy Enforcement'],
+        question: 'What does SAP stand for?',
+        options: ['Systems, Applications, and Products in Data Processing', 'Software and Programming', 'System Analysis and Planning', 'Standard Application Protocol'],
         correct_option: 0
       },
       {
-        question: 'Who is responsible for health and safety at work?',
-        options: ['The Employer', 'The Employee', 'Both Employer and Employee', 'The Government'],
-        correct_option: 2
+        question: 'Which of the following is a core SAP module?',
+        options: ['FI (Financial Accounting)', 'CO (Controlling)', 'MM (Materials Management)', 'All of the above'],
+        correct_option: 3
       }
     ],
     created_at: new Date().toISOString()
   }
+];
+
+export const MOCK_SITE_SETTINGS = [
+  { key: 'site_name', value: 'MKS CONSULTS LIMITED' },
+  { key: 'support_email', value: 'support@mksconsultsltd.com' },
+  { key: 'contact_number', value: '+44 20 8123 4567' },
+  { key: 'hero_headline', value: 'Expert SAP and Software Testing Training.' },
+  { key: 'hero_subheadline', value: 'Industry-leading training for SAP Professionals and Software Testers.' },
+  { key: 'about_title', value: 'Why Choose MKS Consults?' },
+  { key: 'about_content', value: 'We provide high-quality training solutions tailored to your needs. Our experienced instructors ensure you get the best learning experience.' },
+  { key: 'office_address', value: '123 Training Street, London, UK' },
+  { key: 'facebook_url', value: 'https://facebook.com/mksconsults' },
+  { key: 'twitter_url', value: 'https://twitter.com/mksconsults' },
+  { key: 'linkedin_url', value: 'https://linkedin.com/company/mksconsults' },
+  { key: 'instagram_url', value: 'https://instagram.com/mksconsults' },
 ];

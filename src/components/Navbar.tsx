@@ -22,7 +22,7 @@ export const Navbar = () => {
               referrerPolicy="no-referrer"
             />
             <span className="hidden sm:block font-bold text-xl tracking-tight text-slate-900">
-              MKS<span className="text-brand-blue">CONSULTANTS</span>
+              MKS CONSULTS <span className="text-brand-blue">LIMITED</span>
             </span>
           </Link>
 

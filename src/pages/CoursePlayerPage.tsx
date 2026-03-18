@@ -203,28 +203,55 @@ export const CoursePlayerPage = () => {
           <div className="max-w-5xl mx-auto">
             {currentLesson.type === 'video' ? (
               <div className="aspect-video bg-slate-900 rounded-[2rem] overflow-hidden shadow-2xl border border-white/5 relative group">
-                <img 
-                  src={`https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80`} 
-                  className="w-full h-full object-cover opacity-40" 
-                  alt="Video Placeholder" 
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <button className="w-24 h-24 bg-brand-red rounded-full flex items-center justify-center shadow-2xl shadow-brand-red/40 hover:scale-110 transition-transform">
-                    <Play size={40} fill="white" />
-                  </button>
-                </div>
-                {/* Video Controls Mockup */}
-                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
-                  <div className="h-1 bg-white/20 rounded-full mb-4">
-                    <div className="h-full bg-brand-red w-1/4" />
-                  </div>
-                  <div className="flex justify-between items-center text-xs font-bold text-slate-300">
-                    <span>04:12 / {currentLesson.duration}</span>
-                    <div className="flex gap-4">
-                      <span>HD</span>
-                      <span>1.0x</span>
+                {course.video_url ? (
+                  <video 
+                    src={course.video_url} 
+                    controls 
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <>
+                    <img 
+                      src={course.image_url || `https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80`} 
+                      className="w-full h-full object-cover opacity-40" 
+                      alt="Video Placeholder" 
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <button className="w-24 h-24 bg-brand-red rounded-full flex items-center justify-center shadow-2xl shadow-brand-red/40 hover:scale-110 transition-transform">
+                        <Play size={40} fill="white" />
+                      </button>
                     </div>
-                  </div>
+                  </>
+                )}
+              </div>
+            ) : currentLesson.type === 'reading' ? (
+              <div className="bg-slate-900 p-12 rounded-[3rem] border border-white/5 max-w-4xl mx-auto">
+                <h2 className="text-3xl font-bold mb-8">{currentLesson.title}</h2>
+                <div className="prose prose-invert max-w-none space-y-6 text-slate-300 leading-relaxed">
+                  <p>Welcome to this lesson on {course.title}. In this section, we will explore the core concepts and practical applications of the subject matter.</p>
+                  <p>As you progress through the course, remember that consistent practice and review are key to mastering these skills. Use the resources provided, including the downloadable documents and quizzes, to reinforce your learning.</p>
+                  
+                  {course.document_url && (
+                    <div className="mt-12 p-8 bg-white/5 rounded-3xl border border-white/10 flex items-center justify-between group hover:bg-white/10 transition-all">
+                      <div className="flex items-center gap-6">
+                        <div className="bg-brand-red/20 p-4 rounded-2xl">
+                          <FileText className="text-brand-red" size={32} />
+                        </div>
+                        <div>
+                          <p className="font-bold text-white text-lg">Course Material & Resources</p>
+                          <p className="text-sm text-slate-500">Download the PDF guide for this module</p>
+                        </div>
+                      </div>
+                      <a 
+                        href={course.document_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="bg-white text-slate-900 px-8 py-3 rounded-xl font-bold hover:bg-brand-red hover:text-white transition-all shadow-xl"
+                      >
+                        Download PDF
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : currentLesson.type === 'quiz' ? (

@@ -27,7 +27,10 @@ import {
   Save,
   Image as ImageIcon,
   ChevronRight,
-  Download
+  Download,
+  Database,
+  Play,
+  FileText
 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { useAuthStore } from '../store/authStore';
@@ -303,16 +306,48 @@ const CoursesTab = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const courseData = {
+    const courseData: any = {
       title: formData.get('title'),
       category_id: formData.get('category_id'),
       price_standard: parseFloat(formData.get('price_standard') as string),
       price_platinum: parseFloat(formData.get('price_platinum') as string),
       image_url: formData.get('image_url'),
+      video_url: formData.get('video_url'),
+      document_url: formData.get('document_url'),
       description: formData.get('description'),
       duration: formData.get('duration'),
       is_published: formData.get('is_published') === 'on',
     };
+
+    const imageFile = (e.currentTarget.elements.namedItem('image_file') as HTMLInputElement)?.files?.[0];
+    if (imageFile) {
+      try {
+        const publicUrl = await adminService.uploadFile(imageFile);
+        courseData.image_url = publicUrl;
+      } catch (err) {
+        console.error('Error uploading image:', err);
+      }
+    }
+
+    const videoFile = (e.currentTarget.elements.namedItem('video_file') as HTMLInputElement)?.files?.[0];
+    if (videoFile) {
+      try {
+        const publicUrl = await adminService.uploadFile(videoFile);
+        courseData.video_url = publicUrl;
+      } catch (err) {
+        console.error('Error uploading video:', err);
+      }
+    }
+
+    const documentFile = (e.currentTarget.elements.namedItem('document_file') as HTMLInputElement)?.files?.[0];
+    if (documentFile) {
+      try {
+        const publicUrl = await adminService.uploadFile(documentFile);
+        courseData.document_url = publicUrl;
+      } catch (err) {
+        console.error('Error uploading document:', err);
+      }
+    }
 
     try {
       if (editingCourse) {
@@ -479,7 +514,7 @@ const CoursesTab = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Course Image URL</label>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">Course Image</label>
                       <div className="flex gap-4">
                         <input 
                           name="image_url"
@@ -488,9 +523,63 @@ const CoursesTab = () => {
                           placeholder="https://..."
                           className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
                         />
-                        <button type="button" className="bg-slate-100 p-3 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors">
-                          <ImageIcon size={20} />
-                        </button>
+                        <div className="relative">
+                          <input 
+                            type="file" 
+                            name="image_file"
+                            accept="image/*"
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                          />
+                          <button type="button" className="bg-slate-100 p-3 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors">
+                            <ImageIcon size={20} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">Intro Video (Optional)</label>
+                      <div className="flex gap-4">
+                        <input 
+                          name="video_url"
+                          type="text" 
+                          defaultValue={editingCourse?.video_url}
+                          placeholder="https://..."
+                          className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+                        />
+                        <div className="relative">
+                          <input 
+                            type="file" 
+                            name="video_file"
+                            accept="video/*"
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                          />
+                          <button type="button" className="bg-slate-100 p-3 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors">
+                            <Play size={20} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">Course Document (Optional)</label>
+                      <div className="flex gap-4">
+                        <input 
+                          name="document_url"
+                          type="text" 
+                          defaultValue={editingCourse?.document_url}
+                          placeholder="https://..."
+                          className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+                        />
+                        <div className="relative">
+                          <input 
+                            type="file" 
+                            name="document_file"
+                            accept=".pdf,.doc,.docx"
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                          />
+                          <button type="button" className="bg-slate-100 p-3 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors">
+                            <FileText size={20} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1319,10 +1408,31 @@ const CMSTab = () => {
     }
   };
 
+  const handleSeedDatabase = async () => {
+    if (window.confirm('This will populate the database with mock data. Existing data will not be overwritten but duplicates may occur if IDs match. Continue?')) {
+      try {
+        await adminService.seedDatabase();
+        alert('Database seeded successfully!');
+        fetchCMSData();
+      } catch (error) {
+        console.error('Error seeding database:', error);
+        alert('Failed to seed database.');
+      }
+    }
+  };
+
   if (loading) return <div className="text-center py-20">Loading CMS...</div>;
 
   return (
     <div className="space-y-8">
+      <div className="flex justify-end">
+        <button 
+          onClick={handleSeedDatabase}
+          className="bg-amber-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-amber-700 transition-all shadow-lg shadow-amber-600/20"
+        >
+          <Database size={20} /> Seed Database with Mock Data
+        </button>
+      </div>
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Site Settings */}
         <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">

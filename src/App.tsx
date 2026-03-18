@@ -28,22 +28,30 @@ const Home = () => {
   const { settings } = useSettings();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [faqs, setFaqs] = useState<any[]>(MOCK_FAQS);
+  const [courses, setCourses] = useState<any[]>(MOCK_COURSES);
 
   useEffect(() => {
-    const fetchFaqs = async () => {
+    const fetchData = async () => {
       try {
-        const data = await adminService.getFAQs();
-        if (data && data.length > 0) {
-          setFaqs(data);
+        const [faqData, courseData] = await Promise.all([
+          adminService.getFAQs(),
+          supabase.from('courses').select('*, categories(*)').eq('is_published', true).limit(6)
+        ]);
+
+        if (faqData && faqData.length > 0) {
+          setFaqs(faqData);
+        }
+        if (courseData.data && courseData.data.length > 0) {
+          setCourses(courseData.data);
         }
       } catch (error) {
-        console.error('Error fetching FAQs:', error);
+        console.error('Error fetching home data:', error);
       }
     };
-    fetchFaqs();
+    fetchData();
   }, []);
 
-  const featuredCourses = [...MOCK_COURSES, ...MOCK_COURSES].slice(0, 6);
+  const featuredCourses = courses.slice(0, 6);
 
   const fadeIn = {
     initial: { opacity: 0, y: 20 },
@@ -407,10 +415,9 @@ const Home = () => {
             <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-400 mb-8">Accredited & Recognized By</h2>
             <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
               {[
-                { name: 'AoHT', img: 'https://res.cloudinary.com/di7okmjsx/image/upload/v1773223814/AoHT-Logo_u8w7tq.jpg', label: 'Healthcare Trainers' },
-                { name: 'Highfield', img: 'https://res.cloudinary.com/di7okmjsx/image/upload/v1773223819/highfield-Logo_y12uxf.jpg', label: 'Qualifications' },
-                { name: 'CQC', img: 'https://res.cloudinary.com/di7okmjsx/image/upload/v1773223819/traiing_course_fabncl.jpg', label: 'Care Quality' },
-                { name: 'SIA', img: '', label: 'Security Industry' }
+                { name: 'SAP Certified Partner', img: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=200&q=80', label: 'SAP ERP Standards' },
+                { name: 'ISTQB Accredited', img: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=200&q=80', label: 'Software Testing' },
+                { name: 'BCS Member', img: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=200&q=80', label: 'Chartered IT Institute' }
               ].map((acc, i) => (
                 <Link key={i} to="/accreditations" className="flex flex-col items-center group">
                   <div className="h-12 md:h-16 flex items-center justify-center mb-2">
@@ -499,7 +506,7 @@ export default function App() {
                     referrerPolicy="no-referrer"
                   />
                   <span className="font-bold text-2xl tracking-tight text-white">
-                    {settings.site_name ? settings.site_name.toUpperCase() : 'MKS CONSULTANTS'}
+                    {settings.site_name ? settings.site_name.toUpperCase() : 'MKS CONSULTS LIMITED'}
                   </span>
                 </div>
                 <p className="max-w-sm text-slate-500 leading-relaxed text-lg">
