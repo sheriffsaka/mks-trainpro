@@ -1,0 +1,9 @@
+{
+  "name": "MKS Consults Ltd - Professional Training",
+  "description": "MKS Consults Ltd offers professional training in SAP and Software Testing. We provide beginner and advanced courses to help you accelerate your career in the tech industry.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
