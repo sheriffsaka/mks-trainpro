@@ -153,7 +153,7 @@ export const AboutPage = () => {
               <Link to="/courses" className="bg-brand-blue text-white px-10 py-4 rounded-2xl font-bold hover:bg-brand-blue-hover transition-all flex items-center gap-2">
                 Explore Courses <ArrowRight size={20} />
               </Link>
-              <a href="mailto:info@thamessupport.com" className="bg-white/10 border border-white/20 text-white px-10 py-4 rounded-2xl font-bold hover:bg-white/20 transition-all">
+              <a href="mailto:info@mksconsultsltd.com" className="bg-white/10 border border-white/20 text-white px-10 py-4 rounded-2xl font-bold hover:bg-white/20 transition-all">
                 Contact Us
               </a>
             </div>

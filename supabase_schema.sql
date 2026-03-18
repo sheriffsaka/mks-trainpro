@@ -1,4 +1,4 @@
--- Database Schema for Thames Support UK
+-- Database Schema for MKS Consults Ltd
 -- To be executed in Supabase SQL Editor
 
 -- 1. Roles

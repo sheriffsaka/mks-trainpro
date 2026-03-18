@@ -4,12 +4,12 @@ import { Building2, Users, Briefcase, Quote } from 'lucide-react';
 
 export const ClientsPage = () => {
   const clients = [
-    { name: 'Royal Borough of Greenwich', type: 'Local Authority', fallback: 'Greenwich' },
-    { name: 'London Borough of Bexley', type: 'Local Authority', fallback: 'Bexley' },
-    { name: 'Lewisham Council', type: 'Local Authority', fallback: 'Lewisham' },
-    { name: 'NHS Trusts', type: 'Healthcare', fallback: 'NHS' },
-    { name: 'Private Care Groups', type: 'Healthcare', fallback: 'Care Groups' },
-    { name: 'Security Agencies', type: 'Security', fallback: 'Security' }
+    { name: 'Global Tech Solutions', type: 'IT Consulting', fallback: 'GTS' },
+    { name: 'Innovate Systems', type: 'Software Development', fallback: 'Innovate' },
+    { name: 'DataStream Inc', type: 'Data Analytics', fallback: 'DataStream' },
+    { name: 'CloudNet UK', type: 'Cloud Services', fallback: 'CloudNet' },
+    { name: 'Enterprise SAP Partners', type: 'SAP Implementation', fallback: 'SAP Partners' },
+    { name: 'Quality Assurance Labs', type: 'Software Testing', fallback: 'QA Labs' }
   ];
 
   return (
@@ -30,7 +30,7 @@ export const ClientsPage = () => {
             transition={{ delay: 0.1 }}
             className="text-xl text-slate-200 max-w-3xl mx-auto"
           >
-            We work with leading local authorities, healthcare providers, and security firms across the UK to deliver world-class training.
+            We work with leading technology firms, software houses, and enterprise partners across the UK to deliver world-class training.
           </motion.p>
         </div>
       </section>
@@ -94,13 +94,13 @@ export const ClientsPage = () => {
           <div className="max-w-4xl mx-auto text-center">
             <Quote className="mx-auto mb-8 text-brand-red opacity-50" size={48} />
             <h2 className="text-3xl md:text-4xl font-bold mb-10 leading-tight">
-              "Thames Support UK has been instrumental in upskilling our workforce. Their blended learning approach and expert trainers have significantly improved our service quality."
+              "MKS Consults Ltd has been instrumental in upskilling our workforce. Their blended learning approach and expert trainers have significantly improved our service quality."
             </h2>
             <div className="flex items-center justify-center gap-4">
               <div className="w-12 h-12 bg-white/20 rounded-full" />
               <div className="text-left">
                 <div className="font-bold">Director of Operations</div>
-                <div className="text-slate-300 text-sm">Leading Healthcare Provider</div>
+                <div className="text-slate-300 text-sm">Leading Tech Enterprise</div>
               </div>
             </div>
           </div>

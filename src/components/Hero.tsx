@@ -151,7 +151,7 @@ export const Hero = () => {
       {/* Background Elements */}
       <div className="absolute inset-0 z-0">
         <img 
-          src={settings.hero_bg_url || "https://res.cloudinary.com/di7okmjsx/image/upload/v1773223819/traiing_course_fabncl.jpg"} 
+          src={settings.hero_bg_url || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1920&q=80"} 
           className="w-full h-full object-cover opacity-30"
           alt="Hero Background"
           referrerPolicy="no-referrer"

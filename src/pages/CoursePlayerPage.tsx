@@ -263,19 +263,19 @@ export const CoursePlayerPage = () => {
                 <ul className="space-y-4 mb-12">
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="text-brand-blue mt-1 shrink-0" size={20} />
-                    <span>Understanding the regulatory framework for healthcare in the UK.</span>
+                    <span>Understanding the SAP ERP ecosystem and business processes.</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="text-brand-blue mt-1 shrink-0" size={20} />
-                    <span>Identifying potential hazards in a professional environment.</span>
+                    <span>Identifying key testing phases in the software development lifecycle.</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="text-brand-blue mt-1 shrink-0" size={20} />
-                    <span>Implementing safety protocols according to Highfield standards.</span>
+                    <span>Implementing best practices for SAP implementation and QA automation.</span>
                   </li>
                 </ul>
                 <div className="bg-slate-50 p-8 rounded-2xl border-l-4 border-brand-blue italic text-slate-600">
-                  "Safety is not just a protocol, it is a culture that must be embedded in every action we take as professionals."
+                  "Expertise in SAP and Software Testing is the foundation of digital transformation in modern enterprises."
                 </div>
               </div>
             )}

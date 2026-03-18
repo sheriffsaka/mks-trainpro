@@ -49,7 +49,7 @@ export const Chatbot = () => {
             <div className="bg-brand-blue p-4 flex justify-between items-center text-white">
               <div className="flex items-center gap-2">
                 <Bot size={20} />
-                <span className="font-semibold">Thames Support AI</span>
+                <span className="font-semibold">MKS Consults AI</span>
               </div>
               <button onClick={() => setIsOpen(false)} className="hover:bg-brand-blue-hover p-1 rounded-lg transition-colors">
                 <X size={20} />

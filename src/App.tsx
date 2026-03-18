@@ -160,7 +160,7 @@ const Home = () => {
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div className="relative">
               <div className="aspect-square rounded-[3rem] overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1503917988258-f87a78e3c995?auto=format&fit=crop&w=800&q=80" className="w-full h-full object-cover" alt="UK Flag" />
+                <img src="https://images.unsplash.com/photo-1503917988258-f87a78e3c995?auto=format&fit=crop&w=800&q=80" className="w-full h-full object-cover" alt="Tech Training" />
               </div>
               <div className="absolute -bottom-10 -right-10 bg-white p-8 rounded-3xl shadow-xl border border-slate-100 max-w-xs hidden md:block">
                 <div className="flex items-center gap-4 mb-4">
@@ -221,13 +221,13 @@ const Home = () => {
             {[...Array(2)].map((_, i) => (
               <div key={i} className="flex items-center gap-16 md:gap-32 px-8 md:px-16">
                 {[
-                  'Royal Borough of Greenwich',
-                  'London Borough of Bexley',
-                  'Lewisham Council',
-                  'NHS Trust',
-                  'Bupa Care Homes',
-                  'G4S Security',
-                  'Serco Group'
+                  'SAP SE',
+                  'Accenture',
+                  'Capgemini',
+                  'Deloitte',
+                  'IBM',
+                  'Infosys',
+                  'Tata Consultancy Services'
                 ].map((client, j) => (
                   <div key={j} className="flex items-center gap-4 grayscale opacity-40 hover:opacity-100 hover:grayscale-0 transition-all duration-300 cursor-default">
                     <div className="w-10 h-10 bg-brand-blue/10 rounded-xl flex items-center justify-center text-brand-blue font-bold">
@@ -262,22 +262,22 @@ const Home = () => {
           <div className="grid md:grid-cols-3 gap-8">
             {[
               {
-                name: "Sarah Johnson",
-                role: "Senior Care Assistant",
-                text: "The Level 3 Diploma was exactly what I needed to step into a leadership role. The blended learning format allowed me to study while working full-time.",
-                avatar: "https://i.pravatar.cc/150?u=sarah"
+                name: "David Okoro",
+                role: "SAP Consultant",
+                text: "The SAP S/4HANA training at MKS Consults was a game-changer for my career. The hands-on projects and expert guidance helped me land a consultant role within months.",
+                avatar: "https://i.pravatar.cc/150?u=david"
               },
               {
-                name: "Michael Chen",
-                role: "Security Supervisor",
-                text: "Excellent SIA training. The instructors are clearly experts in their field and the conflict management sessions were incredibly practical.",
-                avatar: "https://i.pravatar.cc/150?u=michael"
+                name: "Linda Smith",
+                role: "QA Engineer",
+                text: "Excellent Software Testing course. The focus on automation tools like Selenium and Jira was exactly what I needed to upgrade my skills.",
+                avatar: "https://i.pravatar.cc/150?u=linda"
               },
               {
-                name: "Emma Williams",
-                role: "Healthcare Worker",
-                text: "I was nervous about the Functional Skills exams, but the support from Thames Support UK was amazing. I passed both English and Maths on my first try!",
-                avatar: "https://i.pravatar.cc/150?u=emma"
+                name: "James Wilson",
+                role: "SAP End User",
+                text: "I was new to SAP, but the beginner course was so well-structured that I felt confident using the system in my new job. Highly recommend MKS Consults!",
+                avatar: "https://i.pravatar.cc/150?u=james"
               }
             ].map((testimonial, i) => (
               <div key={i} className="bg-slate-50 p-8 rounded-[2rem] border border-slate-100 relative">
@@ -367,7 +367,7 @@ const Home = () => {
             <div className="relative z-10 grid lg:grid-cols-2 gap-12 items-center">
               <div>
                 <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">Ready to start your professional journey?</h2>
-                <p className="text-slate-200 text-lg mb-10">Join thousands of successful students who have transformed their careers with Thames Support UK.</p>
+                <p className="text-slate-200 text-lg mb-10">Join thousands of successful students who have transformed their careers with MKS Consults Ltd.</p>
                 <div className="flex flex-wrap gap-4">
                   <Link to="/register" className="bg-white text-brand-blue px-8 py-4 rounded-2xl font-bold hover:bg-slate-100 transition-all shadow-lg">Get Started Now</Link>
                   <Link to="/contact" className="bg-brand-red text-white px-8 py-4 rounded-2xl font-bold hover:bg-brand-red-hover transition-all border border-brand-red/30 shadow-lg">Contact Us</Link>
@@ -493,8 +493,8 @@ export default function App() {
               <div className="col-span-2">
                 <div className="flex items-center gap-3 mb-6">
                   <img 
-                    src="https://www.thamessupport.com/wp-content/uploads/elementor/thumbs/Thames-logo1-oqfq704n2ndzoap3hn4sc3irg07incw8gncn127yf4.jpg" 
-                    alt="Thames Support Logo" 
+                    src="https://res.cloudinary.com/di7okmjsx/image/upload/v1773824665/mkslogo1_svink2.png" 
+                    alt="MKS Logo" 
                     className="h-10 w-auto object-contain brightness-0 invert"
                     referrerPolicy="no-referrer"
                   />
@@ -548,7 +548,12 @@ export default function App() {
             </div>
             <div className="pt-8 border-t border-slate-900 flex flex-col md:flex-row justify-between items-center gap-4">
               <div className="flex items-center gap-4">
-                <div className="w-8 h-8 bg-brand-blue rounded-lg flex items-center justify-center text-white font-bold text-sm">M</div>
+                <img 
+                  src="https://res.cloudinary.com/di7okmjsx/image/upload/v1773824665/mkslogo1_svink2.png" 
+                  alt="MKS Logo" 
+                  className="h-6 w-auto object-contain brightness-0 invert opacity-50"
+                  referrerPolicy="no-referrer"
+                />
                 <p className="text-sm">© 2026 {settings.site_name || 'MKS Consults Ltd'}. All rights reserved.</p>
               </div>
               <div className="flex gap-6">

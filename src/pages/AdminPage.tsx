@@ -1332,7 +1332,7 @@ const CMSTab = () => {
               <label className="block text-sm font-bold text-slate-700 mb-2">Site Name</label>
               <input 
                 type="text" 
-                defaultValue={settings.site_name || 'Thames Support'}
+                defaultValue={settings.site_name || 'MKS Consults Ltd'}
                 onBlur={(e) => handleSettingChange('site_name', e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
               />
@@ -1341,7 +1341,7 @@ const CMSTab = () => {
               <label className="block text-sm font-bold text-slate-700 mb-2">Support Email</label>
               <input 
                 type="email" 
-                defaultValue={settings.support_email || 'support@thamessupport.com'}
+                defaultValue={settings.support_email || 'support@mksconsultsltd.com'}
                 onBlur={(e) => handleSettingChange('support_email', e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
               />
@@ -1350,7 +1350,7 @@ const CMSTab = () => {
               <label className="block text-sm font-bold text-slate-700 mb-2">Contact Number</label>
               <input 
                 type="text" 
-                defaultValue={settings.contact_number || '+44 20 1234 5678'}
+                defaultValue={settings.contact_number || '+44 20 8123 4567'}
                 onBlur={(e) => handleSettingChange('contact_number', e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
               />
@@ -1369,7 +1369,7 @@ const CMSTab = () => {
               <label className="block text-sm font-bold text-slate-700 mb-2">Main Headline</label>
               <textarea 
                 rows={3}
-                defaultValue={settings.hero_headline || 'Empowering the Next Generation of Professionals.'}
+                defaultValue={settings.hero_headline || 'Expert SAP and Software Testing Training.'}
                 onBlur={(e) => handleSettingChange('hero_headline', e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none resize-none"
               />
@@ -1378,7 +1378,7 @@ const CMSTab = () => {
               <label className="block text-sm font-bold text-slate-700 mb-2">Subheadline</label>
               <textarea 
                 rows={3}
-                defaultValue={settings.hero_subheadline || 'Industry-leading training for Health & Social Care, SIA Security, and Functional Skills.'}
+                defaultValue={settings.hero_subheadline || 'Industry-leading training for SAP Professionals and Software Testers.'}
                 onBlur={(e) => handleSettingChange('hero_subheadline', e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none resize-none"
               />
@@ -1406,7 +1406,7 @@ const CMSTab = () => {
               <label className="block text-sm font-bold text-slate-700 mb-2">About Title</label>
               <input 
                 type="text" 
-                defaultValue={settings.about_title || 'Why Choose Thames Support?'}
+                defaultValue={settings.about_title || 'Why Choose MKS Consults?'}
                 onBlur={(e) => handleSettingChange('about_title', e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
               />

@@ -51,8 +51,8 @@ export const CorporatePage = () => {
                 Empower Your Team with <span className="text-brand-red">Accredited</span> Training
               </h1>
               <p className="text-xl text-slate-300 mb-10 leading-relaxed">
-                Scalable training solutions for healthcare, security, and professional services. 
-                Trusted by leading UK organizations to maintain compliance and excellence.
+                Scalable training solutions for SAP, Software Testing, and professional services. 
+                Trusted by leading organizations to maintain excellence and innovation.
               </p>
               <div className="flex flex-wrap gap-4">
                 <button className="bg-brand-red text-white px-10 py-5 rounded-2xl font-bold text-lg hover:bg-brand-red-hover transition-all shadow-xl shadow-brand-red/20 flex items-center gap-2">
@@ -71,7 +71,7 @@ export const CorporatePage = () => {
       <section className="py-24 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-20">
-            <h2 className="text-4xl font-bold text-slate-900 mb-6">Why Choose Thames Support for Your Team?</h2>
+            <h2 className="text-4xl font-bold text-slate-900 mb-6">Why Choose MKS Consults for Your Team?</h2>
             <p className="text-slate-500 max-w-2xl mx-auto text-lg">
               We provide more than just training. We provide a comprehensive workforce development partnership.
             </p>
@@ -115,7 +115,7 @@ export const CorporatePage = () => {
                   </div>
                   <div>
                     <p className="text-sm text-slate-400 uppercase tracking-widest font-bold">Email Us</p>
-                    <p className="text-xl font-bold">corporate@thamessupport.com</p>
+                    <p className="text-xl font-bold">corporate@mksconsultsltd.com</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-6">

@@ -15,7 +15,12 @@ export const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-brand-blue rounded-xl flex items-center justify-center text-white font-bold text-xl">M</div>
+            <img 
+              src="https://res.cloudinary.com/di7okmjsx/image/upload/v1773824665/mkslogo1_svink2.png" 
+              alt="MKS Logo" 
+              className="h-10 w-auto object-contain"
+              referrerPolicy="no-referrer"
+            />
             <span className="hidden sm:block font-bold text-xl tracking-tight text-slate-900">
               MKS<span className="text-brand-blue">CONSULTANTS</span>
             </span>

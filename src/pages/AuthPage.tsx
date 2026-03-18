@@ -55,7 +55,7 @@ export const AuthPage = ({ type }: { type: 'login' | 'register' }) => {
             {type === 'login' ? 'Welcome Back' : 'Create Account'}
           </h2>
           <p className="text-slate-500">
-            {type === 'login' ? 'Enter your credentials to access your dashboard' : 'Join Thames Support and start your training today'}
+            {type === 'login' ? 'Enter your credentials to access your dashboard' : 'Join MKS Consults and start your training today'}
           </p>
         </div>
 

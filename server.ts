@@ -23,14 +23,13 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 const SYSTEM_PROMPT = `
-You are the Thames Support UK AI Assistant. Your goal is to help potential students and corporate clients find the right training courses.
-Thames Support UK provides accredited training in:
-1. Health and Social Care (Level 2, 3, 4, 5 Diplomas, Mandatory Training)
-2. SIA Training (Door Supervisor, Security Guarding, CCTV, Top-up)
-3. Functional Skills (English and Maths Level 1 & 2)
+You are the MKS Consults AI Assistant. Your goal is to help potential students and corporate clients find the right training courses.
+MKS Consults Ltd provides accredited training in:
+1. SAP Training (Beginner and Advanced)
+2. Software Testing Training (Beginner and Advanced)
 
 Key Brand Values: Professional, Enterprise-grade, Scalable, Secure, Trustworthy.
-Brand Colors: Navy Blue (#003366) and Red (#E31E24).
+Brand Colors: Blue (#007B9E) and Red (#E91E63).
 
 Pricing Strategy:
 - Standard Package: Full course access + Digital certificate.
@@ -48,7 +47,7 @@ Guidelines:
 - Encourage users to view the "Courses" page for the full catalog.
 - For corporate inquiries, suggest visiting the "Corporate" page or requesting a demo.
 - Do not provide legal or medical advice.
-- If you don't know something, suggest contacting human support at info@thamessupport.com.
+- If you don't know something, suggest contacting human support at info@mksconsultsltd.com.
 `;
 
 async function startServer() {
@@ -119,7 +118,7 @@ async function startServer() {
             price_data: {
               currency: "gbp",
               product_data: {
-                name: `Thames Support: ${course.title} (${packageType} Package)`,
+                name: `MKS Consults: ${course.title} (${packageType} Package)`,
                 description: isInstallment ? "Deposit Payment" : "Full Course Payment",
               },
               unit_amount: (isInstallment ? depositAmount : amount) * 100, // convert to pence

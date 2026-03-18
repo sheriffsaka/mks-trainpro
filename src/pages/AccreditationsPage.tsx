@@ -5,22 +5,22 @@ import { Shield, CheckCircle, Award } from 'lucide-react';
 export const AccreditationsPage = () => {
   const accreditations = [
     {
-      name: 'AoHT Member',
-      image: 'https://res.cloudinary.com/di7okmjsx/image/upload/v1773223814/AoHT-Logo_u8w7tq.jpg', // Placeholder or actual if known
-      description: 'Association of Healthcare Trainers member, ensuring the highest standards in healthcare education.',
-      fallback: 'AoHT'
+      name: 'SAP Certified Partner',
+      image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=200&q=80', // Placeholder
+      description: 'Recognized as a provider of high-quality SAP training, aligned with global SAP standards.',
+      fallback: 'SAP'
     },
     {
-      name: 'Highfield Qualifications',
-      image: 'https://res.cloudinary.com/di7okmjsx/image/upload/v1773223819/highfield-Logo_y12uxf.jpg',
-      description: 'Approved centre for Highfield Qualifications, a global leader in compliance and work-based learning.',
-      fallback: 'Highfield'
+      name: 'ISTQB Accredited',
+      image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=200&q=80', // Placeholder
+      description: 'Our Software Testing courses are aligned with ISTQB standards, the world leader in software testing certification.',
+      fallback: 'ISTQB'
     },
     {
-      name: 'Care Quality Commission',
-      image: 'https://res.cloudinary.com/di7okmjsx/image/upload/v1773223819/traiing_course_fabncl.jpg',
-      description: 'Aligned with CQC standards to provide training that meets regulatory requirements for care providers.',
-      fallback: 'CQC'
+      name: 'BCS Member',
+      image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=200&q=80', // Placeholder
+      description: 'Member of The Chartered Institute for IT, committed to making IT good for society.',
+      fallback: 'BCS'
     }
   ];
 
@@ -42,7 +42,7 @@ export const AccreditationsPage = () => {
             transition={{ delay: 0.1 }}
             className="text-xl text-slate-200 max-w-3xl mx-auto"
           >
-            Thames Support UK is proud to be recognized by leading industry bodies, ensuring our training meets the highest standards of quality and compliance.
+            MKS Consults Ltd is proud to be recognized by leading industry bodies, ensuring our training meets the highest standards of quality and compliance.
           </motion.p>
         </div>
       </section>
@@ -87,7 +87,7 @@ export const AccreditationsPage = () => {
                 {[
                   { title: 'Rigorous Standards', desc: 'All our courses are audited regularly to ensure they meet the latest industry requirements.', icon: Shield },
                   { title: 'Expert Trainers', desc: 'Our instructors are certified professionals with years of practical experience in their fields.', icon: Award },
-                  { title: 'Verified Certificates', desc: 'Every certificate issued by Thames Support is verifiable and recognized by employers.', icon: CheckCircle }
+                  { title: 'Verified Certificates', desc: 'Every certificate issued by MKS Consults is verifiable and recognized by employers.', icon: CheckCircle }
                 ].map((item, i) => (
                   <div key={i} className="flex gap-6">
                     <div className="bg-brand-blue/10 p-3 rounded-2xl text-brand-blue shrink-0 h-fit">
