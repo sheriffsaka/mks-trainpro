@@ -510,7 +510,7 @@ export default function App() {
                   </span>
                 </div>
                 <p className="max-w-sm text-slate-500 leading-relaxed text-lg">
-                  MKS Consults Ltd is a leading provider of professional training services, dedicated to excellence in SAP and Software Testing education.
+                  {settings.about_content || 'MKS Consults Ltd is a leading provider of professional training services, dedicated to excellence in SAP and Software Testing education.'}
                 </p>
                 {settings.office_address && (
                   <div className="mt-6 flex items-start gap-3 text-slate-500">
@@ -574,12 +574,16 @@ export default function App() {
                     <Twitter size={20} />
                   </a>
                 )}
-                <a href="#" className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-slate-500 hover:text-white hover:bg-brand-blue transition-all">
-                  <Instagram size={20} />
-                </a>
-                <a href="#" className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-slate-500 hover:text-white hover:bg-brand-blue transition-all">
-                  <Linkedin size={20} />
-                </a>
+                {settings.instagram_url && (
+                  <a href={settings.instagram_url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-slate-500 hover:text-white hover:bg-brand-blue transition-all">
+                    <Instagram size={20} />
+                  </a>
+                )}
+                {settings.linkedin_url && (
+                  <a href={settings.linkedin_url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-slate-500 hover:text-white hover:bg-brand-blue transition-all">
+                    <Linkedin size={20} />
+                  </a>
+                )}
               </div>
             </div>
           </div>

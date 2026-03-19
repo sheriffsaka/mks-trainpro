@@ -2,13 +2,20 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { GraduationCap, User, LogOut, Menu, X, LayoutDashboard } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useSettings } from '../hooks/useSettings';
 
 export const Navbar = () => {
   const { user, profile, signOut } = useAuthStore();
+  const { settings } = useSettings();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
   const isAdmin = profile?.role === 'admin' || user?.email === 'sheriffdeenalade@gmail.com';
   const isInstructor = profile?.role === 'instructor' || isAdmin;
+
+  const siteName = settings.site_name || 'MKS CONSULTS LIMITED';
+  const [first, ...rest] = siteName.split(' ');
+  const last = rest.pop() || '';
+  const middle = rest.join(' ');
 
   return (
     <nav className="bg-white border-b border-slate-100 sticky top-0 z-40">
@@ -21,8 +28,8 @@ export const Navbar = () => {
               className="h-10 w-auto object-contain"
               referrerPolicy="no-referrer"
             />
-            <span className="hidden sm:block font-bold text-xl tracking-tight text-slate-900">
-              MKS CONSULTS <span className="text-brand-blue">LIMITED</span>
+            <span className="hidden sm:block font-bold text-xl tracking-tight text-slate-900 uppercase">
+              {first} {middle} <span className="text-brand-blue">{last}</span>
             </span>
           </Link>
 
