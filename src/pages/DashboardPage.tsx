@@ -125,19 +125,25 @@ export const DashboardPage = () => {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div className="flex items-center gap-6">
               <div className="w-20 h-20 bg-brand-blue rounded-3xl flex items-center justify-center text-white text-3xl font-bold shadow-xl shadow-brand-blue/20">
-                {profile?.full_name?.charAt(0) || 'S'}
+                {profile?.full_name?.charAt(0) || (profile?.role === 'admin' ? 'A' : 'S')}
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900 mb-1">Welcome, {profile?.full_name?.split(' ')[0] || 'Student'}!</h1>
+                <h1 className="text-3xl font-bold text-slate-900 mb-1">
+                  Welcome, {profile?.full_name?.split(' ')[0] || (profile?.role === 'admin' ? 'Admin' : 'Student')}!
+                </h1>
                 <div className="flex items-center gap-3 text-slate-500 text-sm">
-                  <span className="flex items-center gap-1"><UserIcon size={14} /> Student ID: #{user.id.slice(0, 8)}</span>
+                  <span className="flex items-center gap-1">
+                    <UserIcon size={14} /> {profile?.role === 'admin' ? 'Admin' : 'Student'} ID: #{user.id.slice(0, 8)}
+                  </span>
                   <span className="w-1 h-1 bg-slate-300 rounded-full" />
                   <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
-                    profile?.package_type === 'platinum' 
-                      ? 'bg-brand-blue text-white shadow-lg shadow-brand-blue/20' 
-                      : 'bg-slate-100 text-slate-600'
+                    profile?.role === 'admin' 
+                      ? 'bg-brand-red text-white shadow-lg shadow-brand-red/20'
+                      : profile?.package_type === 'platinum' 
+                        ? 'bg-brand-blue text-white shadow-lg shadow-brand-blue/20' 
+                        : 'bg-slate-100 text-slate-600'
                   }`}>
-                    {profile?.package_type || 'Standard'} Member
+                    {profile?.role === 'admin' ? 'Administrator' : `${profile?.package_type || 'Standard'} Member`}
                   </span>
                 </div>
               </div>

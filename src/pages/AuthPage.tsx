@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
 
 export const AuthPage = ({ type }: { type: 'login' | 'register' }) => {
   const [email, setEmail] = useState('');
@@ -9,12 +9,14 @@ export const AuthPage = ({ type }: { type: 'login' | 'register' }) => {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(false);
 
     try {
       if (type === 'register') {
@@ -26,7 +28,7 @@ export const AuthPage = ({ type }: { type: 'login' | 'register' }) => {
           }
         });
         if (error) throw error;
-        // In Supabase, we might need to create the profile manually if trigger isn't set
+        
         if (data.user) {
           await supabase.from('profiles').insert({
             id: data.user.id,
@@ -34,7 +36,7 @@ export const AuthPage = ({ type }: { type: 'login' | 'register' }) => {
             role: 'student'
           });
         }
-        alert('Registration successful! Please check your email for verification.');
+        setSuccess(true);
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -46,6 +48,28 @@ export const AuthPage = ({ type }: { type: 'login' | 'register' }) => {
       setLoading(false);
     }
   };
+
+  if (success) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-slate-50">
+        <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-xl border border-slate-100 p-10 text-center">
+          <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle2 size={40} />
+          </div>
+          <h2 className="text-3xl font-bold text-slate-900 mb-4">Registration Successful!</h2>
+          <p className="text-slate-600 mb-8">
+            Your account has been created. Please check your email (<strong>{email}</strong>) for a verification link to activate your account.
+          </p>
+          <button
+            onClick={() => navigate('/login')}
+            className="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold text-lg hover:bg-brand-blue-hover transition-all"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-slate-50">

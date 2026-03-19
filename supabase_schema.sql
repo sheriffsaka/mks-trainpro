@@ -147,68 +147,61 @@ CREATE TABLE corporate_accounts (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
+-- Helper function to check if user is admin without recursion
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Row Level Security (RLS) Policies
 
 -- Profiles: Users can read their own profile, admins can read all
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Admins can view all profiles" ON profiles FOR SELECT USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "Admins can view all profiles" ON profiles FOR SELECT USING (is_admin());
 
 -- Courses: Everyone can read published courses, admins can manage
 ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view published courses" ON courses FOR SELECT USING (is_published = true);
-CREATE POLICY "Admins can manage courses" ON courses FOR ALL USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "Admins can manage courses" ON courses FOR ALL USING (is_admin());
 
 -- Categories: Everyone can read
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view categories" ON categories FOR SELECT USING (true);
-CREATE POLICY "Admins can manage categories" ON categories FOR ALL USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "Admins can manage categories" ON categories FOR ALL USING (is_admin());
 
 -- Enrollments: Users can view their own, admins can view all
 ALTER TABLE enrollments ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own enrollments" ON enrollments FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Admins can view all enrollments" ON enrollments FOR SELECT USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "Admins can view all enrollments" ON enrollments FOR SELECT USING (is_admin());
 
 -- Payments: Users can view their own, admins can view all
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own payments" ON payments FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Admins can view all payments" ON payments FOR SELECT USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "Admins can view all payments" ON payments FOR SELECT USING (is_admin());
 
 -- FAQs: Everyone can read
 ALTER TABLE faqs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view faqs" ON faqs FOR SELECT USING (true);
-CREATE POLICY "Admins can manage faqs" ON faqs FOR ALL USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "Admins can manage faqs" ON faqs FOR ALL USING (is_admin());
 
 -- Announcements: Everyone can read
 ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view announcements" ON announcements FOR SELECT USING (true);
-CREATE POLICY "Admins can manage announcements" ON announcements FOR ALL USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "Admins can manage announcements" ON announcements FOR ALL USING (is_admin());
 
 -- Site Settings: Everyone can read
 ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view site settings" ON site_settings FOR SELECT USING (true);
-CREATE POLICY "Admins can manage site settings" ON site_settings FOR ALL USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "Admins can manage site settings" ON site_settings FOR ALL USING (is_admin());
 
 -- Quizzes: Authenticated users can read
 ALTER TABLE quizzes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Authenticated users can view quizzes" ON quizzes FOR SELECT USING (auth.uid() IS NOT NULL);
-CREATE POLICY "Admins can manage quizzes" ON quizzes FOR ALL USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "Admins can manage quizzes" ON quizzes FOR ALL USING (is_admin());
