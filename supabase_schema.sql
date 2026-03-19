@@ -2,10 +2,15 @@
 -- To be executed in Supabase SQL Editor
 
 -- 1. Roles
-CREATE TYPE user_role AS ENUM ('student', 'admin', 'corporate');
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+        CREATE TYPE user_role AS ENUM ('student', 'admin', 'corporate');
+    END IF;
+END$$;
 
 -- 2. Profiles (Extends Supabase Auth Users)
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   full_name TEXT,
   avatar_url TEXT,
@@ -15,7 +20,7 @@ CREATE TABLE profiles (
 );
 
 -- 3. Categories
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   slug TEXT UNIQUE NOT NULL,
@@ -24,7 +29,7 @@ CREATE TABLE categories (
 );
 
 -- 4. Courses
-CREATE TABLE courses (
+CREATE TABLE IF NOT EXISTS courses (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   category_id UUID REFERENCES categories(id),
   title TEXT NOT NULL,
@@ -48,7 +53,7 @@ CREATE TABLE courses (
 );
 
 -- 5. Enrollments
-CREATE TABLE enrollments (
+CREATE TABLE IF NOT EXISTS enrollments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id),
   course_id UUID REFERENCES courses(id),
@@ -59,7 +64,7 @@ CREATE TABLE enrollments (
 );
 
 -- 6. Payments
-CREATE TABLE payments (
+CREATE TABLE IF NOT EXISTS payments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   enrollment_id UUID REFERENCES enrollments(id),
   user_id UUID REFERENCES auth.users(id),
@@ -73,7 +78,7 @@ CREATE TABLE payments (
 );
 
 -- 7. Installment Records
-CREATE TABLE installment_records (
+CREATE TABLE IF NOT EXISTS installment_records (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   enrollment_id UUID REFERENCES enrollments(id),
   total_amount DECIMAL(10,2) NOT NULL,
@@ -83,7 +88,7 @@ CREATE TABLE installment_records (
 );
 
 -- 8. Quizzes
-CREATE TABLE quizzes (
+CREATE TABLE IF NOT EXISTS quizzes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   course_id UUID REFERENCES courses(id),
   title TEXT NOT NULL,
@@ -94,7 +99,7 @@ CREATE TABLE quizzes (
 );
 
 -- 9. Quiz Attempts
-CREATE TABLE quiz_attempts (
+CREATE TABLE IF NOT EXISTS quiz_attempts (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   quiz_id UUID REFERENCES quizzes(id),
   user_id UUID REFERENCES auth.users(id),
@@ -104,7 +109,7 @@ CREATE TABLE quiz_attempts (
 );
 
 -- 10. Certificates
-CREATE TABLE certificates (
+CREATE TABLE IF NOT EXISTS certificates (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   enrollment_id UUID REFERENCES enrollments(id),
   user_id UUID REFERENCES auth.users(id),
@@ -113,7 +118,7 @@ CREATE TABLE certificates (
 );
 
 -- 11. Announcements
-CREATE TABLE announcements (
+CREATE TABLE IF NOT EXISTS announcements (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
   content TEXT NOT NULL,
@@ -124,7 +129,7 @@ CREATE TABLE announcements (
 );
 
 -- 12. FAQs
-CREATE TABLE faqs (
+CREATE TABLE IF NOT EXISTS faqs (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   question TEXT NOT NULL,
   answer TEXT NOT NULL,
@@ -133,14 +138,14 @@ CREATE TABLE faqs (
 );
 
 -- 13. Site Settings (CMS)
-CREATE TABLE site_settings (
+CREATE TABLE IF NOT EXISTS site_settings (
   key TEXT PRIMARY KEY,
   value JSONB NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
 -- 14. Corporate Accounts
-CREATE TABLE corporate_accounts (
+CREATE TABLE IF NOT EXISTS corporate_accounts (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   company_name TEXT NOT NULL,
   admin_id UUID REFERENCES auth.users(id),
@@ -162,46 +167,65 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Profiles: Users can read their own profile, admins can read all
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
 CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
 CREATE POLICY "Admins can view all profiles" ON profiles FOR SELECT USING (is_admin());
 
 -- Courses: Everyone can read published courses, admins can manage
 ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can view published courses" ON courses;
 CREATE POLICY "Anyone can view published courses" ON courses FOR SELECT USING (is_published = true);
+DROP POLICY IF EXISTS "Admins can manage courses" ON courses;
 CREATE POLICY "Admins can manage courses" ON courses FOR ALL USING (is_admin());
 
 -- Categories: Everyone can read
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can view categories" ON categories;
 CREATE POLICY "Anyone can view categories" ON categories FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admins can manage categories" ON categories;
 CREATE POLICY "Admins can manage categories" ON categories FOR ALL USING (is_admin());
 
 -- Enrollments: Users can view their own, admins can view all
 ALTER TABLE enrollments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own enrollments" ON enrollments;
 CREATE POLICY "Users can view own enrollments" ON enrollments FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Admins can view all enrollments" ON enrollments;
 CREATE POLICY "Admins can view all enrollments" ON enrollments FOR SELECT USING (is_admin());
 
 -- Payments: Users can view their own, admins can view all
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own payments" ON payments;
 CREATE POLICY "Users can view own payments" ON payments FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Admins can view all payments" ON payments;
 CREATE POLICY "Admins can view all payments" ON payments FOR SELECT USING (is_admin());
 
 -- FAQs: Everyone can read
 ALTER TABLE faqs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can view faqs" ON faqs;
 CREATE POLICY "Anyone can view faqs" ON faqs FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admins can manage faqs" ON faqs;
 CREATE POLICY "Admins can manage faqs" ON faqs FOR ALL USING (is_admin());
 
 -- Announcements: Everyone can read
 ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can view announcements" ON announcements;
 CREATE POLICY "Anyone can view announcements" ON announcements FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admins can manage announcements" ON announcements;
 CREATE POLICY "Admins can manage announcements" ON announcements FOR ALL USING (is_admin());
 
 -- Site Settings: Everyone can read
 ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can view site settings" ON site_settings;
 CREATE POLICY "Anyone can view site settings" ON site_settings FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admins can manage site settings" ON site_settings;
 CREATE POLICY "Admins can manage site settings" ON site_settings FOR ALL USING (is_admin());
 
 -- Quizzes: Authenticated users can read
 ALTER TABLE quizzes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Authenticated users can view quizzes" ON quizzes;
 CREATE POLICY "Authenticated users can view quizzes" ON quizzes FOR SELECT USING (auth.uid() IS NOT NULL);
+DROP POLICY IF EXISTS "Admins can manage quizzes" ON quizzes;
 CREATE POLICY "Admins can manage quizzes" ON quizzes FOR ALL USING (is_admin());
