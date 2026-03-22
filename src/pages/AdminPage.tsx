@@ -308,6 +308,7 @@ const CoursesTab = () => {
     const formData = new FormData(e.currentTarget);
     const courseData: any = {
       title: formData.get('title'),
+      slug: (formData.get('title') as string).toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, ''),
       category_id: formData.get('category_id'),
       price_standard: parseFloat(formData.get('price_standard') as string),
       price_platinum: parseFloat(formData.get('price_platinum') as string),
@@ -743,6 +744,119 @@ const UsersTab = () => {
                 </td>
               </tr>
             ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const EnrollmentsTab = () => {
+  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchEnrollments();
+  }, []);
+
+  const fetchEnrollments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('enrollments')
+        .select('*, profiles:user_id(*), courses:course_id(*)')
+        .order('enrolled_at', { ascending: false });
+      
+      if (data) setEnrollments(data);
+    } catch (err) {
+      console.error('Error fetching enrollments:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('enrollments')
+        .update({ status: 'active' })
+        .eq('id', id);
+      
+      if (error) throw error;
+      fetchEnrollments();
+    } catch (err) {
+      console.error('Error approving enrollment:', err);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-bold text-slate-900">Course Enrollments & Approvals</h3>
+      </div>
+
+      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-slate-50 text-slate-400 text-xs uppercase tracking-widest">
+              <th className="px-8 py-5 font-bold">Student</th>
+              <th className="px-8 py-5 font-bold">Course</th>
+              <th className="px-8 py-5 font-bold">Package</th>
+              <th className="px-8 py-5 font-bold">Status</th>
+              <th className="px-8 py-5 font-bold text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {enrollments.length > 0 ? enrollments.map((e) => (
+              <tr key={e.id} className="hover:bg-slate-50/50 transition-colors group">
+                <td className="px-8 py-5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-brand-blue/10 rounded-full flex items-center justify-center text-brand-blue font-bold">
+                      {e.profiles?.full_name?.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900">{e.profiles?.full_name}</p>
+                      <p className="text-xs text-slate-500">{e.profiles?.email}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-8 py-5">
+                  <p className="text-sm font-bold text-slate-900">{e.courses?.title}</p>
+                </td>
+                <td className="px-8 py-5">
+                  <span className="text-xs font-bold uppercase text-brand-blue bg-brand-blue/5 px-2 py-1 rounded-lg">
+                    {e.package_type}
+                  </span>
+                </td>
+                <td className="px-8 py-5">
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    e.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 
+                    e.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {e.status}
+                  </span>
+                </td>
+                <td className="px-8 py-5 text-right">
+                  {e.status === 'pending' ? (
+                    <button 
+                      onClick={() => handleApprove(e.id)}
+                      className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
+                    >
+                      Approve
+                    </button>
+                  ) : (
+                    <span className="text-emerald-600 text-xs font-bold flex items-center gap-1 justify-end">
+                      <CheckCircle2 size={14} /> Approved
+                    </span>
+                  )}
+                </td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan={5} className="px-8 py-20 text-center text-slate-500">
+                  No enrollments found.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -1881,6 +1995,7 @@ export const AdminPage = () => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={20} /> },
     { id: 'courses', label: 'Courses', icon: <BookOpen size={20} /> },
+    { id: 'enrollments', label: 'Enrollments', icon: <CheckCircle2 size={20} /> },
     { id: 'users', label: 'Users', icon: <Users size={20} /> },
     { id: 'payments', label: 'Payments', icon: <CreditCard size={20} /> },
     { id: 'progress', label: 'Progress', icon: <BarChart3 size={20} /> },
@@ -1982,6 +2097,7 @@ export const AdminPage = () => {
           >
             {activeTab === 'overview' && <OverviewTab />}
             {activeTab === 'courses' && <CoursesTab />}
+            {activeTab === 'enrollments' && <EnrollmentsTab />}
             {activeTab === 'users' && <UsersTab />}
             {activeTab === 'payments' && <PaymentsTab />}
             {activeTab === 'progress' && <ProgressTab />}
@@ -1991,7 +2107,7 @@ export const AdminPage = () => {
             {activeTab === 'cms' && <CMSTab />}
             
             {/* Placeholder for other tabs */}
-            {!['overview', 'courses', 'users', 'payments', 'quizzes', 'announcements', 'reports', 'cms'].includes(activeTab) && (
+            {!['overview', 'courses', 'enrollments', 'users', 'payments', 'quizzes', 'announcements', 'reports', 'cms'].includes(activeTab) && (
               <div className="bg-white rounded-[3rem] border border-slate-100 p-20 text-center shadow-sm">
                 <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-8">
                   {tabs.find(t => t.id === activeTab)?.icon}

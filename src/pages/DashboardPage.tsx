@@ -68,8 +68,6 @@ export const DashboardPage = () => {
         let currentEnrollments = [];
         if (enrollmentsRes.data && enrollmentsRes.data.length > 0) {
           currentEnrollments = enrollmentsRes.data;
-        } else {
-          currentEnrollments = MOCK_ENROLLMENTS;
         }
         setEnrollments(currentEnrollments);
 
