@@ -316,6 +316,7 @@ const CoursesTab = () => {
       document_url: formData.get('document_url'),
       description: formData.get('description'),
       duration: formData.get('duration'),
+      mode: formData.get('mode'),
       is_published: formData.get('is_published') === 'on',
     };
 
@@ -491,6 +492,18 @@ const CoursesTab = () => {
                         {MOCK_CATEGORIES.map(cat => (
                           <option key={cat.id} value={cat.id}>{cat.name}</option>
                         ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">Course Mode</label>
+                      <select 
+                        name="mode" 
+                        defaultValue={editingCourse?.mode || 'vod'}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+                      >
+                        <option value="virtual">Virtual (Live) Class</option>
+                        <option value="vod">Video on Demand (Self-paced)</option>
+                        <option value="physical">Physical Class</option>
                       </select>
                     </div>
                     <div className="grid grid-cols-2 gap-4">

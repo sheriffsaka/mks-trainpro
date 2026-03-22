@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
-import { Clock, BookOpen, Award, CheckCircle2, Shield, Zap, ArrowRight, Loader2 } from 'lucide-react';
+import { Clock, BookOpen, Award, CheckCircle2, Shield, Zap, ArrowRight, Loader2, MapPin, Video, Monitor, X, Copy, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { adminService } from '../services/adminService';
+import { motion, AnimatePresence } from 'motion/react';
 
 import { MOCK_COURSES } from '../data/mockData';
 
@@ -13,23 +15,29 @@ export const CourseDetailPage = () => {
   const [course, setCourse] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState<'standard' | 'platinum'>('standard');
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [isPartPayment, setIsPartPayment] = useState(false);
+  const [settings, setSettings] = useState<any>({});
 
   useEffect(() => {
-    const fetchCourse = async () => {
+    const fetchData = async () => {
       try {
-        const { data, error } = await supabase
-          .from('courses')
-          .select('*, categories(*)')
-          .eq('slug', slug)
-          .single();
+        const [courseRes, settingsRes] = await Promise.all([
+          supabase
+            .from('courses')
+            .select('*, categories(*)')
+            .eq('slug', slug)
+            .single(),
+          adminService.getSettings()
+        ]);
         
-        if (data) {
-          setCourse(data);
+        if (courseRes.data) {
+          setCourse(courseRes.data);
         } else {
-          // Fallback to mock data
           const mock = MOCK_COURSES.find(c => c.slug === slug);
           setCourse(mock || null);
         }
+        setSettings(settingsRes);
       } catch (err) {
         const mock = MOCK_COURSES.find(c => c.slug === slug);
         setCourse(mock || null);
@@ -37,36 +45,38 @@ export const CourseDetailPage = () => {
         setLoading(false);
       }
     };
-    fetchCourse();
+    fetchData();
   }, [slug]);
 
-  const handleEnroll = async (isInstallment: boolean) => {
+  const handleEnrollClick = (partPayment: boolean) => {
     if (!user) {
       navigate('/login');
       return;
     }
+    setIsPartPayment(partPayment);
+    setShowCheckout(true);
+  };
 
-    try {
-      const response = await fetch('/api/payments/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          courseId: course.id,
-          packageType: selectedPackage,
-          isInstallment,
-          userId: user.id,
-          userEmail: user.email
-        })
-      });
-
-      const { id } = await response.json();
-      // In a real app, you'd use Stripe.js to redirect
-      // window.location.href = `https://checkout.stripe.com/pay/${id}`;
-      alert(`Redirecting to Stripe Checkout for ${selectedPackage} package... (Mocked)`);
-    } catch (error) {
-      console.error("Payment error:", error);
+  const getModeIcon = (mode: string) => {
+    switch (mode) {
+      case 'virtual': return <Monitor size={20} className="text-brand-red" />;
+      case 'physical': return <MapPin size={20} className="text-brand-red" />;
+      case 'vod': return <Video size={20} className="text-brand-red" />;
+      default: return <BookOpen size={20} className="text-brand-red" />;
     }
   };
+
+  const getModeLabel = (mode: string) => {
+    switch (mode) {
+      case 'virtual': return 'Virtual (Live) Class';
+      case 'physical': return 'Physical Class';
+      case 'vod': return 'Video on Demand (Self-paced)';
+      default: return mode;
+    }
+  };
+
+  const totalPrice = selectedPackage === 'platinum' ? course?.price_platinum : course?.price_standard;
+  const partPaymentAmount = totalPrice / 2;
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-brand-blue" size={40} /></div>;
   if (!course) return <div className="min-h-screen flex items-center justify-center">Course not found</div>;
@@ -90,8 +100,8 @@ export const CourseDetailPage = () => {
               <span>{course.duration}</span>
             </div>
             <div className="flex items-center gap-2">
-              <BookOpen size={20} className="text-brand-red" />
-              <span>{course.format}</span>
+              {getModeIcon(course.mode)}
+              <span>{getModeLabel(course.mode)}</span>
             </div>
             <div className="flex items-center gap-2">
               <Award size={20} className="text-brand-red" />
@@ -229,27 +239,122 @@ export const CourseDetailPage = () => {
 
               <div className="space-y-4">
                 <button 
-                  onClick={() => handleEnroll(false)}
+                  onClick={() => handleEnrollClick(false)}
                   className="w-full bg-brand-red py-4 rounded-2xl font-bold hover:bg-brand-red-hover transition-all flex items-center justify-center gap-2"
                 >
-                  Pay Full Amount
+                  Pay Full Amount (£{totalPrice})
                   <ArrowRight size={20} />
                 </button>
                 <button 
-                  onClick={() => handleEnroll(true)}
+                  onClick={() => handleEnrollClick(true)}
                   className="w-full bg-white/10 border border-white/20 py-4 rounded-2xl font-bold hover:bg-white/20 transition-all"
                 >
-                  Pay £50 Deposit
+                  Pay in 2 Installments (£{partPaymentAmount.toFixed(2)} each)
                 </button>
               </div>
               
               <p className="mt-6 text-center text-xs text-slate-400">
-                Secure payment powered by Stripe & PayPal.
+                Secure payment via Bank Transfer.
               </p>
             </div>
           </aside>
         </div>
       </div>
+
+      {/* Checkout Modal */}
+      <AnimatePresence>
+        {showCheckout && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCheckout(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white w-full max-w-lg rounded-[3rem] shadow-2xl overflow-hidden"
+            >
+              <div className="p-8 border-b border-slate-100 flex justify-between items-center">
+                <h3 className="text-2xl font-bold text-slate-900">Checkout</h3>
+                <button onClick={() => setShowCheckout(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="p-8 space-y-8">
+                <div className="bg-slate-50 p-6 rounded-3xl space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-medium">Course</span>
+                    <span className="font-bold text-slate-900">{course.title}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-medium">Payment Type</span>
+                    <span className="font-bold text-slate-900">{isPartPayment ? 'Part Payment (1st Installment)' : 'Full Payment'}</span>
+                  </div>
+                  <div className="h-px bg-slate-200" />
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-900 font-bold">Amount to Pay</span>
+                    <span className="text-2xl font-bold text-brand-blue">£{(isPartPayment ? partPaymentAmount : totalPrice).toFixed(2)}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-bold text-slate-900 flex items-center gap-2">
+                    <Shield className="text-brand-blue" size={18} />
+                    Bank Transfer Details
+                  </h4>
+                  <div className="grid grid-cols-1 gap-3">
+                    {[
+                      { label: 'Bank Name', value: settings.bank_name || 'Barclays Bank' },
+                      { label: 'Account Name', value: settings.account_name || 'MKS Consults Ltd' },
+                      { label: 'Account Number', value: settings.account_number || '12345678' },
+                      { label: 'Sort Code', value: settings.sort_code || '20-30-40' }
+                    ].map((item, i) => (
+                      <div key={i} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100 group">
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{item.label}</p>
+                          <p className="font-bold text-slate-900">{item.value}</p>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(item.value);
+                            alert(`${item.label} copied!`);
+                          }}
+                          className="p-2 text-slate-400 hover:text-brand-blue hover:bg-brand-blue/5 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                        >
+                          <Copy size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex gap-3">
+                  <AlertCircle className="text-amber-600 shrink-0" size={20} />
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    Please use your <strong>Full Name</strong> as the payment reference. Once transferred, please send the proof of payment to <strong>{settings.support_email || 'support@mksconsultsltd.com'}</strong>.
+                  </p>
+                </div>
+
+                <button 
+                  onClick={() => {
+                    alert('Enrollment request submitted! We will verify your payment and activate your course shortly.');
+                    setShowCheckout(false);
+                    navigate('/dashboard');
+                  }}
+                  className="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20"
+                >
+                  I Have Made the Transfer
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

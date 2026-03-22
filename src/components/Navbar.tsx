@@ -9,7 +9,7 @@ export const Navbar = () => {
   const { settings } = useSettings();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
-  const isAdmin = profile?.role === 'admin' || user?.email === 'sheriffdeenalade@gmail.com';
+  const isAdmin = profile?.role === 'admin';
   const isInstructor = profile?.role === 'instructor' || isAdmin;
 
   const siteName = settings.site_name || 'MKS CONSULTS LIMITED';

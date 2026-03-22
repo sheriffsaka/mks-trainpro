@@ -49,6 +49,7 @@ export const MOCK_COURSES = [
         ]
       }
     ],
+    mode: 'virtual',
     is_published: true,
     categories: MOCK_CATEGORIES[0]
   },
@@ -89,6 +90,7 @@ export const MOCK_COURSES = [
         ]
       }
     ],
+    mode: 'physical',
     is_published: true,
     categories: MOCK_CATEGORIES[0]
   },
@@ -129,6 +131,7 @@ export const MOCK_COURSES = [
         ]
       }
     ],
+    mode: 'vod',
     is_published: true,
     categories: MOCK_CATEGORIES[1]
   },
@@ -169,6 +172,7 @@ export const MOCK_COURSES = [
         ]
       }
     ],
+    mode: 'virtual',
     is_published: true,
     categories: MOCK_CATEGORIES[1]
   }
@@ -229,7 +233,7 @@ export const MOCK_QUIZZES = [
   {
     id: 'q1',
     title: 'SAP Fundamentals Quiz',
-    course_id: 'sap-beginner',
+    course_id: 'c1',
     description: 'Test your knowledge on basic SAP ERP principles and navigation.',
     questions: [
       {
@@ -261,4 +265,8 @@ export const MOCK_SITE_SETTINGS = [
   { key: 'linkedin_url', value: 'https://linkedin.com/company/mksconsults' },
   { key: 'instagram_url', value: 'https://instagram.com/mksconsults' },
   { key: 'hero_bg_url', value: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1920&q=80' },
+  { key: 'bank_name', value: 'Barclays Bank' },
+  { key: 'account_name', value: 'MKS Consults Ltd' },
+  { key: 'account_number', value: '12345678' },
+  { key: 'sort_code', value: '20-30-40' },
 ];

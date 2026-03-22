@@ -12,6 +12,16 @@ export const adminService = {
     if (error) throw error;
     return data;
   },
+  async getQuizzesByCourse(courseId: string) {
+    if (!isSupabaseConfigured) return MOCK_QUIZZES.filter(q => q.course_id === courseId);
+    const { data, error } = await supabase
+      .from('quizzes')
+      .select('*')
+      .eq('course_id', courseId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
   async createQuiz(quiz: any) {
     const { data, error } = await supabase
       .from('quizzes')

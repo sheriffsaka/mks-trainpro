@@ -5,7 +5,22 @@
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
-        CREATE TYPE user_role AS ENUM ('student', 'admin', 'corporate');
+        CREATE TYPE user_role AS ENUM ('student', 'admin', 'corporate', 'instructor');
+    ELSE
+        -- Add instructor if it doesn't exist in the enum
+        BEGIN
+            ALTER TYPE user_role ADD VALUE 'instructor';
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END;
+    END IF;
+END$$;
+
+-- Add course_mode enum
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'course_mode') THEN
+        CREATE TYPE course_mode AS ENUM ('virtual', 'vod', 'physical');
     END IF;
 END$$;
 
@@ -48,6 +63,7 @@ CREATE TABLE IF NOT EXISTS courses (
   video_url TEXT,
   document_url TEXT,
   modules JSONB DEFAULT '[]'::jsonb,
+  mode course_mode DEFAULT 'vod',
   is_published BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
@@ -162,6 +178,36 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 15. Attendance
+CREATE TABLE IF NOT EXISTS attendance (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  enrollment_id UUID REFERENCES enrollments(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
+  session_id TEXT,
+  session_date DATE NOT NULL,
+  status TEXT DEFAULT 'present' CHECK (status IN ('present', 'absent', 'late')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Helper function to check if user is instructor
+CREATE OR REPLACE FUNCTION is_instructor()
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM profiles
+    WHERE id = auth.uid() AND role IN ('admin', 'instructor')
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- RLS for attendance
+ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own attendance" ON attendance;
+CREATE POLICY "Users can view own attendance" ON attendance FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Instructors can manage attendance" ON attendance;
+CREATE POLICY "Instructors can manage attendance" ON attendance FOR ALL USING (is_instructor());
 
 -- Row Level Security (RLS) Policies
 

@@ -40,6 +40,7 @@ export const DashboardPage = () => {
     address: ''
   });
   const [progressDetails, setProgressDetails] = useState<{[key: string]: ProgressData}>({});
+  const [quizzesMap, setQuizzesMap] = useState<{[key: string]: any[]}>({});
 
   useEffect(() => {
     if (profile) {
@@ -72,13 +73,19 @@ export const DashboardPage = () => {
         }
         setEnrollments(currentEnrollments);
 
-        // Fetch progress for each enrollment
+        // Fetch progress and quizzes for each enrollment
         const progressMap: {[key: string]: ProgressData} = {};
+        const qMap: {[key: string]: any[]} = {};
         await Promise.all(currentEnrollments.map(async (e: any) => {
-          const progress = await progressService.calculateProgress(user.id, e.course_id);
+          const [progress, quizzes] = await Promise.all([
+            progressService.calculateProgress(user.id, e.course_id),
+            adminService.getQuizzesByCourse(e.course_id)
+          ]);
           progressMap[e.course_id] = progress;
+          qMap[e.course_id] = quizzes;
         }));
         setProgressDetails(progressMap);
+        setQuizzesMap(qMap);
 
         if (announcementsRes && announcementsRes.length > 0) {
           setAnnouncements(announcementsRes);
@@ -259,7 +266,7 @@ export const DashboardPage = () => {
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   <FileQuestion size={14} />
-                                  <span>4 Quizzes</span>
+                                  <span>{quizzesMap[enrollment.course_id]?.length || 0} Quizzes</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   <Award size={14} />
@@ -342,16 +349,37 @@ export const DashboardPage = () => {
                             <div className="bg-amber-50 w-12 h-12 rounded-2xl flex items-center justify-center">
                               <FileQuestion className="text-amber-500" size={24} />
                             </div>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">4 Quizzes Available</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                              {quizzesMap[e.course_id]?.length || 0} Quizzes Available
+                            </span>
                           </div>
                           <h3 className="font-bold text-slate-900 mb-2">{e.courses?.title}</h3>
-                          <p className="text-xs text-slate-500 mb-6 line-clamp-2">Complete all modules to unlock the final assessment.</p>
-                          <Link 
-                            to={`/courses/${e.courses?.slug}/player`}
-                            className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-brand-blue transition-all text-center block"
-                          >
-                            View Quizzes
-                          </Link>
+                          <p className="text-xs text-slate-500 mb-6 line-clamp-2">
+                            {quizzesMap[e.course_id]?.length > 0 
+                              ? `You have ${quizzesMap[e.course_id].length} quizzes available for this course.`
+                              : 'No quizzes available for this course yet.'}
+                          </p>
+                          {quizzesMap[e.course_id]?.length > 0 ? (
+                            <div className="space-y-2">
+                              {quizzesMap[e.course_id].map((quiz) => (
+                                <Link 
+                                  key={quiz.id}
+                                  to={`/courses/${e.courses?.slug}/quiz/${quiz.id}`}
+                                  className="w-full bg-slate-50 text-slate-900 py-3 px-4 rounded-xl font-bold hover:bg-brand-blue hover:text-white transition-all flex items-center justify-between group"
+                                >
+                                  <span className="text-sm">{quiz.title}</span>
+                                  <ChevronRight size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+                                </Link>
+                              ))}
+                            </div>
+                          ) : (
+                            <button 
+                              disabled
+                              className="w-full bg-slate-100 text-slate-400 py-3 rounded-xl font-bold cursor-not-allowed text-center block"
+                            >
+                              No Quizzes
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
