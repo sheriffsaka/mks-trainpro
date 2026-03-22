@@ -117,6 +117,15 @@ export const adminService = {
     if (error) throw error;
   },
 
+  async getCategories() {
+    if (!isSupabaseConfigured) return MOCK_CATEGORIES;
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
   // Courses
   async getCourses() {
     if (!isSupabaseConfigured) return MOCK_COURSES;

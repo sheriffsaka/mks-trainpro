@@ -17,7 +17,13 @@ import {
   FileQuestion,
   History,
   User as UserIcon,
-  Settings
+  Settings,
+  Shield,
+  LogOut,
+  Loader2,
+  Monitor,
+  MapPin,
+  Video
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';

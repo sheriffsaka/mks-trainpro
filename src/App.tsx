@@ -451,6 +451,8 @@ export default function App() {
   const { settings } = useSettings();
 
   useEffect(() => {
+    adminService.seedDatabase();
+    
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setUser(session.user);

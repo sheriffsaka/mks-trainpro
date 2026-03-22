@@ -264,13 +264,25 @@ const OverviewTab = () => {
 
 const CoursesTab = () => {
   const [courses, setCourses] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<any>(null);
 
   useEffect(() => {
     fetchCourses();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const data = await adminService.getCategories();
+      setCategories(data);
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+      setCategories(MOCK_CATEGORIES);
+    }
+  };
 
   const fetchCourses = async () => {
     try {
@@ -321,6 +333,11 @@ const CoursesTab = () => {
       is_published: formData.get('is_published') === 'on',
     };
 
+    if (!courseData.title || !courseData.category_id || isNaN(courseData.price_standard) || isNaN(courseData.price_platinum)) {
+      alert('Please fill in all required fields (Title, Category, and Prices)');
+      return;
+    }
+
     const imageFile = (e.currentTarget.elements.namedItem('image_file') as HTMLInputElement)?.files?.[0];
     if (imageFile) {
       try {
@@ -328,6 +345,7 @@ const CoursesTab = () => {
         courseData.image_url = publicUrl;
       } catch (err) {
         console.error('Error uploading image:', err);
+        alert('Failed to upload image. Using URL if provided.');
       }
     }
 
@@ -354,14 +372,17 @@ const CoursesTab = () => {
     try {
       if (editingCourse) {
         await adminService.updateCourse(editingCourse.id, courseData);
+        alert('Course updated successfully!');
       } else {
         await adminService.createCourse(courseData);
+        alert('Course created successfully!');
       }
       setIsModalOpen(false);
       setEditingCourse(null);
       fetchCourses();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving course:', err);
+      alert(`Failed to save course: ${err.message || 'Unknown error'}`);
     }
   };
 
@@ -490,7 +511,7 @@ const CoursesTab = () => {
                         defaultValue={editingCourse?.category_id}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
                       >
-                        {MOCK_CATEGORIES.map(cat => (
+                        {categories.map(cat => (
                           <option key={cat.id} value={cat.id}>{cat.name}</option>
                         ))}
                       </select>

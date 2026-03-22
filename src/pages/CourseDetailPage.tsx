@@ -62,6 +62,12 @@ export const CourseDetailPage = () => {
 
     try {
       setLoading(true);
+      
+      // Validate course ID is a real UUID (not a mock ID like '1', '2')
+      if (!course.id || course.id.length < 30) {
+        throw new Error('This course is not yet available for enrollment in the database. Please try a different course or contact support.');
+      }
+
       const amountToPay = isPartPayment ? partPaymentAmount : totalPrice;
 
       // 1. Create enrollment
@@ -76,7 +82,10 @@ export const CourseDetailPage = () => {
         .select()
         .single();
 
-      if (enrollmentError) throw enrollmentError;
+      if (enrollmentError) {
+        console.error('Enrollment Error:', enrollmentError);
+        throw new Error(`Failed to create enrollment: ${enrollmentError.message}`);
+      }
 
       // 2. Create payment record
       const { error: paymentError } = await supabase
@@ -90,7 +99,10 @@ export const CourseDetailPage = () => {
           is_installment: isPartPayment
         });
 
-      if (paymentError) throw paymentError;
+      if (paymentError) {
+        console.error('Payment Error:', paymentError);
+        throw new Error(`Failed to create payment record: ${paymentError.message}`);
+      }
 
       // 3. If part payment, create installment record
       if (isPartPayment) {
@@ -104,15 +116,18 @@ export const CourseDetailPage = () => {
             status: 'active'
           });
         
-        if (installmentError) throw installmentError;
+        if (installmentError) {
+          console.error('Installment Error:', installmentError);
+          // We don't throw here to avoid failing the whole process if only installment record fails
+        }
       }
 
       alert('Enrollment request submitted! We will verify your payment and activate your course shortly.');
       setShowCheckout(false);
       navigate('/dashboard');
     } catch (err: any) {
-      console.error('Enrollment error:', err);
-      alert('Failed to submit enrollment request. Please try again.');
+      console.error('Enrollment process error:', err);
+      alert(err.message || 'Failed to submit enrollment request. Please try again.');
     } finally {
       setLoading(false);
     }

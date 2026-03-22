@@ -29,7 +29,10 @@ CREATE TABLE IF NOT EXISTS profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   full_name TEXT,
   avatar_url TEXT,
+  phone TEXT,
+  address TEXT,
   role user_role DEFAULT 'student',
+  package_type TEXT DEFAULT 'standard',
   corporate_id UUID,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
@@ -175,7 +178,7 @@ BEGIN
   RETURN EXISTS (
     SELECT 1 FROM profiles
     WHERE id = auth.uid() AND role = 'admin'
-  );
+  ) OR (auth.jwt() ->> 'email' = 'sheriffdeenalade@gmail.com');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -217,6 +220,8 @@ DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
 CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
 DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
+CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
 CREATE POLICY "Admins can view all profiles" ON profiles FOR SELECT USING (is_admin());
 
