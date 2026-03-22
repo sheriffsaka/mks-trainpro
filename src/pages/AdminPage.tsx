@@ -30,7 +30,9 @@ import {
   Download,
   Database,
   Play,
-  FileText
+  FileText,
+  Award,
+  Loader2
 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { useAuthStore } from '../store/authStore';
@@ -39,7 +41,6 @@ import { MOCK_COURSES, MOCK_CATEGORIES, MOCK_FAQS, MOCK_ANNOUNCEMENTS, MOCK_QUIZ
 
 import { adminService } from '../services/adminService';
 import { progressService } from '../services/progressService';
-import { Award } from 'lucide-react';
 
 // --- Components ---
 
@@ -795,17 +796,32 @@ const EnrollmentsTab = () => {
     }
   };
 
-  const handleApprove = async (id: string) => {
+  const handleApprove = async (enrollment: any) => {
     try {
-      const { error } = await supabase
+      // 1. Update enrollment status
+      const { error: enrollmentError } = await supabase
         .from('enrollments')
         .update({ status: 'active' })
-        .eq('id', id);
+        .eq('id', enrollment.id);
       
-      if (error) throw error;
+      if (enrollmentError) throw enrollmentError;
+
+      // 2. Update associated payment status
+      const { error: paymentError } = await supabase
+        .from('payments')
+        .update({ payment_status: 'succeeded' })
+        .eq('enrollment_id', enrollment.id)
+        .eq('payment_status', 'pending');
+      
+      if (paymentError) {
+        console.error('Error updating payment status:', paymentError);
+      }
+      
+      alert('Enrollment approved successfully!');
       fetchEnrollments();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error approving enrollment:', err);
+      alert(`Failed to approve enrollment: ${err.message}`);
     }
   };
 
@@ -859,7 +875,7 @@ const EnrollmentsTab = () => {
                 <td className="px-8 py-5 text-right">
                   {e.status === 'pending' ? (
                     <button 
-                      onClick={() => handleApprove(e.id)}
+                      onClick={() => handleApprove(e)}
                       className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
                     >
                       Approve
@@ -905,6 +921,22 @@ const PaymentsTab = () => {
       console.error('Error fetching payments:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConfirmPayment = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('payments')
+        .update({ payment_status: 'succeeded' })
+        .eq('id', id);
+      
+      if (error) throw error;
+      alert('Payment confirmed!');
+      fetchPayments();
+    } catch (err: any) {
+      console.error('Error confirming payment:', err);
+      alert(`Failed to confirm payment: ${err.message}`);
     }
   };
 
@@ -965,7 +997,16 @@ const PaymentsTab = () => {
                   </span>
                 </td>
                 <td className="px-8 py-5 text-right text-sm text-slate-500">
-                  {new Date(p.created_at).toLocaleDateString()}
+                  {p.payment_status === 'pending' ? (
+                    <button 
+                      onClick={() => handleConfirmPayment(p.id)}
+                      className="bg-brand-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-brand-blue-hover transition-all"
+                    >
+                      Confirm
+                    </button>
+                  ) : (
+                    new Date(p.created_at).toLocaleDateString()
+                  )}
                 </td>
               </tr>
             )) : (
@@ -1245,6 +1286,156 @@ const QuizzesTab = () => {
         title="Delete Quiz"
         message="Are you sure you want to delete this quiz? This action cannot be undone."
       />
+    </div>
+  );
+};
+
+const CertificatesTab = () => {
+  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [eligibilityMap, setEligibilityMap] = useState<{[key: string]: boolean}>({});
+  const [generating, setGenerating] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchEnrollments();
+  }, []);
+
+  const fetchEnrollments = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('enrollments')
+        .select('*, profiles:user_id(*), courses:course_id(*), certificates(*)')
+        .in('status', ['active', 'completed'])
+        .order('enrolled_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      if (data) {
+        setEnrollments(data);
+        
+        // Check eligibility for each active enrollment
+        const eMap: {[key: string]: boolean} = {};
+        await Promise.all(data.map(async (e: any) => {
+          if (e.status === 'completed') {
+            eMap[e.id] = true;
+          } else {
+            const progress = await progressService.calculateProgress(e.user_id, e.course_id);
+            eMap[e.id] = progress.isEligibleForCertificate;
+          }
+        }));
+        setEligibilityMap(eMap);
+      }
+    } catch (err) {
+      console.error('Error fetching enrollments for certificates:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleIssueCertificate = async (enrollment: any) => {
+    try {
+      setGenerating(enrollment.id);
+      
+      // In a real app, you'd generate a PDF here. 
+      // For now, we'll just create a record in the certificates table.
+      const certificateUrl = `https://mksconsultsltd.com/verify/cert-${enrollment.id.substring(0, 8)}`;
+      
+      const { error } = await supabase
+        .from('certificates')
+        .insert({
+          enrollment_id: enrollment.id,
+          user_id: enrollment.user_id,
+          certificate_url: certificateUrl
+        });
+      
+      if (error) throw error;
+      
+      alert('Certificate issued successfully!');
+      fetchEnrollments();
+    } catch (err: any) {
+      console.error('Error issuing certificate:', err);
+      alert(`Failed to issue certificate: ${err.message}`);
+    } finally {
+      setGenerating(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-bold text-slate-900">Certificate Management</h3>
+        <p className="text-sm text-slate-500">Issue certificates to students who have completed their courses.</p>
+      </div>
+
+      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-slate-50 text-slate-400 text-xs uppercase tracking-widest">
+              <th className="px-8 py-5 font-bold">Student</th>
+              <th className="px-8 py-5 font-bold">Course</th>
+              <th className="px-8 py-5 font-bold">Completion Date</th>
+              <th className="px-8 py-5 font-bold">Certificate</th>
+              <th className="px-8 py-5 font-bold text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {enrollments.length > 0 ? enrollments.map((e) => (
+              <tr key={e.id} className="hover:bg-slate-50/50 transition-colors group">
+                <td className="px-8 py-5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-brand-blue/10 rounded-full flex items-center justify-center text-brand-blue font-bold">
+                      {e.profiles?.full_name?.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900">{e.profiles?.full_name}</p>
+                      <p className="text-xs text-slate-500">{e.profiles?.email}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-8 py-5">
+                  <p className="text-sm font-bold text-slate-900">{e.courses?.title}</p>
+                </td>
+                <td className="px-8 py-5 text-sm text-slate-500">
+                  {new Date(e.enrolled_at).toLocaleDateString()}
+                </td>
+                <td className="px-8 py-5">
+                  {e.certificates && e.certificates.length > 0 ? (
+                    <span className="text-emerald-600 text-xs font-bold flex items-center gap-1">
+                      <CheckCircle2 size={14} /> Issued
+                    </span>
+                  ) : (
+                    <span className="text-amber-600 text-xs font-bold flex items-center gap-1">
+                      <Clock size={14} /> Pending
+                    </span>
+                  )}
+                </td>
+                <td className="px-8 py-5 text-right">
+                  {e.certificates && e.certificates.length > 0 ? (
+                    <button className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1 justify-end ml-auto">
+                      <Eye size={14} /> View
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => handleIssueCertificate(e)}
+                      disabled={generating === e.id}
+                      className="bg-brand-blue text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20 disabled:opacity-50"
+                    >
+                      {generating === e.id ? <Loader2 className="animate-spin" size={14} /> : 'Issue Certificate'}
+                    </button>
+                  )}
+                </td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan={5} className="px-8 py-20 text-center text-slate-500">
+                  No completed enrollments found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
@@ -2052,6 +2243,7 @@ export const AdminPage = () => {
     { id: 'enrollments', label: 'Enrollments', icon: <CheckCircle2 size={20} /> },
     { id: 'users', label: 'Users', icon: <Users size={20} /> },
     { id: 'payments', label: 'Payments', icon: <CreditCard size={20} /> },
+    { id: 'certificates', label: 'Certificates', icon: <Award size={20} /> },
     { id: 'progress', label: 'Progress', icon: <BarChart3 size={20} /> },
     { id: 'quizzes', label: 'Quizzes', icon: <FileQuestion size={20} /> },
     { id: 'announcements', label: 'Announcements', icon: <Megaphone size={20} /> },
@@ -2154,6 +2346,7 @@ export const AdminPage = () => {
             {activeTab === 'enrollments' && <EnrollmentsTab />}
             {activeTab === 'users' && <UsersTab />}
             {activeTab === 'payments' && <PaymentsTab />}
+            {activeTab === 'certificates' && <CertificatesTab />}
             {activeTab === 'progress' && <ProgressTab />}
             {activeTab === 'quizzes' && <QuizzesTab />}
             {activeTab === 'announcements' && <AnnouncementsTab />}
@@ -2161,7 +2354,7 @@ export const AdminPage = () => {
             {activeTab === 'cms' && <CMSTab />}
             
             {/* Placeholder for other tabs */}
-            {!['overview', 'courses', 'enrollments', 'users', 'payments', 'quizzes', 'announcements', 'reports', 'cms'].includes(activeTab) && (
+            {!['overview', 'courses', 'enrollments', 'users', 'payments', 'certificates', 'quizzes', 'announcements', 'reports', 'cms'].includes(activeTab) && (
               <div className="bg-white rounded-[3rem] border border-slate-100 p-20 text-center shadow-sm">
                 <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-8">
                   {tabs.find(t => t.id === activeTab)?.icon}

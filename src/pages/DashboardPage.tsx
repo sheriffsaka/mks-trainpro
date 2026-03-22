@@ -36,6 +36,7 @@ export const DashboardPage = () => {
   const { user, profile } = useAuthStore();
   const navigate = useNavigate();
   const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [certificates, setCertificates] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>(MOCK_ANNOUNCEMENTS);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('courses');
@@ -66,9 +67,10 @@ export const DashboardPage = () => {
 
     const fetchDashboardData = async () => {
       try {
-        const [enrollmentsRes, announcementsRes] = await Promise.all([
+        const [enrollmentsRes, announcementsRes, certificatesRes] = await Promise.all([
           supabase.from('enrollments').select('*, courses(*)').eq('user_id', user.id),
-          adminService.getAnnouncements()
+          adminService.getAnnouncements(),
+          supabase.from('certificates').select('*, courses:enrollment_id(courses(*))').eq('user_id', user.id)
         ]);
         
         let currentEnrollments = [];
@@ -77,6 +79,10 @@ export const DashboardPage = () => {
         }
         setEnrollments(currentEnrollments);
 
+        if (certificatesRes.data) {
+          setCertificates(certificatesRes.data);
+        }
+        
         // Fetch progress and quizzes for each enrollment
         const progressMap: {[key: string]: ProgressData} = {};
         const qMap: {[key: string]: any[]} = {};
@@ -124,7 +130,7 @@ export const DashboardPage = () => {
   const stats = [
     { label: 'Active Courses', value: enrollments.filter(e => e.status === 'active').length, icon: <BookOpen size={24} />, color: 'bg-brand-blue/10 text-brand-blue' },
     { label: 'Completed', value: enrollments.filter(e => e.status === 'completed').length, icon: <CheckCircle2 size={24} />, color: 'bg-emerald-100 text-emerald-600' },
-    { label: 'Certificates', value: 0, icon: <Award size={24} />, color: 'bg-brand-red/10 text-brand-red' },
+    { label: 'Certificates', value: certificates.length, icon: <Award size={24} />, color: 'bg-brand-red/10 text-brand-red' },
     { label: 'Quiz Attempts', value: 0, icon: <FileQuestion size={24} />, color: 'bg-amber-100 text-amber-600' }
   ];
 
@@ -426,21 +432,23 @@ export const DashboardPage = () => {
                   className="space-y-8"
                 >
                   <h2 className="text-2xl font-bold text-slate-900">My Certificates</h2>
-                  {enrollments.filter(e => e.status === 'completed').length > 0 ? (
+                  {certificates.length > 0 ? (
                     <div className="grid md:grid-cols-2 gap-6">
-                      {enrollments.filter(e => e.status === 'completed').map((e) => (
-                        <div key={e.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col items-center text-center">
+                      {certificates.map((cert) => (
+                        <div key={cert.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col items-center text-center">
                           <div className="bg-emerald-50 w-16 h-16 rounded-full flex items-center justify-center mb-6">
                             <Award className="text-emerald-500" size={32} />
                           </div>
-                          <h3 className="font-bold text-slate-900 mb-2">{e.courses?.title}</h3>
-                          <p className="text-xs text-slate-500 mb-6">Issued on {new Date().toLocaleDateString()}</p>
-                          <button 
-                            onClick={() => handleDownloadCertificate(e.courses?.title)}
+                          <h3 className="font-bold text-slate-900 mb-2">{cert.courses?.courses?.title || 'Course Certificate'}</h3>
+                          <p className="text-xs text-slate-500 mb-6">Issued on {new Date(cert.issued_at).toLocaleDateString()}</p>
+                          <a 
+                            href={cert.certificate_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="w-full bg-brand-blue text-white py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all flex items-center justify-center gap-2"
                           >
                             <Download size={18} /> Download PDF
-                          </button>
+                          </a>
                         </div>
                       ))}
                     </div>

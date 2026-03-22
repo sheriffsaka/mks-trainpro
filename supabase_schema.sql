@@ -37,6 +37,20 @@ CREATE TABLE IF NOT EXISTS profiles (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
+-- Ensure profile columns exist (Fix for existing tables)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='phone') THEN
+        ALTER TABLE profiles ADD COLUMN phone TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='address') THEN
+        ALTER TABLE profiles ADD COLUMN address TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='package_type') THEN
+        ALTER TABLE profiles ADD COLUMN package_type TEXT DEFAULT 'standard';
+    END IF;
+END$$;
+
 -- 3. Categories
 CREATE TABLE IF NOT EXISTS categories (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -70,6 +84,44 @@ CREATE TABLE IF NOT EXISTS courses (
   is_published BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
+
+-- Ensure mode column exists (Fix for existing tables)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='courses' AND column_name='mode') THEN
+        -- Ensure the type exists first
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'course_mode') THEN
+            CREATE TYPE course_mode AS ENUM ('virtual', 'vod', 'physical');
+        END IF;
+        ALTER TABLE courses ADD COLUMN mode course_mode DEFAULT 'vod';
+    END IF;
+    
+    -- Ensure other columns exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='courses' AND column_name='duration') THEN
+        ALTER TABLE courses ADD COLUMN duration TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='courses' AND column_name='format') THEN
+        ALTER TABLE courses ADD COLUMN format TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='courses' AND column_name='certification_details') THEN
+        ALTER TABLE courses ADD COLUMN certification_details TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='courses' AND column_name='deposit_amount') THEN
+        ALTER TABLE courses ADD COLUMN deposit_amount DECIMAL(10,2) DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='courses' AND column_name='image_url') THEN
+        ALTER TABLE courses ADD COLUMN image_url TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='courses' AND column_name='video_url') THEN
+        ALTER TABLE courses ADD COLUMN video_url TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='courses' AND column_name='document_url') THEN
+        ALTER TABLE courses ADD COLUMN document_url TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='courses' AND column_name='modules') THEN
+        ALTER TABLE courses ADD COLUMN modules JSONB DEFAULT '[]'::jsonb;
+    END IF;
+END$$;
 
 -- 5. Enrollments
 CREATE TABLE IF NOT EXISTS enrollments (

@@ -165,16 +165,26 @@ export const progressService = {
   },
 
   // Certificates
-  async issueCertificate(studentId: string, courseId: string) {
+  async issueCertificate(enrollmentId: string, userId: string) {
     if (!isSupabaseConfigured) return;
     const { data, error } = await supabase
       .from('certificates')
       .insert([{
-        student_id: studentId,
-        course_id: courseId,
-        issue_date: new Date().toISOString(),
-        certificate_url: `https://thames-support.com/certificates/${studentId}-${courseId}.pdf`
+        enrollment_id: enrollmentId,
+        user_id: userId,
+        issued_at: new Date().toISOString(),
+        certificate_url: `https://mksconsultsltd.com/certificates/${enrollmentId}.pdf`
       }]);
+    if (error) throw error;
+    return data;
+  },
+
+  async markEnrollmentCompleted(enrollmentId: string) {
+    if (!isSupabaseConfigured) return;
+    const { data, error } = await supabase
+      .from('enrollments')
+      .update({ status: 'completed' })
+      .eq('id', enrollmentId);
     if (error) throw error;
     return data;
   }
