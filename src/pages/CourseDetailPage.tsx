@@ -57,6 +57,67 @@ export const CourseDetailPage = () => {
     setShowCheckout(true);
   };
 
+  const handleEnrollment = async () => {
+    if (!user || !course) return;
+
+    try {
+      setLoading(true);
+      const amountToPay = isPartPayment ? partPaymentAmount : totalPrice;
+
+      // 1. Create enrollment
+      const { data: enrollment, error: enrollmentError } = await supabase
+        .from('enrollments')
+        .insert({
+          user_id: user.id,
+          course_id: course.id,
+          package_type: selectedPackage,
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (enrollmentError) throw enrollmentError;
+
+      // 2. Create payment record
+      const { error: paymentError } = await supabase
+        .from('payments')
+        .insert({
+          enrollment_id: enrollment.id,
+          user_id: user.id,
+          amount: amountToPay,
+          payment_method: 'bank_transfer',
+          payment_status: 'pending',
+          is_installment: isPartPayment
+        });
+
+      if (paymentError) throw paymentError;
+
+      // 3. If part payment, create installment record
+      if (isPartPayment) {
+        const { error: installmentError } = await supabase
+          .from('installment_records')
+          .insert({
+            enrollment_id: enrollment.id,
+            total_amount: totalPrice,
+            paid_amount: partPaymentAmount,
+            next_payment_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days later
+            status: 'active'
+          });
+        
+        if (installmentError) throw installmentError;
+      }
+
+      alert('Enrollment request submitted! We will verify your payment and activate your course shortly.');
+      setShowCheckout(false);
+      navigate('/dashboard');
+    } catch (err: any) {
+      console.error('Enrollment error:', err);
+      alert('Failed to submit enrollment request. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getModeIcon = (mode: string) => {
     switch (mode) {
       case 'virtual': return <Monitor size={20} className="text-brand-red" />;
@@ -341,14 +402,11 @@ export const CourseDetailPage = () => {
                 </div>
 
                 <button 
-                  onClick={() => {
-                    alert('Enrollment request submitted! We will verify your payment and activate your course shortly.');
-                    setShowCheckout(false);
-                    navigate('/dashboard');
-                  }}
-                  className="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20"
+                  onClick={handleEnrollment}
+                  disabled={loading}
+                  className="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  I Have Made the Transfer
+                  {loading ? <Loader2 className="animate-spin" size={20} /> : 'I Have Made the Transfer'}
                 </button>
               </div>
             </motion.div>

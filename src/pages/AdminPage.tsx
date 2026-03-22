@@ -864,69 +864,102 @@ const EnrollmentsTab = () => {
   );
 };
 
-const PaymentsTab = () => (
-  <div className="space-y-6">
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-        <p className="text-slate-500 text-sm font-medium mb-1">Total Revenue</p>
-        <h3 className="text-3xl font-bold text-slate-900">£45,230.00</h3>
-      </div>
-      <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-        <p className="text-slate-500 text-sm font-medium mb-1">Pending Deposits</p>
-        <h3 className="text-3xl font-bold text-amber-600">£1,250.00</h3>
-      </div>
-      <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-        <p className="text-slate-500 text-sm font-medium mb-1">Refunds (30d)</p>
-        <h3 className="text-3xl font-bold text-brand-red">£150.00</h3>
-      </div>
-    </div>
+const PaymentsTab = () => {
+  const [payments, setPayments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-      <div className="p-8 border-b border-slate-50 flex justify-between items-center">
-        <h3 className="font-bold text-slate-900">Transaction History</h3>
-        <div className="flex gap-2">
-          <button className="bg-slate-50 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold border border-slate-100">All</button>
-          <button className="bg-white text-slate-400 px-4 py-2 rounded-xl text-xs font-bold border border-slate-100">Successful</button>
-          <button className="bg-white text-slate-400 px-4 py-2 rounded-xl text-xs font-bold border border-slate-100">Failed</button>
+  useEffect(() => {
+    fetchPayments();
+  }, []);
+
+  const fetchPayments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*, profiles:user_id(*), enrollments(*, courses(*))')
+        .order('created_at', { ascending: false });
+      
+      if (data) setPayments(data);
+    } catch (err) {
+      console.error('Error fetching payments:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const totalRevenue = payments
+    .filter(p => p.payment_status === 'succeeded')
+    .reduce((acc, curr) => acc + Number(curr.amount), 0);
+
+  const pendingRevenue = payments
+    .filter(p => p.payment_status === 'pending')
+    .reduce((acc, curr) => acc + Number(curr.amount), 0);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+          <p className="text-slate-500 text-sm font-medium mb-1">Total Revenue</p>
+          <h3 className="text-3xl font-bold text-slate-900">£{totalRevenue.toLocaleString()}</h3>
+        </div>
+        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+          <p className="text-slate-500 text-sm font-medium mb-1">Pending Deposits</p>
+          <h3 className="text-3xl font-bold text-amber-600">£{pendingRevenue.toLocaleString()}</h3>
+        </div>
+        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+          <p className="text-slate-500 text-sm font-medium mb-1">Total Transactions</p>
+          <h3 className="text-3xl font-bold text-brand-blue">{payments.length}</h3>
         </div>
       </div>
-      <table className="w-full text-left">
-        <thead>
-          <tr className="bg-slate-50 text-slate-400 text-xs uppercase tracking-widest">
-            <th className="px-8 py-5 font-bold">Transaction ID</th>
-            <th className="px-8 py-5 font-bold">Student</th>
-            <th className="px-8 py-5 font-bold">Course</th>
-            <th className="px-8 py-5 font-bold">Amount</th>
-            <th className="px-8 py-5 font-bold">Status</th>
-            <th className="px-8 py-5 font-bold text-right">Date</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-50">
-          {[
-            { id: 'TXN-98231', student: 'John Doe', course: 'Level 3 Adult Care', amount: '£50.00', status: 'Success', date: 'Mar 01, 2026' },
-            { id: 'TXN-98232', student: 'Jane Smith', course: 'SIA Door Supervisor', amount: '£299.00', status: 'Success', date: 'Mar 01, 2026' },
-            { id: 'TXN-98233', student: 'Robert Brown', course: 'Functional Skills English', amount: '£50.00', status: 'Failed', date: 'Feb 28, 2026' },
-          ].map((txn) => (
-            <tr key={txn.id} className="hover:bg-slate-50/50 transition-colors">
-              <td className="px-8 py-5 font-mono text-xs font-bold text-slate-500">{txn.id}</td>
-              <td className="px-8 py-5 font-bold text-slate-900">{txn.student}</td>
-              <td className="px-8 py-5 text-sm text-slate-600">{txn.course}</td>
-              <td className="px-8 py-5 font-bold text-slate-900">{txn.amount}</td>
-              <td className="px-8 py-5">
-                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  txn.status === 'Success' ? 'bg-emerald-100 text-emerald-700' : 'bg-brand-red/10 text-brand-red'
-                }`}>
-                  {txn.status}
-                </span>
-              </td>
-              <td className="px-8 py-5 text-right text-sm text-slate-500">{txn.date}</td>
+
+      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+        <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+          <h3 className="font-bold text-slate-900">Transaction History</h3>
+        </div>
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-slate-50 text-slate-400 text-xs uppercase tracking-widest">
+              <th className="px-8 py-5 font-bold">Student</th>
+              <th className="px-8 py-5 font-bold">Course</th>
+              <th className="px-8 py-5 font-bold">Amount</th>
+              <th className="px-8 py-5 font-bold">Status</th>
+              <th className="px-8 py-5 font-bold text-right">Date</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {payments.length > 0 ? payments.map((p) => (
+              <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
+                <td className="px-8 py-5">
+                  <p className="font-bold text-slate-900">{p.profiles?.full_name}</p>
+                  <p className="text-xs text-slate-500">{p.profiles?.email}</p>
+                </td>
+                <td className="px-8 py-5 text-sm text-slate-600">{p.enrollments?.courses?.title}</td>
+                <td className="px-8 py-5 font-bold text-slate-900">£{p.amount}</td>
+                <td className="px-8 py-5">
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    p.payment_status === 'succeeded' ? 'bg-emerald-100 text-emerald-700' : 
+                    p.payment_status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-brand-red/10 text-brand-red'
+                  }`}>
+                    {p.payment_status}
+                  </span>
+                </td>
+                <td className="px-8 py-5 text-right text-sm text-slate-500">
+                  {new Date(p.created_at).toLocaleDateString()}
+                </td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan={5} className="px-8 py-20 text-center text-slate-500">
+                  No transactions found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const QuizzesTab = () => {
   const [quizzes, setQuizzes] = useState<any[]>([]);

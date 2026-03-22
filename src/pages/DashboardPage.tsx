@@ -245,13 +245,21 @@ export const DashboardPage = () => {
                             <div className="flex-1 w-full">
                               <div className="flex justify-between items-start mb-3">
                                 <div>
-                                  <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest mb-1 block">
-                                    {enrollment.package_type} Package
-                                  </span>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest block">
+                                      {enrollment.package_type} Package
+                                    </span>
+                                    {enrollment.status === 'pending' && (
+                                      <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest bg-amber-50 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                                        <Clock size={10} /> Pending Approval
+                                      </span>
+                                    )}
+                                  </div>
                                   <h3 className="font-bold text-slate-900 text-xl group-hover:text-brand-blue transition-colors">{enrollment.courses?.title}</h3>
                                 </div>
                                 <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                  enrollment.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                                  enrollment.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 
+                                  enrollment.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
                                 }`}>
                                   {enrollment.status}
                                 </span>
@@ -304,12 +312,18 @@ export const DashboardPage = () => {
                               </div>
                             </div>
                             <div className="shrink-0">
-                              <Link 
-                                to={`/courses/${enrollment.courses?.slug}/player`}
-                                className="bg-slate-900 text-white w-14 h-14 rounded-2xl flex items-center justify-center hover:bg-brand-blue transition-all shadow-lg shadow-slate-900/10"
-                              >
-                                <ArrowRight size={24} />
-                              </Link>
+                              {enrollment.status === 'active' ? (
+                                <Link 
+                                  to={`/courses/${enrollment.courses?.slug}/player`}
+                                  className="bg-slate-900 text-white w-14 h-14 rounded-2xl flex items-center justify-center hover:bg-brand-blue transition-all shadow-lg shadow-slate-900/10"
+                                >
+                                  <ArrowRight size={24} />
+                                </Link>
+                              ) : (
+                                <div className="bg-slate-100 text-slate-400 w-14 h-14 rounded-2xl flex items-center justify-center cursor-not-allowed" title="Pending Admin Approval">
+                                  <Shield size={24} />
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -357,7 +371,7 @@ export const DashboardPage = () => {
                               ? `You have ${quizzesMap[e.course_id].length} quizzes available for this course.`
                               : 'No quizzes available for this course yet.'}
                           </p>
-                          {quizzesMap[e.course_id]?.length > 0 ? (
+                          {quizzesMap[e.course_id]?.length > 0 && e.status === 'active' ? (
                             <div className="space-y-2">
                               {quizzesMap[e.course_id].map((quiz) => (
                                 <Link 
@@ -369,6 +383,10 @@ export const DashboardPage = () => {
                                   <ChevronRight size={16} className="text-slate-400 group-hover:text-white transition-colors" />
                                 </Link>
                               ))}
+                            </div>
+                          ) : e.status === 'pending' ? (
+                            <div className="bg-amber-50 text-amber-700 p-4 rounded-xl text-xs font-bold flex items-center gap-2">
+                              <Clock size={16} /> Quizzes will be available after enrollment approval.
                             </div>
                           ) : (
                             <button 

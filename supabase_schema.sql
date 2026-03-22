@@ -238,13 +238,19 @@ CREATE POLICY "Admins can manage categories" ON categories FOR ALL USING (is_adm
 ALTER TABLE enrollments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view own enrollments" ON enrollments;
 CREATE POLICY "Users can view own enrollments" ON enrollments FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert own enrollments" ON enrollments;
+CREATE POLICY "Users can insert own enrollments" ON enrollments FOR INSERT WITH CHECK (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Admins can view all enrollments" ON enrollments;
 CREATE POLICY "Admins can view all enrollments" ON enrollments FOR SELECT USING (is_admin());
+DROP POLICY IF EXISTS "Admins can manage all enrollments" ON enrollments;
+CREATE POLICY "Admins can manage all enrollments" ON enrollments FOR ALL USING (is_admin());
 
 -- Payments: Users can view their own, admins can view all
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view own payments" ON payments;
 CREATE POLICY "Users can view own payments" ON payments FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert own payments" ON payments;
+CREATE POLICY "Users can insert own payments" ON payments FOR INSERT WITH CHECK (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Admins can view all payments" ON payments;
 CREATE POLICY "Admins can view all payments" ON payments FOR SELECT USING (is_admin());
 
@@ -275,3 +281,38 @@ DROP POLICY IF EXISTS "Authenticated users can view quizzes" ON quizzes;
 CREATE POLICY "Authenticated users can view quizzes" ON quizzes FOR SELECT USING (auth.uid() IS NOT NULL);
 DROP POLICY IF EXISTS "Admins can manage quizzes" ON quizzes;
 CREATE POLICY "Admins can manage quizzes" ON quizzes FOR ALL USING (is_admin());
+ALTER TABLE installment_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own installment_records" ON installment_records;
+CREATE POLICY "Users can view own installment_records" ON installment_records FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM enrollments
+    WHERE enrollments.id = installment_records.enrollment_id
+    AND enrollments.user_id = auth.uid()
+  )
+);
+DROP POLICY IF EXISTS "Users can insert own installment_records" ON installment_records;
+CREATE POLICY "Users can insert own installment_records" ON installment_records FOR INSERT WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM enrollments
+    WHERE enrollments.id = enrollment_id
+    AND enrollments.user_id = auth.uid()
+  )
+);
+DROP POLICY IF EXISTS "Admins can manage all installment_records" ON installment_records;
+CREATE POLICY "Admins can manage all installment_records" ON installment_records FOR ALL USING (is_admin());
+
+-- Quiz Attempts: Users can view their own, admins can view all
+ALTER TABLE quiz_attempts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own quiz_attempts" ON quiz_attempts;
+CREATE POLICY "Users can view own quiz_attempts" ON quiz_attempts FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert own quiz_attempts" ON quiz_attempts;
+CREATE POLICY "Users can insert own quiz_attempts" ON quiz_attempts FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Admins can view all quiz_attempts" ON quiz_attempts;
+CREATE POLICY "Admins can view all quiz_attempts" ON quiz_attempts FOR SELECT USING (is_admin());
+
+-- Certificates: Users can view their own, admins can view all
+ALTER TABLE certificates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own certificates" ON certificates;
+CREATE POLICY "Users can view own certificates" ON certificates FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Admins can manage all certificates" ON certificates;
+CREATE POLICY "Admins can manage all certificates" ON certificates FOR ALL USING (is_admin());
