@@ -91,24 +91,32 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }: { isOpen: 
 
 const OverviewTab = () => {
   const [stats, setStats] = useState<any>(null);
+  const [recentEnrollments, setRecentEnrollments] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchData = async () => {
       try {
-        const data = await adminService.getStats();
-        setStats(data);
+        const [statsData, enrollmentsData] = await Promise.all([
+          adminService.getStats(),
+          adminService.getRecentEnrollments(5)
+        ]);
+        setStats(statsData);
+        setRecentEnrollments(enrollmentsData);
       } catch (error) {
-        console.error('Error fetching stats:', error);
+        console.error('Error fetching overview data:', error);
         // Fallback stats for presentation
         setStats({
           coursesCount: MOCK_COURSES.length,
           announcementsCount: MOCK_ANNOUNCEMENTS.length,
           faqsCount: MOCK_FAQS.length,
-          quizzesCount: MOCK_QUIZZES.length
+          quizzesCount: MOCK_QUIZZES.length,
+          totalRevenue: 45230,
+          studentsCount: 1284,
+          enrollmentsCount: 1284
         });
       }
     };
-    fetchStats();
+    fetchData();
   }, []);
 
   return (
@@ -116,12 +124,12 @@ const OverviewTab = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Total Revenue', value: '£45,230', trend: '+12.5%', icon: <DollarSign className="text-emerald-600" />, bg: 'bg-emerald-50' },
-          { label: 'Total Students', value: '1,284', trend: '+8.2%', icon: <Users className="text-brand-blue" />, bg: 'bg-brand-blue/5' },
-          { label: 'Active Courses', value: stats?.coursesCount || MOCK_COURSES.length, trend: '+2', icon: <BookOpen className="text-brand-red" />, bg: 'bg-brand-red/5' },
-          { label: 'Pending Payments', value: '£1,250', trend: '-5%', icon: <CreditCard className="text-amber-600" />, bg: 'bg-amber-50' },
-          { label: 'Total Quizzes', value: stats?.quizzesCount || MOCK_QUIZZES.length, trend: '+4', icon: <FileQuestion className="text-indigo-600" />, bg: 'bg-indigo-50' },
-          { label: 'Announcements', value: stats?.announcementsCount || MOCK_ANNOUNCEMENTS.length, trend: 'Active', icon: <Megaphone className="text-purple-600" />, bg: 'bg-purple-50' },
+          { label: 'Total Revenue', value: stats ? `£${stats.totalRevenue.toLocaleString()}` : '...', trend: '+12.5%', icon: <DollarSign className="text-emerald-600" />, bg: 'bg-emerald-50' },
+          { label: 'Total Students', value: stats?.studentsCount || '...', trend: '+8.2%', icon: <Users className="text-brand-blue" />, bg: 'bg-brand-blue/5' },
+          { label: 'Active Courses', value: stats?.coursesCount || '...', trend: '+2', icon: <BookOpen className="text-brand-red" />, bg: 'bg-brand-red/5' },
+          { label: 'Total Enrollments', value: stats?.enrollmentsCount || '...', trend: '+12', icon: <CreditCard className="text-amber-600" />, bg: 'bg-amber-50' },
+          { label: 'Total Quizzes', value: stats?.quizzesCount || '...', trend: '+4', icon: <FileQuestion className="text-indigo-600" />, bg: 'bg-indigo-50' },
+          { label: 'Announcements', value: stats?.announcementsCount || '...', trend: 'Active', icon: <Megaphone className="text-purple-600" />, bg: 'bg-purple-50' },
           { label: 'Pass Rate', value: '94.2%', trend: '+1.5%', icon: <CheckCircle2 className="text-emerald-600" />, bg: 'bg-emerald-50' },
           { label: 'New Signups', value: '48', trend: '+12', icon: <UserPlus className="text-blue-600" />, bg: 'bg-blue-50' }
         ].map((stat, i) => (
@@ -192,45 +200,50 @@ const OverviewTab = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {[
-                  { name: 'John Doe', email: 'john@example.com', course: 'Level 3 Adult Care', date: '2 mins ago', status: 'Paid' },
-                  { name: 'Jane Smith', email: 'jane@example.com', course: 'SIA Door Supervisor', date: '1 hour ago', status: 'Pending' },
-                  { name: 'Robert Brown', email: 'robert@example.com', course: 'Functional Skills English', date: '3 hours ago', status: 'Paid' },
-                  { name: 'Alice Wilson', email: 'alice@example.com', course: 'Level 5 Leadership', date: '5 hours ago', status: 'Paid' }
-                ].map((row, i) => (
-                  <tr key={i} className="hover:bg-slate-50 transition-colors">
+                {recentEnrollments.length > 0 ? recentEnrollments.map((row, i) => (
+                  <tr key={row.id || i} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 font-bold text-xs">
-                          {row.name.charAt(0)}
+                        <div className="w-8 h-8 bg-brand-blue/10 rounded-full flex items-center justify-center text-brand-blue text-xs font-bold">
+                          {row.profiles?.full_name?.charAt(0)}
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-900">{row.name}</p>
-                          <p className="text-xs text-slate-500">{row.email}</p>
+                          <p className="text-sm font-bold text-slate-900">{row.profiles?.full_name}</p>
+                          <p className="text-[10px] text-slate-500">{row.profiles?.email}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{row.course}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500">{row.date}</td>
                     <td className="px-6 py-4">
-                      <span className={`text-[10px] font-bold px-2 py-1 rounded-lg uppercase tracking-wider ${
-                        row.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                      <p className="text-sm text-slate-600">{row.courses?.title}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-xs text-slate-500">{new Date(row.enrolled_at).toLocaleDateString()}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                        row.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 
+                        row.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
                       }`}>
                         {row.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="text-slate-400 hover:text-slate-600">
+                      <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-400">
                         <MoreVertical size={16} />
                       </button>
                     </td>
                   </tr>
-                ))}
+                )) : (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-10 text-center text-slate-500">
+                      No recent enrollments.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
-
         {/* Course Performance */}
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-slate-50">

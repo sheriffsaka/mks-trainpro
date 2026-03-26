@@ -352,16 +352,16 @@ export const CourseDetailPage = () => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white w-full max-w-lg rounded-[3rem] shadow-2xl overflow-hidden"
+              className="relative bg-white w-full max-w-lg rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="p-8 border-b border-slate-100 flex justify-between items-center">
+              <div className="p-8 border-b border-slate-100 flex justify-between items-center shrink-0">
                 <h3 className="text-2xl font-bold text-slate-900">Checkout</h3>
                 <button onClick={() => setShowCheckout(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
                   <X size={24} />
                 </button>
               </div>
               
-              <div className="p-8 space-y-8">
+              <div className="p-8 space-y-8 overflow-y-auto">
                 <div className="bg-slate-50 p-6 rounded-3xl space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500 font-medium">Course</span>

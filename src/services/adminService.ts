@@ -181,19 +181,47 @@ export const adminService = {
 
   // Stats
   async getStats() {
-    const [courses, announcements, faqs, quizzes] = await Promise.all([
+    const [courses, announcements, faqs, quizzes, enrollments, payments, profiles] = await Promise.all([
       supabase.from('courses').select('*', { count: 'exact', head: true }),
       supabase.from('announcements').select('*', { count: 'exact', head: true }),
       supabase.from('faqs').select('*', { count: 'exact', head: true }),
       supabase.from('quizzes').select('*', { count: 'exact', head: true }),
+      supabase.from('enrollments').select('*', { count: 'exact', head: true }),
+      supabase.from('payments').select('amount').eq('payment_status', 'succeeded'),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
     ]);
+
+    const totalRevenue = payments.data?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
 
     return {
       coursesCount: courses.count || 0,
       announcementsCount: announcements.count || 0,
       faqsCount: faqs.count || 0,
       quizzesCount: quizzes.count || 0,
+      enrollmentsCount: enrollments.count || 0,
+      totalRevenue,
+      studentsCount: profiles.count || 0
     };
+  },
+
+  async getRecentEnrollments(limit: number = 5) {
+    const { data, error } = await supabase
+      .from('enrollments')
+      .select('*, profiles:user_id(*), courses:course_id(*)')
+      .order('enrolled_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return data;
+  },
+
+  async getRecentPayments(limit: number = 5) {
+    const { data, error } = await supabase
+      .from('payments')
+      .select('*, profiles:user_id(*), enrollments(*, courses(*))')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return data;
   },
 
   // File Uploads

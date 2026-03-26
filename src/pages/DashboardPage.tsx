@@ -37,6 +37,7 @@ export const DashboardPage = () => {
   const navigate = useNavigate();
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [certificates, setCertificates] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>(MOCK_ANNOUNCEMENTS);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('courses');
@@ -67,10 +68,11 @@ export const DashboardPage = () => {
 
     const fetchDashboardData = async () => {
       try {
-        const [enrollmentsRes, announcementsRes, certificatesRes] = await Promise.all([
+        const [enrollmentsRes, announcementsRes, certificatesRes, paymentsRes] = await Promise.all([
           supabase.from('enrollments').select('*, courses(*)').eq('user_id', user.id),
           adminService.getAnnouncements(),
-          supabase.from('certificates').select('*, courses:enrollment_id(courses(*))').eq('user_id', user.id)
+          supabase.from('certificates').select('*, courses:enrollment_id(courses(*))').eq('user_id', user.id),
+          supabase.from('payments').select('*, enrollments(*, courses(*))').eq('user_id', user.id).order('created_at', { ascending: false })
         ]);
         
         let currentEnrollments = [];
@@ -81,6 +83,10 @@ export const DashboardPage = () => {
 
         if (certificatesRes.data) {
           setCertificates(certificatesRes.data);
+        }
+
+        if (paymentsRes.data) {
+          setPayments(paymentsRes.data);
         }
         
         // Fetch progress and quizzes for each enrollment
@@ -477,11 +483,13 @@ export const DashboardPage = () => {
                     <div className="flex justify-between items-center mb-8">
                       <div>
                         <p className="text-slate-500 text-sm font-medium">Total Outstanding</p>
-                        <h3 className="text-3xl font-bold text-slate-900">£0.00</h3>
+                        <h3 className="text-3xl font-bold text-slate-900">
+                          £{payments.filter(p => p.payment_status === 'pending').reduce((acc, curr) => acc + Number(curr.amount), 0).toFixed(2)}
+                        </h3>
                       </div>
-                      <button className="bg-brand-blue text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all">
+                      <Link to="/courses" className="bg-brand-blue text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all">
                         Make a Payment
-                      </button>
+                      </Link>
                     </div>
                     <div className="space-y-4">
                       <h4 className="font-bold text-slate-900 mb-4">Recent Invoices</h4>
@@ -498,23 +506,36 @@ export const DashboardPage = () => {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-50">
-                            <tr className="text-sm text-slate-600">
-                              <td className="px-6 py-4 font-bold">INV-2026-001</td>
-                              <td className="px-6 py-4">Level 3 Adult Care</td>
-                              <td className="px-6 py-4">Mar 01, 2026</td>
-                              <td className="px-6 py-4 font-bold text-slate-900">£50.00</td>
-                              <td className="px-6 py-4">
-                                <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-lg font-bold text-[10px] uppercase">Paid</span>
-                              </td>
-                              <td className="px-6 py-4 text-right">
-                                <button 
-                                  onClick={() => handleDownloadInvoice('INV-2026-001')}
-                                  className="text-brand-blue hover:text-brand-blue-hover"
-                                >
-                                  <Download size={18} />
-                                </button>
-                              </td>
-                            </tr>
+                            {payments.length > 0 ? payments.map((payment) => (
+                              <tr key={payment.id} className="text-sm text-slate-600 hover:bg-slate-50/50 transition-colors">
+                                <td className="px-6 py-4 font-bold">INV-{payment.id.slice(0, 8).toUpperCase()}</td>
+                                <td className="px-6 py-4">{payment.enrollments?.courses?.title || 'Course Payment'}</td>
+                                <td className="px-6 py-4">{new Date(payment.created_at).toLocaleDateString()}</td>
+                                <td className="px-6 py-4 font-bold text-slate-900">£{Number(payment.amount).toFixed(2)}</td>
+                                <td className="px-6 py-4">
+                                  <span className={`px-2 py-1 rounded-lg font-bold text-[10px] uppercase ${
+                                    payment.payment_status === 'succeeded' ? 'bg-emerald-100 text-emerald-700' : 
+                                    payment.payment_status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-brand-red/10 text-brand-red'
+                                  }`}>
+                                    {payment.payment_status}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                  <button 
+                                    onClick={() => handleDownloadInvoice(`INV-${payment.id.slice(0, 8).toUpperCase()}`)}
+                                    className="text-brand-blue hover:text-brand-blue-hover"
+                                  >
+                                    <Download size={18} />
+                                  </button>
+                                </td>
+                              </tr>
+                            )) : (
+                              <tr>
+                                <td colSpan={6} className="px-6 py-10 text-center text-slate-500">
+                                  No invoices found.
+                                </td>
+                              </tr>
+                            )}
                           </tbody>
                         </table>
                       </div>
