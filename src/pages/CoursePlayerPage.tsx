@@ -36,21 +36,44 @@ export const CoursePlayerPage = () => {
 
     const fetchCourse = async () => {
       try {
-        const { data, error } = await supabase
+        // 1. Fetch course details
+        const { data: courseData, error: courseError } = await supabase
           .from('courses')
           .select('*')
           .eq('slug', slug)
           .single();
         
-        if (data) {
-          setCourse(data);
-        } else {
-          const mock = MOCK_COURSES.find(c => c.slug === slug);
-          setCourse(mock || null);
+        if (courseError) throw courseError;
+        setCourse(courseData);
+
+        // 2. Verify enrollment and payment status
+        const { data: enrollmentData, error: enrollmentError } = await supabase
+          .from('enrollments')
+          .select('*, payments(*)')
+          .eq('course_id', courseData.id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (enrollmentError || !enrollmentData) {
+          alert('You are not enrolled in this course.');
+          navigate('/dashboard');
+          return;
         }
+
+        if (enrollmentData.status !== 'active') {
+          alert('Your enrollment is pending approval. Please wait for the administrator to verify your payment proof.');
+          navigate('/dashboard');
+          return;
+        }
+
       } catch (err) {
+        console.error('Error fetching course or verifying enrollment:', err);
         const mock = MOCK_COURSES.find(c => c.slug === slug);
-        setCourse(mock || null);
+        if (mock) {
+          setCourse(mock);
+        } else {
+          navigate('/dashboard');
+        }
       } finally {
         setLoading(false);
       }

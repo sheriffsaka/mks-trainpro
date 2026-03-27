@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
 
 export const AuthPage = ({ type }: { type: 'login' | 'register' }) => {
@@ -24,7 +24,8 @@ export const AuthPage = ({ type }: { type: 'login' | 'register' }) => {
           email,
           password,
           options: {
-            data: { full_name: fullName }
+            data: { full_name: fullName },
+            emailRedirectTo: `${window.location.origin}/auth/callback`
           }
         });
         if (error) throw error;
@@ -60,12 +61,12 @@ export const AuthPage = ({ type }: { type: 'login' | 'register' }) => {
           <p className="text-slate-600 mb-8">
             Your account has been created. Please check your email (<strong>{email}</strong>) for a verification link to activate your account.
           </p>
-          <button
-            onClick={() => navigate('/login')}
-            className="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold text-lg hover:bg-brand-blue-hover transition-all"
+          <Link
+            to="/login"
+            className="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold text-lg hover:bg-brand-blue-hover transition-all block text-center"
           >
             Go to Login
-          </button>
+          </Link>
         </div>
       </div>
     );

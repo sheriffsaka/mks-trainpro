@@ -224,6 +224,25 @@ export const adminService = {
     return data;
   },
 
+  // Installments
+  async getInstallments() {
+    const { data, error } = await supabase
+      .from('installment_records')
+      .select('*, enrollments(*, profiles(*), courses(*))')
+      .order('next_payment_date', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+  async updateInstallment(id: string, updates: any) {
+    const { data, error } = await supabase
+      .from('installment_records')
+      .update(updates)
+      .eq('id', id)
+      .select();
+    if (error) throw error;
+    return data[0];
+  },
+
   // File Uploads
   async uploadFile(file: File, bucket: string = 'training-assets') {
     const fileExt = file.name.split('.').pop();

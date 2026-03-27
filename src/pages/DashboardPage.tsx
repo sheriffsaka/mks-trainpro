@@ -38,6 +38,7 @@ export const DashboardPage = () => {
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [certificates, setCertificates] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [installments, setInstallments] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>(MOCK_ANNOUNCEMENTS);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('courses');
@@ -68,11 +69,12 @@ export const DashboardPage = () => {
 
     const fetchDashboardData = async () => {
       try {
-        const [enrollmentsRes, announcementsRes, certificatesRes, paymentsRes] = await Promise.all([
+        const [enrollmentsRes, announcementsRes, certificatesRes, paymentsRes, installmentsRes] = await Promise.all([
           supabase.from('enrollments').select('*, courses(*)').eq('user_id', user.id),
           adminService.getAnnouncements(),
           supabase.from('certificates').select('*, courses:enrollment_id(courses(*))').eq('user_id', user.id),
-          supabase.from('payments').select('*, enrollments(*, courses(*))').eq('user_id', user.id).order('created_at', { ascending: false })
+          supabase.from('payments').select('*, enrollments(*, courses(*))').eq('user_id', user.id).order('created_at', { ascending: false }),
+          supabase.from('installment_records').select('*, enrollments(*, courses(*))').eq('status', 'active')
         ]);
         
         let currentEnrollments = [];
@@ -87,6 +89,13 @@ export const DashboardPage = () => {
 
         if (paymentsRes.data) {
           setPayments(paymentsRes.data);
+        }
+
+        if (installmentsRes.data) {
+          // Filter installments for current user's enrollments
+          const userEnrollmentIds = currentEnrollments.map(e => e.id);
+          const userInstallments = installmentsRes.data.filter(i => userEnrollmentIds.includes(i.enrollment_id));
+          setInstallments(userInstallments);
         }
         
         // Fetch progress and quizzes for each enrollment
@@ -479,12 +488,51 @@ export const DashboardPage = () => {
                   className="space-y-8"
                 >
                   <h2 className="text-2xl font-bold text-slate-900">Billing & Invoices</h2>
+                  
+                  {installments.length > 0 && (
+                    <div className="grid md:grid-cols-2 gap-6">
+                      {installments.map((inst) => (
+                        <div key={inst.id} className="bg-brand-blue/5 border border-brand-blue/10 p-6 rounded-3xl">
+                          <div className="flex justify-between items-start mb-4">
+                            <div>
+                              <p className="text-[10px] font-bold text-brand-blue uppercase tracking-widest mb-1">Installment Plan</p>
+                              <h4 className="font-bold text-slate-900">{inst.enrollments?.courses?.title}</h4>
+                            </div>
+                            <span className="bg-brand-blue text-white text-[10px] font-bold px-2 py-1 rounded-lg">ACTIVE</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Balance Due</p>
+                              <p className="text-xl font-bold text-brand-red">£{(inst.total_amount - inst.paid_amount).toFixed(2)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Next Payment</p>
+                              <p className="text-sm font-bold text-slate-900">{new Date(inst.next_payment_date).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+                          <div className="mt-4 h-2 bg-slate-200 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-brand-blue" 
+                              style={{ width: `${(inst.paid_amount / inst.total_amount) * 100}%` }}
+                            />
+                          </div>
+                          <p className="mt-2 text-[10px] text-slate-500 text-right font-bold">
+                            {((inst.paid_amount / inst.total_amount) * 100).toFixed(0)}% Paid
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     <div className="flex justify-between items-center mb-8">
                       <div>
                         <p className="text-slate-500 text-sm font-medium">Total Outstanding</p>
                         <h3 className="text-3xl font-bold text-slate-900">
-                          £{payments.filter(p => p.payment_status === 'pending').reduce((acc, curr) => acc + Number(curr.amount), 0).toFixed(2)}
+                          £{(
+                            payments.filter(p => p.payment_status === 'pending').reduce((acc, curr) => acc + Number(curr.amount), 0) +
+                            installments.reduce((acc, curr) => acc + (curr.total_amount - curr.paid_amount), 0)
+                          ).toFixed(2)}
                         </h3>
                       </div>
                       <Link to="/courses" className="bg-brand-blue text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all">
@@ -674,9 +722,23 @@ export const DashboardPage = () => {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-white/70">Outstanding Balance</p>
-                      <p className="text-3xl font-bold">£0.00</p>
+                      <p className="text-3xl font-bold">
+                        £{(
+                          payments.filter(p => p.payment_status === 'pending').reduce((acc, curr) => acc + Number(curr.amount), 0) +
+                          installments.reduce((acc, curr) => acc + (curr.total_amount - curr.paid_amount), 0)
+                        ).toFixed(2)}
+                      </p>
                     </div>
                   </div>
+                  {installments.length > 0 && (
+                    <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                      <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-2">Next Installment Due</p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-bold">{new Date(installments[0].next_payment_date).toLocaleDateString()}</span>
+                        <span className="text-brand-red font-black">£{(installments[0].total_amount - installments[0].paid_amount).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-3">
                     <button className="w-full bg-white text-brand-blue py-4 rounded-2xl font-bold hover:bg-slate-100 transition-all flex items-center justify-center gap-2 shadow-lg">
                       <Download size={18} />

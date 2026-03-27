@@ -798,7 +798,7 @@ const EnrollmentsTab = () => {
     try {
       const { data, error } = await supabase
         .from('enrollments')
-        .select('*, profiles:user_id(*), courses:course_id(*)')
+        .select('*, profiles:user_id(*), courses:course_id(*), payments(*)')
         .order('enrolled_at', { ascending: false });
       
       if (data) setEnrollments(data);
@@ -851,6 +851,7 @@ const EnrollmentsTab = () => {
               <th className="px-8 py-5 font-bold">Student</th>
               <th className="px-8 py-5 font-bold">Course</th>
               <th className="px-8 py-5 font-bold">Package</th>
+              <th className="px-8 py-5 font-bold">Receipt</th>
               <th className="px-8 py-5 font-bold">Status</th>
               <th className="px-8 py-5 font-bold text-right">Actions</th>
             </tr>
@@ -876,6 +877,20 @@ const EnrollmentsTab = () => {
                   <span className="text-xs font-bold uppercase text-brand-blue bg-brand-blue/5 px-2 py-1 rounded-lg">
                     {e.package_type}
                   </span>
+                </td>
+                <td className="px-8 py-5">
+                  {e.payments?.[0]?.receipt_url ? (
+                    <a 
+                      href={e.payments[0].receipt_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1"
+                    >
+                      <Eye size={14} /> View Receipt
+                    </a>
+                  ) : (
+                    <span className="text-slate-400 text-xs italic">No receipt</span>
+                  )}
                 </td>
                 <td className="px-8 py-5">
                   <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -988,6 +1003,7 @@ const PaymentsTab = () => {
               <th className="px-8 py-5 font-bold">Student</th>
               <th className="px-8 py-5 font-bold">Course</th>
               <th className="px-8 py-5 font-bold">Amount</th>
+              <th className="px-8 py-5 font-bold">Receipt</th>
               <th className="px-8 py-5 font-bold">Status</th>
               <th className="px-8 py-5 font-bold text-right">Date</th>
             </tr>
@@ -1001,6 +1017,20 @@ const PaymentsTab = () => {
                 </td>
                 <td className="px-8 py-5 text-sm text-slate-600">{p.enrollments?.courses?.title}</td>
                 <td className="px-8 py-5 font-bold text-slate-900">£{p.amount}</td>
+                <td className="px-8 py-5">
+                  {p.receipt_url ? (
+                    <a 
+                      href={p.receipt_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1"
+                    >
+                      <Eye size={14} /> View Receipt
+                    </a>
+                  ) : (
+                    <span className="text-slate-400 text-xs italic">No receipt</span>
+                  )}
+                </td>
                 <td className="px-8 py-5">
                   <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                     p.payment_status === 'succeeded' ? 'bg-emerald-100 text-emerald-700' : 
@@ -1026,6 +1056,124 @@ const PaymentsTab = () => {
               <tr>
                 <td colSpan={5} className="px-8 py-20 text-center text-slate-500">
                   No transactions found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const InstallmentsTab = () => {
+  const [installments, setInstallments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchInstallments();
+  }, []);
+
+  const fetchInstallments = async () => {
+    try {
+      const data = await adminService.getInstallments();
+      setInstallments(data);
+    } catch (err) {
+      console.error('Error fetching installments:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateInstallment = async (id: string, paidAmount: number, totalAmount: number) => {
+    try {
+      const newPaidAmount = paidAmount;
+      const status = newPaidAmount >= totalAmount ? 'completed' : 'active';
+      
+      await adminService.updateInstallment(id, { 
+        paid_amount: newPaidAmount,
+        status: status
+      });
+      
+      alert('Installment updated successfully!');
+      fetchInstallments();
+    } catch (err: any) {
+      console.error('Error updating installment:', err);
+      alert(`Failed to update installment: ${err.message}`);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-bold text-slate-900">Installment Management</h3>
+      </div>
+
+      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-slate-50 text-slate-400 text-xs uppercase tracking-widest">
+              <th className="px-8 py-5 font-bold">Student</th>
+              <th className="px-8 py-5 font-bold">Course</th>
+              <th className="px-8 py-5 font-bold">Progress</th>
+              <th className="px-8 py-5 font-bold">Next Due</th>
+              <th className="px-8 py-5 font-bold">Status</th>
+              <th className="px-8 py-5 font-bold text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {installments.length > 0 ? installments.map((inst) => (
+              <tr key={inst.id} className="hover:bg-slate-50/50 transition-colors">
+                <td className="px-8 py-5">
+                  <p className="font-bold text-slate-900">{inst.enrollments?.profiles?.full_name}</p>
+                  <p className="text-xs text-slate-500">{inst.enrollments?.profiles?.email}</p>
+                </td>
+                <td className="px-8 py-5 text-sm text-slate-600">{inst.enrollments?.courses?.title}</td>
+                <td className="px-8 py-5">
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[10px] font-bold">
+                      <span>£{inst.paid_amount} / £{inst.total_amount}</span>
+                      <span>{((inst.paid_amount / inst.total_amount) * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden w-32">
+                      <div 
+                        className="h-full bg-brand-blue" 
+                        style={{ width: `${(inst.paid_amount / inst.total_amount) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                </td>
+                <td className="px-8 py-5 text-sm text-slate-500">
+                  {new Date(inst.next_payment_date).toLocaleDateString()}
+                </td>
+                <td className="px-8 py-5">
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    inst.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 
+                    inst.status === 'active' ? 'bg-brand-blue/10 text-brand-blue' : 'bg-brand-red/10 text-brand-red'
+                  }`}>
+                    {inst.status}
+                  </span>
+                </td>
+                <td className="px-8 py-5 text-right">
+                  {inst.status === 'active' && (
+                    <button 
+                      onClick={() => {
+                        const amount = prompt('Enter amount paid for the second installment:', (inst.total_amount - inst.paid_amount).toString());
+                        if (amount) {
+                          handleUpdateInstallment(inst.id, inst.paid_amount + parseFloat(amount), inst.total_amount);
+                        }
+                      }}
+                      className="text-brand-blue hover:underline text-xs font-bold"
+                    >
+                      Record Payment
+                    </button>
+                  )}
+                </td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan={6} className="px-8 py-20 text-center text-slate-500">
+                  No installment records found.
                 </td>
               </tr>
             )}
@@ -1303,11 +1451,49 @@ const QuizzesTab = () => {
   );
 };
 
+const CertificateTemplate = ({ studentName, courseTitle, date }: { studentName: string, courseTitle: string, date: string }) => (
+  <div className="w-full aspect-[1.414/1] bg-white border-[12px] border-brand-blue p-12 flex flex-col items-center justify-between text-center relative overflow-hidden">
+    <div className="absolute top-0 left-0 w-32 h-32 bg-brand-blue/10 rounded-br-full" />
+    <div className="absolute bottom-0 right-0 w-32 h-32 bg-brand-blue/10 rounded-tl-full" />
+    
+    <div className="space-y-4">
+      <div className="w-20 h-20 bg-brand-blue rounded-2xl mx-auto flex items-center justify-center text-white shadow-xl shadow-brand-blue/20">
+        <Award size={40} />
+      </div>
+      <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Certificate of Completion</h2>
+      <p className="text-slate-500 font-medium italic">This is to certify that</p>
+    </div>
+
+    <div className="space-y-2">
+      <h1 className="text-5xl font-black text-brand-blue tracking-tight">{studentName}</h1>
+      <div className="h-px bg-slate-200 w-64 mx-auto" />
+      <p className="text-slate-500 font-medium">has successfully completed the course</p>
+      <h3 className="text-2xl font-bold text-slate-900">{courseTitle}</h3>
+    </div>
+
+    <div className="w-full flex justify-between items-end">
+      <div className="text-left space-y-1">
+        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Date Issued</p>
+        <p className="font-bold text-slate-900">{date}</p>
+      </div>
+      <div className="text-center space-y-2">
+        <div className="w-32 h-px bg-slate-900 mx-auto" />
+        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Director Signature</p>
+      </div>
+      <div className="text-right space-y-1">
+        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Certificate ID</p>
+        <p className="font-bold text-slate-900">MKS-{Math.random().toString(36).substring(2, 10).toUpperCase()}</p>
+      </div>
+    </div>
+  </div>
+);
+
 const CertificatesTab = () => {
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [eligibilityMap, setEligibilityMap] = useState<{[key: string]: boolean}>({});
   const [generating, setGenerating] = useState<string | null>(null);
+  const [previewCert, setPreviewCert] = useState<any>(null);
 
   useEffect(() => {
     fetchEnrollments();
@@ -1425,7 +1611,10 @@ const CertificatesTab = () => {
                 </td>
                 <td className="px-8 py-5 text-right">
                   {e.certificates && e.certificates.length > 0 ? (
-                    <button className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1 justify-end ml-auto">
+                    <button 
+                      onClick={() => setPreviewCert(e)}
+                      className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1 justify-end ml-auto"
+                    >
                       <Eye size={14} /> View
                     </button>
                   ) : (
@@ -1449,6 +1638,36 @@ const CertificatesTab = () => {
           </tbody>
         </table>
       </div>
+
+      <Modal 
+        isOpen={!!previewCert} 
+        onClose={() => setPreviewCert(null)} 
+        title="Certificate Preview"
+      >
+        {previewCert && (
+          <div className="space-y-8">
+            <CertificateTemplate 
+              studentName={previewCert.profiles?.full_name}
+              courseTitle={previewCert.courses?.title}
+              date={new Date(previewCert.certificates?.[0]?.created_at || new Date()).toLocaleDateString()}
+            />
+            <div className="flex gap-4">
+              <button 
+                onClick={() => window.print()}
+                className="flex-1 px-6 py-3 bg-brand-blue text-white rounded-xl font-bold hover:bg-brand-blue-hover transition-all flex items-center justify-center gap-2"
+              >
+                <Download size={20} /> Download PDF
+              </button>
+              <button 
+                onClick={() => setPreviewCert(null)}
+                className="flex-1 px-6 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
@@ -2256,6 +2475,7 @@ export const AdminPage = () => {
     { id: 'enrollments', label: 'Enrollments', icon: <CheckCircle2 size={20} /> },
     { id: 'users', label: 'Users', icon: <Users size={20} /> },
     { id: 'payments', label: 'Payments', icon: <CreditCard size={20} /> },
+    { id: 'installments', label: 'Installments', icon: <Clock size={20} /> },
     { id: 'certificates', label: 'Certificates', icon: <Award size={20} /> },
     { id: 'progress', label: 'Progress', icon: <BarChart3 size={20} /> },
     { id: 'quizzes', label: 'Quizzes', icon: <FileQuestion size={20} /> },
@@ -2359,6 +2579,7 @@ export const AdminPage = () => {
             {activeTab === 'enrollments' && <EnrollmentsTab />}
             {activeTab === 'users' && <UsersTab />}
             {activeTab === 'payments' && <PaymentsTab />}
+            {activeTab === 'installments' && <InstallmentsTab />}
             {activeTab === 'certificates' && <CertificatesTab />}
             {activeTab === 'progress' && <ProgressTab />}
             {activeTab === 'quizzes' && <QuizzesTab />}

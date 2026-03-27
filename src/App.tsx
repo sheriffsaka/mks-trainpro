@@ -19,6 +19,7 @@ import { AdminPage } from './pages/AdminPage';
 import { InstructorPage } from './pages/InstructorPage';
 import { CoursePlayerPage } from './pages/CoursePlayerPage';
 import { QuizPage } from './pages/QuizPage';
+import { AuthCallback } from './pages/AuthCallback';
 import { MOCK_COURSES, MOCK_FAQS } from './data/mockData';
 import { GraduationCap, ArrowRight, CheckCircle2, Award, BookOpen, Users, Plus, Minus, Star, Quote, Facebook, Twitter, Instagram, Linkedin, Mail, MapPin, Phone } from 'lucide-react';
 import { useSettings } from './hooks/useSettings';
@@ -493,6 +494,7 @@ export default function App() {
           <Route path="/instructor" element={<InstructorPage />} />
           <Route path="/courses/:slug/player" element={<CoursePlayerPage />} />
           <Route path="/courses/:slug/quiz/:quizId" element={<QuizPage />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
         </Routes>
         <Chatbot />
         

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
-import { Clock, BookOpen, Award, CheckCircle2, Shield, Zap, ArrowRight, Loader2, MapPin, Video, Monitor, X, Copy, AlertCircle } from 'lucide-react';
+import { Clock, BookOpen, Award, CheckCircle2, Shield, Zap, ArrowRight, Loader2, MapPin, Video, Monitor, X, Copy, AlertCircle, Download } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { adminService } from '../services/adminService';
 import { motion, AnimatePresence } from 'motion/react';
@@ -18,6 +18,8 @@ export const CourseDetailPage = () => {
   const [showCheckout, setShowCheckout] = useState(false);
   const [isPartPayment, setIsPartPayment] = useState(false);
   const [settings, setSettings] = useState<any>({});
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,6 +70,14 @@ export const CourseDetailPage = () => {
         throw new Error('This course is not yet available for enrollment in the database. Please try a different course or contact support.');
       }
 
+      if (!receiptFile) {
+        throw new Error('Please upload your payment proof (receipt) before submitting.');
+      }
+
+      setUploading(true);
+      // Upload receipt
+      const receiptUrl = await adminService.uploadFile(receiptFile, 'payment-proofs');
+
       const amountToPay = isPartPayment ? partPaymentAmount : totalPrice;
 
       // 1. Create enrollment
@@ -96,7 +106,8 @@ export const CourseDetailPage = () => {
           amount: amountToPay,
           payment_method: 'bank_transfer',
           payment_status: 'pending',
-          is_installment: isPartPayment
+          is_installment: isPartPayment,
+          receipt_url: receiptUrl
         });
 
       if (paymentError) {
@@ -130,6 +141,7 @@ export const CourseDetailPage = () => {
       alert(err.message || 'Failed to submit enrollment request. Please try again.');
     } finally {
       setLoading(false);
+      setUploading(false);
     }
   };
 
@@ -412,16 +424,49 @@ export const CourseDetailPage = () => {
                 <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex gap-3">
                   <AlertCircle className="text-amber-600 shrink-0" size={20} />
                   <p className="text-xs text-amber-800 leading-relaxed">
-                    Please use your <strong>Full Name</strong> as the payment reference. Once transferred, please send the proof of payment to <strong>{settings.support_email || 'support@mksconsultsltd.com'}</strong>.
+                    Please use your <strong>Full Name</strong> as the payment reference. Once transferred, please upload the proof of payment below.
                   </p>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="block text-sm font-bold text-slate-700 ml-1">Upload Payment Proof (Receipt)</label>
+                  <div className="relative group">
+                    <input 
+                      type="file" 
+                      accept="image/*,.pdf"
+                      onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                      className="hidden" 
+                      id="receipt-upload"
+                    />
+                    <label 
+                      htmlFor="receipt-upload"
+                      className={`w-full flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-[2rem] cursor-pointer transition-all ${
+                        receiptFile ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-brand-blue hover:bg-slate-50'
+                      }`}
+                    >
+                      {receiptFile ? (
+                        <>
+                          <CheckCircle2 className="text-emerald-500 mb-2" size={32} />
+                          <p className="text-sm font-bold text-emerald-700">{receiptFile.name}</p>
+                          <p className="text-xs text-emerald-600">Click to change file</p>
+                        </>
+                      ) : (
+                        <>
+                          <Download className="text-slate-400 mb-2 group-hover:text-brand-blue transition-colors" size={32} />
+                          <p className="text-sm font-bold text-slate-600">Click to select receipt</p>
+                          <p className="text-xs text-slate-400">JPG, PNG or PDF (Max 5MB)</p>
+                        </>
+                      )}
+                    </label>
+                  </div>
                 </div>
 
                 <button 
                   onClick={handleEnrollment}
-                  disabled={loading}
+                  disabled={loading || uploading}
                   className="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {loading ? <Loader2 className="animate-spin" size={20} /> : 'I Have Made the Transfer'}
+                  {loading || uploading ? <Loader2 className="animate-spin" size={20} /> : 'Submit Enrollment Request'}
                 </button>
               </div>
             </motion.div>
