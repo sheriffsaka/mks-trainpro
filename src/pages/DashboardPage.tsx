@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { supabase } from '../services/supabaseClient';
+import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { 
   BookOpen, 
   Clock, 
@@ -68,7 +68,9 @@ export const DashboardPage = () => {
     }
 
     const fetchDashboardData = async () => {
+      if (!user) return;
       try {
+        setLoading(true);
         const [enrollmentsRes, announcementsRes, certificatesRes, paymentsRes, installmentsRes] = await Promise.all([
           supabase.from('enrollments').select('*, courses(*)').eq('user_id', user.id),
           adminService.getAnnouncements(),
@@ -77,9 +79,16 @@ export const DashboardPage = () => {
           supabase.from('installment_records').select('*, enrollments(*, courses(*))').eq('status', 'active')
         ]);
         
+        if (enrollmentsRes.error) throw enrollmentsRes.error;
+        if (certificatesRes.error) throw certificatesRes.error;
+        if (paymentsRes.error) throw paymentsRes.error;
+        if (installmentsRes.error) throw installmentsRes.error;
+
         let currentEnrollments = [];
-        if (enrollmentsRes.data && enrollmentsRes.data.length > 0) {
-          currentEnrollments = enrollmentsRes.data;
+        if (isSupabaseConfigured) {
+          currentEnrollments = enrollmentsRes.data || [];
+        } else {
+          currentEnrollments = (enrollmentsRes.data && enrollmentsRes.data.length > 0) ? enrollmentsRes.data : MOCK_ENROLLMENTS;
         }
         setEnrollments(currentEnrollments);
 
@@ -115,8 +124,13 @@ export const DashboardPage = () => {
         if (announcementsRes && announcementsRes.length > 0) {
           setAnnouncements(announcementsRes);
         }
-      } catch (err) {
-        setEnrollments(MOCK_ENROLLMENTS);
+      } catch (err: any) {
+        console.error('Error fetching dashboard data:', err);
+        if (!isSupabaseConfigured) {
+          setEnrollments(MOCK_ENROLLMENTS);
+        } else {
+          alert(`Error loading dashboard: ${err.message}`);
+        }
       } finally {
         setLoading(false);
       }

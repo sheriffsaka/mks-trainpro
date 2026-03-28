@@ -144,6 +144,7 @@ CREATE TABLE IF NOT EXISTS payments (
   payment_method TEXT, -- 'stripe', 'paypal'
   payment_status TEXT CHECK (payment_status IN ('pending', 'succeeded', 'failed')),
   stripe_payment_intent_id TEXT,
+  receipt_url TEXT,
   is_installment BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );

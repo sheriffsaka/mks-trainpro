@@ -25,19 +25,20 @@ import {
   Eye,
   X,
   Save,
+  Database,
   Image as ImageIcon,
   ChevronRight,
   Download,
-  Database,
   Play,
   FileText,
   Award,
-  Loader2
+  Loader2,
+  Shield
 } from 'lucide-react';
-import { supabase } from '../services/supabaseClient';
+import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
-import { MOCK_COURSES, MOCK_CATEGORIES, MOCK_FAQS, MOCK_ANNOUNCEMENTS, MOCK_QUIZZES } from '../data/mockData';
+import { MOCK_COURSES, MOCK_CATEGORIES, MOCK_FAQS, MOCK_ANNOUNCEMENTS, MOCK_QUIZZES, MOCK_ENROLLMENTS } from '../data/mockData';
 
 import { adminService } from '../services/adminService';
 import { progressService } from '../services/progressService';
@@ -93,6 +94,8 @@ const OverviewTab = () => {
   const [stats, setStats] = useState<any>(null);
   const [recentEnrollments, setRecentEnrollments] = useState<any[]>([]);
 
+  const [seeding, setSeeding] = useState(false);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -100,7 +103,19 @@ const OverviewTab = () => {
           adminService.getStats(),
           adminService.getRecentEnrollments(5)
         ]);
-        setStats(statsData);
+        if (isSupabaseConfigured) {
+          setStats(statsData);
+        } else {
+          setStats(statsData || {
+            coursesCount: MOCK_COURSES.length,
+            announcementsCount: MOCK_ANNOUNCEMENTS.length,
+            faqsCount: MOCK_FAQS.length,
+            quizzesCount: MOCK_QUIZZES.length,
+            totalRevenue: 45230,
+            studentsCount: 1284,
+            enrollmentsCount: 1284
+          });
+        }
         setRecentEnrollments(enrollmentsData);
       } catch (error) {
         console.error('Error fetching overview data:', error);
@@ -119,8 +134,33 @@ const OverviewTab = () => {
     fetchData();
   }, []);
 
+  const handleSeed = async () => {
+    try {
+      setSeeding(true);
+      await adminService.seedDatabase();
+      alert('Database seeded successfully! Please refresh to see the changes.');
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Error seeding database:', error);
+      alert(`Failed to seed database: ${error.message}`);
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-slate-900">Dashboard Overview</h2>
+        <button 
+          onClick={handleSeed}
+          disabled={seeding}
+          className="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all flex items-center gap-2"
+        >
+          {seeding ? <Loader2 className="animate-spin" size={16} /> : <Database size={16} />}
+          Seed Initial Data
+        </button>
+      </div>
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
@@ -291,23 +331,28 @@ const CoursesTab = () => {
   const fetchCategories = async () => {
     try {
       const data = await adminService.getCategories();
-      setCategories(data);
+      if (isSupabaseConfigured) {
+        setCategories(data || []);
+      } else {
+        setCategories(data && data.length > 0 ? data : MOCK_CATEGORIES);
+      }
     } catch (err) {
       console.error('Error fetching categories:', err);
-      setCategories(MOCK_CATEGORIES);
+      if (!isSupabaseConfigured) setCategories(MOCK_CATEGORIES);
     }
   };
 
   const fetchCourses = async () => {
     try {
       const data = await adminService.getCourses();
-      if (data && data.length > 0) {
-        setCourses(data);
+      if (isSupabaseConfigured) {
+        setCourses(data || []);
       } else {
-        setCourses(MOCK_COURSES);
+        setCourses(data && data.length > 0 ? data : MOCK_COURSES);
       }
     } catch (err) {
-      setCourses(MOCK_COURSES);
+      console.error('Error fetching courses:', err);
+      if (!isSupabaseConfigured) setCourses(MOCK_COURSES);
     } finally {
       setLoading(false);
     }
@@ -796,14 +841,31 @@ const EnrollmentsTab = () => {
 
   const fetchEnrollments = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('enrollments')
-        .select('*, profiles:user_id(*), courses:course_id(*), payments(*)')
+        .select(`
+          *,
+          profiles:user_id(*),
+          courses:course_id(*),
+          payments(*)
+        `)
         .order('enrolled_at', { ascending: false });
       
-      if (data) setEnrollments(data);
-    } catch (err) {
+      if (error) throw error;
+      
+      if (isSupabaseConfigured) {
+        setEnrollments(data || []);
+      } else {
+        setEnrollments(data && data.length > 0 ? data : MOCK_ENROLLMENTS);
+      }
+    } catch (err: any) {
       console.error('Error fetching enrollments:', err);
+      if (!isSupabaseConfigured) {
+        setEnrollments(MOCK_ENROLLMENTS);
+      } else {
+        alert(`Error fetching enrollments: ${err.message}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -917,7 +979,7 @@ const EnrollmentsTab = () => {
               </tr>
             )) : (
               <tr>
-                <td colSpan={5} className="px-8 py-20 text-center text-slate-500">
+                <td colSpan={6} className="px-8 py-20 text-center text-slate-500">
                   No enrollments found.
                 </td>
               </tr>
@@ -939,28 +1001,47 @@ const PaymentsTab = () => {
 
   const fetchPayments = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('payments')
         .select('*, profiles:user_id(*), enrollments(*, courses(*))')
         .order('created_at', { ascending: false });
       
+      if (error) throw error;
       if (data) setPayments(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching payments:', err);
+      if (isSupabaseConfigured) {
+        alert(`Error fetching payments: ${err.message}`);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleConfirmPayment = async (id: string) => {
+  const handleConfirmPayment = async (payment: any) => {
     try {
-      const { error } = await supabase
+      // 1. Update payment status
+      const { error: paymentError } = await supabase
         .from('payments')
         .update({ payment_status: 'succeeded' })
-        .eq('id', id);
+        .eq('id', payment.id);
       
-      if (error) throw error;
-      alert('Payment confirmed!');
+      if (paymentError) throw paymentError;
+
+      // 2. Update enrollment status
+      if (payment.enrollment_id) {
+        const { error: enrollmentError } = await supabase
+          .from('enrollments')
+          .update({ status: 'active' })
+          .eq('id', payment.enrollment_id);
+        
+        if (enrollmentError) {
+          console.error('Error updating enrollment status:', enrollmentError);
+        }
+      }
+      
+      alert('Payment confirmed and enrollment activated!');
       fetchPayments();
     } catch (err: any) {
       console.error('Error confirming payment:', err);
@@ -1042,7 +1123,7 @@ const PaymentsTab = () => {
                 <td className="px-8 py-5 text-right text-sm text-slate-500">
                   {p.payment_status === 'pending' ? (
                     <button 
-                      onClick={() => handleConfirmPayment(p.id)}
+                      onClick={() => handleConfirmPayment(p)}
                       className="bg-brand-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-brand-blue-hover transition-all"
                     >
                       Confirm
@@ -1054,7 +1135,7 @@ const PaymentsTab = () => {
               </tr>
             )) : (
               <tr>
-                <td colSpan={5} className="px-8 py-20 text-center text-slate-500">
+                <td colSpan={6} className="px-8 py-20 text-center text-slate-500">
                   No transactions found.
                 </td>
               </tr>
@@ -1219,14 +1300,14 @@ const QuizzesTab = () => {
   const fetchQuizzes = async () => {
     try {
       const data = await adminService.getQuizzes();
-      if (data && data.length > 0) {
-        setQuizzes(data);
+      if (isSupabaseConfigured) {
+        setQuizzes(data || []);
       } else {
-        setQuizzes(MOCK_QUIZZES);
+        setQuizzes(data && data.length > 0 ? data : MOCK_QUIZZES);
       }
     } catch (error) {
       console.error('Error fetching quizzes:', error);
-      setQuizzes(MOCK_QUIZZES);
+      if (!isSupabaseConfigured) setQuizzes(MOCK_QUIZZES);
     } finally {
       setLoading(false);
     }
@@ -1267,11 +1348,13 @@ const QuizzesTab = () => {
       } else {
         await adminService.createQuiz(quizData);
       }
+      alert(`Quiz ${editingQuiz ? 'updated' : 'created'} successfully!`);
       setIsModalOpen(false);
       setEditingQuiz(null);
       fetchQuizzes();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving quiz:', error);
+      alert(`Failed to save quiz: ${error.message || 'Unknown error'}`);
       // Mock save for presentation
       if (editingQuiz) {
         setQuizzes(prev => prev.map(q => q.id === editingQuiz.id ? { ...q, ...quizData } : q));
@@ -1701,14 +1784,14 @@ const AnnouncementsTab = () => {
   const fetchAnnouncements = async () => {
     try {
       const data = await adminService.getAnnouncements();
-      if (data && data.length > 0) {
-        setAnnouncements(data);
+      if (isSupabaseConfigured) {
+        setAnnouncements(data || []);
       } else {
-        setAnnouncements(MOCK_ANNOUNCEMENTS);
+        setAnnouncements(data && data.length > 0 ? data : MOCK_ANNOUNCEMENTS);
       }
     } catch (error) {
       console.error('Error fetching announcements:', error);
-      setAnnouncements(MOCK_ANNOUNCEMENTS);
+      if (!isSupabaseConfigured) setAnnouncements(MOCK_ANNOUNCEMENTS);
     } finally {
       setLoading(false);
     }
@@ -1720,9 +1803,8 @@ const AnnouncementsTab = () => {
     const annData = {
       title: formData.get('title'),
       content: formData.get('content'),
-      target: formData.get('target'),
-      status: formData.get('status'),
-      type: formData.get('type'),
+      type: formData.get('type') || 'info',
+      target_role: formData.get('target_role') || null,
     };
 
     try {
@@ -1737,15 +1819,18 @@ const AnnouncementsTab = () => {
       alert('Announcement saved successfully!');
     } catch (error: any) {
       console.error('Error saving announcement:', error);
-      alert(`Failed to save announcement: ${error.message || 'Unknown error'}`);
-      // Mock save for presentation
-      if (editingAnn) {
-        setAnnouncements(prev => prev.map(a => a.id === editingAnn.id ? { ...a, ...annData } : a));
+      if (isSupabaseConfigured) {
+        alert(`Failed to save announcement: ${error.message || 'Unknown error'}`);
       } else {
-        setAnnouncements(prev => [{ id: `a-${Date.now()}`, ...annData, created_at: new Date().toISOString() }, ...prev]);
+        // Mock save for presentation
+        if (editingAnn) {
+          setAnnouncements(prev => prev.map(a => a.id === editingAnn.id ? { ...a, ...annData } : a));
+        } else {
+          setAnnouncements(prev => [{ id: `a-${Date.now()}`, ...annData, created_at: new Date().toISOString() }, ...prev]);
+        }
+        setIsModalOpen(false);
+        setEditingAnn(null);
       }
-      setIsModalOpen(false);
-      setEditingAnn(null);
     }
   };
 
@@ -1754,10 +1839,18 @@ const AnnouncementsTab = () => {
     try {
       await adminService.deleteAnnouncement(annToDelete);
       fetchAnnouncements();
-    } catch (error) {
+      alert('Announcement deleted successfully!');
+    } catch (error: any) {
       console.error('Error deleting announcement:', error);
-      // Mock delete for presentation
-      setAnnouncements(prev => prev.filter(a => a.id !== annToDelete));
+      if (isSupabaseConfigured) {
+        alert(`Failed to delete announcement: ${error.message || 'Unknown error'}`);
+      } else {
+        // Mock delete for presentation
+        setAnnouncements(prev => prev.filter(a => a.id !== annToDelete));
+      }
+    } finally {
+      setIsConfirmOpen(false);
+      setAnnToDelete(null);
     }
   };
 
@@ -1781,7 +1874,7 @@ const AnnouncementsTab = () => {
             <div key={ann.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
               <div className="flex items-center gap-6">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                  ann.type === 'Alert' ? 'bg-brand-red/10 text-brand-red' : 'bg-brand-blue/10 text-brand-blue'
+                  ann.type === 'error' || ann.type === 'warning' ? 'bg-brand-red/10 text-brand-red' : 'bg-brand-blue/10 text-brand-blue'
                 }`}>
                   <Megaphone size={20} />
                 </div>
@@ -1790,15 +1883,15 @@ const AnnouncementsTab = () => {
                   <div className="flex items-center gap-4 text-xs text-slate-500 mt-1">
                     <span className="font-medium">{new Date(ann.created_at).toLocaleDateString()}</span>
                     <span className="w-1 h-1 bg-slate-300 rounded-full" />
-                    <span className="font-medium">Target: {ann.target}</span>
+                    <span className="font-medium">Target: {ann.target_role || 'All Users'}</span>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-6">
                 <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  ann.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                  ann.type === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
                 }`}>
-                  {ann.status}
+                  {ann.type}
                 </span>
                 <div className="flex gap-2">
                   <button 
@@ -1836,28 +1929,23 @@ const AnnouncementsTab = () => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Target Audience</label>
-              <select name="target" defaultValue={editingAnn?.target || 'All Users'} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
-                <option>All Users</option>
-                <option>All Students</option>
-                <option>Platinum Members</option>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Target Role</label>
+              <select name="target_role" defaultValue={editingAnn?.target_role || ''} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+                <option value="">All Users</option>
+                <option value="student">Students</option>
+                <option value="corporate">Corporate</option>
+                <option value="admin">Admins</option>
               </select>
             </div>
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Type</label>
-              <select name="type" defaultValue={editingAnn?.type || 'Update'} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
-                <option>Update</option>
-                <option>Info</option>
-                <option>Alert</option>
+              <select name="type" defaultValue={editingAnn?.type || 'info'} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+                <option value="info">Info</option>
+                <option value="warning">Warning</option>
+                <option value="success">Success</option>
+                <option value="error">Error</option>
               </select>
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Status</label>
-            <select name="status" defaultValue={editingAnn?.status || 'Active'} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
-              <option>Active</option>
-              <option>Expired</option>
-            </select>
           </div>
           <button className="w-full bg-brand-red text-white py-4 rounded-2xl font-bold hover:bg-brand-red-hover transition-all">
             {editingAnn ? 'Update' : 'Post Announcement'}
@@ -1978,10 +2066,15 @@ const CMSTab = () => {
     try {
       await adminService.updateSetting(key, value);
       setSettings({ ...settings, [key]: value });
-    } catch (error) {
+      alert('Setting updated successfully!');
+    } catch (error: any) {
       console.error(`Error updating setting ${key}:`, error);
-      // Mock update for presentation
-      setSettings({ ...settings, [key]: value });
+      if (isSupabaseConfigured) {
+        alert(`Failed to update setting: ${error.message || 'Unknown error'}`);
+      } else {
+        // Mock update for presentation
+        setSettings({ ...settings, [key]: value });
+      }
     }
   };
 
@@ -2003,16 +2096,21 @@ const CMSTab = () => {
       setIsFaqModalOpen(false);
       setEditingFaq(null);
       fetchCMSData();
-    } catch (error) {
+      alert('FAQ saved successfully!');
+    } catch (error: any) {
       console.error('Error saving FAQ:', error);
-      // Mock save for presentation
-      if (editingFaq) {
-        setFaqs(prev => prev.map(f => f.id === editingFaq.id ? { ...f, ...faqData } : f));
+      if (isSupabaseConfigured) {
+        alert(`Failed to save FAQ: ${error.message || 'Unknown error'}`);
       } else {
-        setFaqs(prev => [{ id: `f-${Date.now()}`, ...faqData }, ...prev]);
+        // Mock save for presentation
+        if (editingFaq) {
+          setFaqs(prev => prev.map(f => f.id === editingFaq.id ? { ...f, ...faqData } : f));
+        } else {
+          setFaqs(prev => [{ id: `f-${Date.now()}`, ...faqData }, ...prev]);
+        }
+        setIsFaqModalOpen(false);
+        setEditingFaq(null);
       }
-      setIsFaqModalOpen(false);
-      setEditingFaq(null);
     }
   };
 
@@ -2021,10 +2119,18 @@ const CMSTab = () => {
     try {
       await adminService.deleteFAQ(faqToDelete);
       fetchCMSData();
-    } catch (error) {
+      alert('FAQ deleted successfully!');
+    } catch (error: any) {
       console.error('Error deleting FAQ:', error);
-      // Mock delete for presentation
-      setFaqs(prev => prev.filter(f => f.id !== faqToDelete));
+      if (isSupabaseConfigured) {
+        alert(`Failed to delete FAQ: ${error.message || 'Unknown error'}`);
+      } else {
+        // Mock delete for presentation
+        setFaqs(prev => prev.filter(f => f.id !== faqToDelete));
+      }
+    } finally {
+      setIsConfirmOpen(false);
+      setFaqToDelete(null);
     }
   };
 

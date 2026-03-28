@@ -181,27 +181,60 @@ export const adminService = {
 
   // Stats
   async getStats() {
-    const [courses, announcements, faqs, quizzes, enrollments, payments, profiles] = await Promise.all([
-      supabase.from('courses').select('*', { count: 'exact', head: true }),
-      supabase.from('announcements').select('*', { count: 'exact', head: true }),
-      supabase.from('faqs').select('*', { count: 'exact', head: true }),
-      supabase.from('quizzes').select('*', { count: 'exact', head: true }),
-      supabase.from('enrollments').select('*', { count: 'exact', head: true }),
-      supabase.from('payments').select('amount').eq('payment_status', 'succeeded'),
-      supabase.from('profiles').select('*', { count: 'exact', head: true }),
-    ]);
-
-    const totalRevenue = payments.data?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
-
-    return {
-      coursesCount: courses.count || 0,
-      announcementsCount: announcements.count || 0,
-      faqsCount: faqs.count || 0,
-      quizzesCount: quizzes.count || 0,
-      enrollmentsCount: enrollments.count || 0,
-      totalRevenue,
-      studentsCount: profiles.count || 0
+    const fetchCount = async (table: string) => {
+      try {
+        const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true });
+        if (error) throw error;
+        return count || 0;
+      } catch (err) {
+        console.error(`Error fetching count for ${table}:`, err);
+        return 0;
+      }
     };
+
+    const fetchRevenue = async () => {
+      try {
+        const { data, error } = await supabase.from('payments').select('amount').eq('payment_status', 'succeeded');
+        if (error) throw error;
+        return data?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
+      } catch (err) {
+        console.error('Error fetching revenue:', err);
+        return 0;
+      }
+    };
+
+    try {
+      const [coursesCount, announcementsCount, faqsCount, quizzesCount, enrollmentsCount, totalRevenue, studentsCount] = await Promise.all([
+        fetchCount('courses'),
+        fetchCount('announcements'),
+        fetchCount('faqs'),
+        fetchCount('quizzes'),
+        fetchCount('enrollments'),
+        fetchRevenue(),
+        fetchCount('profiles')
+      ]);
+
+      return {
+        coursesCount,
+        announcementsCount,
+        faqsCount,
+        quizzesCount,
+        enrollmentsCount,
+        totalRevenue,
+        studentsCount
+      };
+    } catch (error: any) {
+      console.error('Error in getStats:', error);
+      return {
+        coursesCount: 0,
+        announcementsCount: 0,
+        faqsCount: 0,
+        quizzesCount: 0,
+        enrollmentsCount: 0,
+        totalRevenue: 0,
+        studentsCount: 0
+      };
+    }
   },
 
   async getRecentEnrollments(limit: number = 5) {
