@@ -1734,8 +1734,10 @@ const AnnouncementsTab = () => {
       setIsModalOpen(false);
       setEditingAnn(null);
       fetchAnnouncements();
-    } catch (error) {
+      alert('Announcement saved successfully!');
+    } catch (error: any) {
       console.error('Error saving announcement:', error);
+      alert(`Failed to save announcement: ${error.message || 'Unknown error'}`);
       // Mock save for presentation
       if (editingAnn) {
         setAnnouncements(prev => prev.map(a => a.id === editingAnn.id ? { ...a, ...annData } : a));
