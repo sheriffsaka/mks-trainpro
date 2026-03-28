@@ -245,21 +245,31 @@ export const adminService = {
 
   // File Uploads
   async uploadFile(file: File, bucket: string = 'training-assets') {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `${fileName}`;
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from(bucket)
-      .upload(filePath, file);
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, file);
 
-    if (uploadError) throw uploadError;
+      if (uploadError) {
+        if (uploadError.message.includes('bucket not found') || (uploadError as any).status === 404) {
+          throw new Error(`Storage bucket "${bucket}" not found. Please create it in your Supabase dashboard under Storage.`);
+        }
+        throw uploadError;
+      }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(filePath);
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(filePath);
 
-    return publicUrl;
+      return publicUrl;
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      throw error;
+    }
   },
 
   // Seed Data

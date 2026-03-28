@@ -1186,6 +1186,7 @@ const InstallmentsTab = () => {
 
 const QuizzesTab = () => {
   const [quizzes, setQuizzes] = useState<any[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -1195,7 +1196,17 @@ const QuizzesTab = () => {
 
   useEffect(() => {
     fetchQuizzes();
+    fetchCourses();
   }, []);
+
+  const fetchCourses = async () => {
+    try {
+      const data = await adminService.getCourses();
+      setCourses(data);
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+    }
+  };
 
   useEffect(() => {
     if (editingQuiz) {
@@ -1362,15 +1373,18 @@ const QuizzesTab = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Course ID</label>
-              <input 
+              <label className="block text-sm font-bold text-slate-700 mb-2">Course</label>
+              <select 
                 name="course_id"
-                type="text" 
                 defaultValue={editingQuiz?.course_id}
                 required
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
-                placeholder="e.g. level-3-adult-care"
-              />
+              >
+                <option value="">Select a course</option>
+                {courses.map(c => (
+                  <option key={c.id} value={c.id}>{c.title}</option>
+                ))}
+              </select>
             </div>
           </div>
 
