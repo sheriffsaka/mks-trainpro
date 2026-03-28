@@ -251,6 +251,29 @@ export const MOCK_QUIZZES = [
   }
 ];
 
+export const MOCK_PAYMENTS = [
+  {
+    id: 'p1',
+    user_id: 'u1',
+    enrollment_id: 'e1',
+    amount: 100.00,
+    payment_status: 'succeeded',
+    created_at: new Date().toISOString(),
+    enrollments: MOCK_ENROLLMENTS[0]
+  }
+];
+
+export const MOCK_STATS = {
+  totalStudents: 1250,
+  activeEnrollments: 850,
+  completedCourses: 400,
+  totalRevenue: 125000,
+  revenueGrowth: 15.5,
+  studentGrowth: 12.2,
+  completionRate: 78.5,
+  activeQuizzes: 45
+};
+
 export const MOCK_SITE_SETTINGS = [
   { key: 'site_name', value: 'MKS CONSULTS LIMITED' },
   { key: 'support_email', value: 'support@mksconsultsltd.com' },

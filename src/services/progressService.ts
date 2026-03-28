@@ -2,17 +2,17 @@ import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 export interface AttendanceRecord {
   id?: string;
-  student_id: string;
+  user_id: string;
   course_id: string;
   session_id: string;
-  date: string;
-  status: 'present' | 'absent';
+  session_date: string;
+  status: 'present' | 'absent' | 'late';
   created_at?: string;
 }
 
 export interface AssessmentRecord {
   id?: string;
-  student_id: string;
+  user_id: string;
   course_id: string;
   assessment_name: string;
   score: number;
@@ -22,7 +22,7 @@ export interface AssessmentRecord {
 
 export interface AssignmentRecord {
   id?: string;
-  student_id: string;
+  user_id: string;
   course_id: string;
   assignment_name: string;
   status: 'submitted' | 'pending' | 'approved' | 'rejected';
@@ -44,7 +44,7 @@ export const progressService = {
     if (!isSupabaseConfigured) return;
     const { data, error } = await supabase
       .from('attendance')
-      .upsert(records, { onConflict: 'student_id,course_id,session_id' });
+      .upsert(records, { onConflict: 'user_id,course_id,session_id' });
     if (error) throw error;
     return data;
   },
@@ -53,7 +53,7 @@ export const progressService = {
     if (!isSupabaseConfigured) return [];
     let query = supabase
       .from('attendance')
-      .select('*, profiles(full_name)')
+      .select('*, profiles!user_id(full_name)')
       .eq('course_id', courseId);
     
     if (sessionId) {
@@ -70,20 +70,20 @@ export const progressService = {
     if (!isSupabaseConfigured) return;
     const { data, error } = await supabase
       .from('assessments')
-      .upsert(records, { onConflict: 'student_id,course_id,assessment_name' });
+      .upsert(records, { onConflict: 'user_id,course_id,assessment_name' });
     if (error) throw error;
     return data;
   },
 
-  async getAssessments(courseId: string, studentId?: string) {
+  async getAssessments(courseId: string, userId?: string) {
     if (!isSupabaseConfigured) return [];
     let query = supabase
       .from('assessments')
       .select('*')
       .eq('course_id', courseId);
     
-    if (studentId) {
-      query = query.eq('student_id', studentId);
+    if (userId) {
+      query = query.eq('user_id', userId);
     }
     
     const { data, error } = await query;
@@ -96,20 +96,20 @@ export const progressService = {
     if (!isSupabaseConfigured) return;
     const { data, error } = await supabase
       .from('assignments')
-      .upsert([record], { onConflict: 'student_id,course_id,assignment_name' });
+      .upsert([record], { onConflict: 'user_id,course_id,assignment_name' });
     if (error) throw error;
     return data;
   },
 
-  async getAssignments(courseId: string, studentId?: string) {
+  async getAssignments(courseId: string, userId?: string) {
     if (!isSupabaseConfigured) return [];
     let query = supabase
       .from('assignments')
       .select('*')
       .eq('course_id', courseId);
     
-    if (studentId) {
-      query = query.eq('student_id', studentId);
+    if (userId) {
+      query = query.eq('user_id', userId);
     }
     
     const { data, error } = await query;
@@ -118,7 +118,7 @@ export const progressService = {
   },
 
   // Progress Calculation
-  async calculateProgress(studentId: string, courseId: string): Promise<ProgressData> {
+  async calculateProgress(userId: string, courseId: string): Promise<ProgressData> {
     if (!isSupabaseConfigured) {
       return {
         attendanceRate: 80,
@@ -131,12 +131,12 @@ export const progressService = {
 
     const [attendance, assessments, assignments] = await Promise.all([
       this.getAttendance(courseId),
-      this.getAssessments(courseId, studentId),
-      this.getAssignments(courseId, studentId)
+      this.getAssessments(courseId, userId),
+      this.getAssignments(courseId, userId)
     ]);
 
     // Filter attendance for this student
-    const studentAttendance = attendance.filter((a: any) => a.student_id === studentId);
+    const studentAttendance = attendance.filter((a: any) => a.user_id === userId);
     const totalSessions = 5; // This should ideally come from course_sessions table
     const attendanceRate = totalSessions > 0 ? (studentAttendance.filter((a: any) => a.status === 'present').length / totalSessions) * 100 : 0;
 

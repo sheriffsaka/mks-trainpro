@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Search, Filter, Clock, BookOpen, Award, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { adminService } from '../services/adminService';
 
 import { useLocation } from 'react-router-dom';
 import { MOCK_COURSES } from '../data/mockData';
@@ -23,20 +24,10 @@ export const CoursesPage = () => {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const { data, error } = await supabase
-          .from('courses')
-          .select('*, categories(*)')
-          .eq('is_published', true);
-        
-        if (data && data.length > 0) {
-          setCourses(data);
-        } else {
-          // Fallback to mock data if DB is empty or fails
-          setCourses(MOCK_COURSES);
-        }
+        const data = await adminService.getCourses();
+        setCourses(data || []);
       } catch (err) {
         console.error("Fetch error:", err);
-        setCourses(MOCK_COURSES);
       } finally {
         setLoading(false);
       }

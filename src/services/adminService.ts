@@ -1,5 +1,15 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { MOCK_COURSES, MOCK_FAQS, MOCK_ANNOUNCEMENTS, MOCK_QUIZZES, MOCK_CATEGORIES, MOCK_SITE_SETTINGS } from '../data/mockData';
+import { 
+  MOCK_COURSES, 
+  MOCK_FAQS, 
+  MOCK_ANNOUNCEMENTS, 
+  MOCK_QUIZZES, 
+  MOCK_CATEGORIES, 
+  MOCK_SITE_SETTINGS,
+  MOCK_ENROLLMENTS,
+  MOCK_PAYMENTS,
+  MOCK_STATS
+} from '../data/mockData';
 
 export const adminService = {
   // Quizzes
@@ -181,6 +191,17 @@ export const adminService = {
 
   // Stats
   async getStats() {
+    if (!isSupabaseConfigured) {
+      return {
+        coursesCount: MOCK_COURSES.length,
+        announcementsCount: MOCK_ANNOUNCEMENTS.length,
+        faqsCount: MOCK_FAQS.length,
+        quizzesCount: MOCK_QUIZZES.length,
+        enrollmentsCount: MOCK_ENROLLMENTS.length,
+        ...MOCK_STATS
+      };
+    }
+
     const fetchCount = async (table: string) => {
       try {
         const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true });
@@ -238,6 +259,7 @@ export const adminService = {
   },
 
   async getRecentEnrollments(limit: number = 5) {
+    if (!isSupabaseConfigured) return MOCK_ENROLLMENTS.slice(0, limit);
     const { data, error } = await supabase
       .from('enrollments')
       .select('*, profiles(*), courses(*)')
@@ -247,7 +269,96 @@ export const adminService = {
     return data;
   },
 
+  async getAllEnrollments() {
+    if (!isSupabaseConfigured) return MOCK_ENROLLMENTS;
+    const { data, error } = await supabase
+      .from('enrollments')
+      .select(`
+        *,
+        profiles(*),
+        courses(*),
+        payments(*)
+      `)
+      .order('enrolled_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
+  async getEnrollmentsForCertificates() {
+    if (!isSupabaseConfigured) return MOCK_ENROLLMENTS.filter(e => e.status === 'active' || e.status === 'completed');
+    const { data, error } = await supabase
+      .from('enrollments')
+      .select('*, profiles(*), courses(*), certificates(*)')
+      .in('status', ['active', 'completed'])
+      .order('enrolled_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
+  async getAllPayments() {
+    if (!isSupabaseConfigured) return [];
+    const { data, error } = await supabase
+      .from('payments')
+      .select('*, profiles(*), enrollments(*, courses(*))')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
+  async getEnrollmentsByCourse(courseId: string) {
+    if (!isSupabaseConfigured) return MOCK_ENROLLMENTS.filter(e => e.course_id === courseId);
+    const { data, error } = await supabase
+      .from('enrollments')
+      .select('*, profiles(*)')
+      .eq('course_id', courseId);
+    if (error) throw error;
+    return data;
+  },
+
+  async getUserEnrollments(userId: string) {
+    if (!isSupabaseConfigured) return MOCK_ENROLLMENTS;
+    const { data, error } = await supabase
+      .from('enrollments')
+      .select('*, courses(*)')
+      .eq('user_id', userId);
+    if (error) throw error;
+    return data;
+  },
+
+  async getUserCertificates(userId: string) {
+    if (!isSupabaseConfigured) return [];
+    const { data, error } = await supabase
+      .from('certificates')
+      .select('*, courses:enrollment_id(courses(*))')
+      .eq('user_id', userId);
+    if (error) throw error;
+    return data;
+  },
+
+  async getUserPayments(userId: string) {
+    if (!isSupabaseConfigured) return [];
+    const { data, error } = await supabase
+      .from('payments')
+      .select('*, enrollments(*, courses(*))')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
+  async getUserInstallments(userId: string, enrollmentIds: string[]) {
+    if (!isSupabaseConfigured) return [];
+    const { data, error } = await supabase
+      .from('installment_records')
+      .select('*, enrollments(*, courses(*))')
+      .eq('status', 'active')
+      .in('enrollment_id', enrollmentIds);
+    if (error) throw error;
+    return data;
+  },
+
   async getRecentPayments(limit: number = 5) {
+    if (!isSupabaseConfigured) return [];
     const { data, error } = await supabase
       .from('payments')
       .select('*, profiles(*), enrollments(*, courses(*))')
@@ -259,6 +370,7 @@ export const adminService = {
 
   // Installments
   async getInstallments() {
+    if (!isSupabaseConfigured) return [];
     const { data, error } = await supabase
       .from('installment_records')
       .select('*, enrollments(*, profiles(*), courses(*))')

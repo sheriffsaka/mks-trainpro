@@ -266,6 +266,30 @@ CREATE TABLE IF NOT EXISTS attendance (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
+-- 16. Assessments
+CREATE TABLE IF NOT EXISTS assessments (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
+  assessment_name TEXT NOT NULL,
+  score DECIMAL(5,2) NOT NULL,
+  max_score DECIMAL(5,2) NOT NULL,
+  date_recorded TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  UNIQUE(user_id, course_id, assessment_name)
+);
+
+-- 17. Assignments
+CREATE TABLE IF NOT EXISTS assignments (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
+  assignment_name TEXT NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('submitted', 'pending', 'approved', 'rejected')),
+  instructor_note TEXT,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  UNIQUE(user_id, course_id, assignment_name)
+);
+
 -- Helper function to check if user is instructor
 CREATE OR REPLACE FUNCTION is_instructor()
 RETURNS boolean AS $$
@@ -283,6 +307,20 @@ DROP POLICY IF EXISTS "Users can view own attendance" ON attendance;
 CREATE POLICY "Users can view own attendance" ON attendance FOR SELECT USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Instructors can manage attendance" ON attendance;
 CREATE POLICY "Instructors can manage attendance" ON attendance FOR ALL USING (is_instructor());
+
+-- RLS for assessments
+ALTER TABLE assessments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own assessments" ON assessments;
+CREATE POLICY "Users can view own assessments" ON assessments FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Instructors can manage assessments" ON assessments;
+CREATE POLICY "Instructors can manage assessments" ON assessments FOR ALL USING (is_instructor());
+
+-- RLS for assignments
+ALTER TABLE assignments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own assignments" ON assignments;
+CREATE POLICY "Users can view own assignments" ON assignments FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Instructors can manage assignments" ON assignments;
+CREATE POLICY "Instructors can manage assignments" ON assignments FOR ALL USING (is_instructor());
 
 -- Row Level Security (RLS) Policies
 

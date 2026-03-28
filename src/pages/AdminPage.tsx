@@ -103,32 +103,10 @@ const OverviewTab = () => {
           adminService.getStats(),
           adminService.getRecentEnrollments(5)
         ]);
-        if (isSupabaseConfigured) {
-          setStats(statsData);
-        } else {
-          setStats(statsData || {
-            coursesCount: MOCK_COURSES.length,
-            announcementsCount: MOCK_ANNOUNCEMENTS.length,
-            faqsCount: MOCK_FAQS.length,
-            quizzesCount: MOCK_QUIZZES.length,
-            totalRevenue: 45230,
-            studentsCount: 1284,
-            enrollmentsCount: 1284
-          });
-        }
+        setStats(statsData);
         setRecentEnrollments(enrollmentsData);
       } catch (error) {
         console.error('Error fetching overview data:', error);
-        // Fallback stats for presentation
-        setStats({
-          coursesCount: MOCK_COURSES.length,
-          announcementsCount: MOCK_ANNOUNCEMENTS.length,
-          faqsCount: MOCK_FAQS.length,
-          quizzesCount: MOCK_QUIZZES.length,
-          totalRevenue: 45230,
-          studentsCount: 1284,
-          enrollmentsCount: 1284
-        });
       }
     };
     fetchData();
@@ -331,28 +309,18 @@ const CoursesTab = () => {
   const fetchCategories = async () => {
     try {
       const data = await adminService.getCategories();
-      if (isSupabaseConfigured) {
-        setCategories(data || []);
-      } else {
-        setCategories(data && data.length > 0 ? data : MOCK_CATEGORIES);
-      }
+      setCategories(data || []);
     } catch (err) {
       console.error('Error fetching categories:', err);
-      if (!isSupabaseConfigured) setCategories(MOCK_CATEGORIES);
     }
   };
 
   const fetchCourses = async () => {
     try {
       const data = await adminService.getCourses();
-      if (isSupabaseConfigured) {
-        setCourses(data || []);
-      } else {
-        setCourses(data && data.length > 0 ? data : MOCK_COURSES);
-      }
+      setCourses(data || []);
     } catch (err) {
       console.error('Error fetching courses:', err);
-      if (!isSupabaseConfigured) setCourses(MOCK_COURSES);
     } finally {
       setLoading(false);
     }
@@ -842,30 +810,10 @@ const EnrollmentsTab = () => {
   const fetchEnrollments = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('enrollments')
-        .select(`
-          *,
-          profiles(*),
-          courses(*),
-          payments(*)
-        `)
-        .order('enrolled_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      if (isSupabaseConfigured) {
-        setEnrollments(data || []);
-      } else {
-        setEnrollments(data && data.length > 0 ? data : MOCK_ENROLLMENTS);
-      }
+      const data = await adminService.getAllEnrollments();
+      setEnrollments(data || []);
     } catch (err: any) {
       console.error('Error fetching enrollments:', err);
-      if (!isSupabaseConfigured) {
-        setEnrollments(MOCK_ENROLLMENTS);
-      } else {
-        alert(`Error fetching enrollments: ${err.message}`);
-      }
     } finally {
       setLoading(false);
     }
@@ -1002,18 +950,10 @@ const PaymentsTab = () => {
   const fetchPayments = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('payments')
-        .select('*, profiles(*), enrollments(*, courses(*))')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      if (data) setPayments(data);
+      const data = await adminService.getAllPayments();
+      setPayments(data || []);
     } catch (err: any) {
       console.error('Error fetching payments:', err);
-      if (isSupabaseConfigured) {
-        alert(`Error fetching payments: ${err.message}`);
-      }
     } finally {
       setLoading(false);
     }
@@ -1300,14 +1240,9 @@ const QuizzesTab = () => {
   const fetchQuizzes = async () => {
     try {
       const data = await adminService.getQuizzes();
-      if (isSupabaseConfigured) {
-        setQuizzes(data || []);
-      } else {
-        setQuizzes(data && data.length > 0 ? data : MOCK_QUIZZES);
-      }
+      setQuizzes(data || []);
     } catch (error) {
       console.error('Error fetching quizzes:', error);
-      if (!isSupabaseConfigured) setQuizzes(MOCK_QUIZZES);
     } finally {
       setLoading(false);
     }
@@ -1599,13 +1534,7 @@ const CertificatesTab = () => {
   const fetchEnrollments = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('enrollments')
-        .select('*, profiles(*), courses(*), certificates(*)')
-        .in('status', ['active', 'completed'])
-        .order('enrolled_at', { ascending: false });
-      
-      if (error) throw error;
+      const data = await adminService.getEnrollmentsForCertificates();
       
       if (data) {
         setEnrollments(data);
@@ -1784,14 +1713,9 @@ const AnnouncementsTab = () => {
   const fetchAnnouncements = async () => {
     try {
       const data = await adminService.getAnnouncements();
-      if (isSupabaseConfigured) {
-        setAnnouncements(data || []);
-      } else {
-        setAnnouncements(data && data.length > 0 ? data : MOCK_ANNOUNCEMENTS);
-      }
+      setAnnouncements(data || []);
     } catch (error) {
       console.error('Error fetching announcements:', error);
-      if (!isSupabaseConfigured) setAnnouncements(MOCK_ANNOUNCEMENTS);
     } finally {
       setLoading(false);
     }
@@ -2049,14 +1973,9 @@ const CMSTab = () => {
         adminService.getFAQs()
       ]);
       setSettings(settingsData);
-      if (faqsData && faqsData.length > 0) {
-        setFaqs(faqsData);
-      } else {
-        setFaqs(MOCK_FAQS);
-      }
+      setFaqs(faqsData || []);
     } catch (error) {
       console.error('Error fetching CMS data:', error);
-      setFaqs(MOCK_FAQS);
     } finally {
       setLoading(false);
     }
@@ -2374,14 +2293,14 @@ const ProgressTab = () => {
   const [courses, setCourses] = useState<any[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<string>('');
   const [students, setStudents] = useState<any[]>([]);
+  const [enrollmentMap, setEnrollmentMap] = useState<{[key: string]: string}>({});
   const [loading, setLoading] = useState(false);
   const [progressMap, setProgressMap] = useState<{[key: string]: any}>({});
 
   useEffect(() => {
     const fetchCourses = async () => {
       const data = await adminService.getCourses();
-      if (data) setCourses(data);
-      else setCourses(MOCK_COURSES);
+      setCourses(data || []);
     };
     fetchCourses();
   }, []);
@@ -2396,13 +2315,17 @@ const ProgressTab = () => {
     setLoading(true);
     try {
       // Fetch enrollments for this course
-      const { data: enrollments, error } = await supabase
-        .from('enrollments')
-        .select('*, profiles(*)')
-        .eq('course_id', selectedCourse);
+      const enrollments = await adminService.getEnrollmentsByCourse(selectedCourse);
       
       if (enrollments) {
         setStudents(enrollments.map((e: any) => e.profiles));
+        
+        // Map user_id to enrollment_id
+        const eMap: {[key: string]: string} = {};
+        enrollments.forEach((e: any) => {
+          eMap[e.user_id] = e.id;
+        });
+        setEnrollmentMap(eMap);
         
         // Calculate progress for each student
         const map: {[key: string]: any} = {};
@@ -2410,20 +2333,6 @@ const ProgressTab = () => {
           const progress = await progressService.calculateProgress(e.user_id, selectedCourse);
           map[e.user_id] = progress;
         }));
-        setProgressMap(map);
-      } else {
-        // Mock data
-        const mockStudents = [
-          { id: '1', full_name: 'John Doe', email: 'john@example.com' },
-          { id: '2', full_name: 'Mary Smith', email: 'mary@example.com' },
-          { id: '3', full_name: 'Ali Khan', email: 'ali@example.com' }
-        ];
-        setStudents(mockStudents);
-        const map: {[key: string]: any} = {
-          '1': { attendanceRate: 80, assessmentAverage: 75, assignmentsCompleted: 100, overallProgress: 82, isEligibleForCertificate: true },
-          '2': { attendanceRate: 40, assessmentAverage: 50, assignmentsCompleted: 33, overallProgress: 42, isEligibleForCertificate: false },
-          '3': { attendanceRate: 100, assessmentAverage: 95, assignmentsCompleted: 100, overallProgress: 98, isEligibleForCertificate: true }
-        };
         setProgressMap(map);
       }
     } catch (err) {
@@ -2434,8 +2343,13 @@ const ProgressTab = () => {
   };
 
   const handleIssueCertificate = async (studentId: string) => {
+    const enrollmentId = enrollmentMap[studentId];
+    if (!enrollmentId) {
+      alert('Could not find enrollment for this student.');
+      return;
+    }
     try {
-      await progressService.issueCertificate(studentId, selectedCourse);
+      await progressService.issueCertificate(enrollmentId, studentId);
       alert('Certificate issued successfully!');
     } catch (err) {
       alert('Failed to issue certificate.');

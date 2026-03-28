@@ -71,46 +71,30 @@ export const DashboardPage = () => {
       if (!user) return;
       try {
         setLoading(true);
-        const [enrollmentsRes, announcementsRes, certificatesRes, paymentsRes, installmentsRes] = await Promise.all([
-          supabase.from('enrollments').select('*, courses(*)').eq('user_id', user.id),
+        
+        // Fetch base data
+        const [enrollmentsData, announcementsRes, certificatesData, paymentsData] = await Promise.all([
+          adminService.getUserEnrollments(user.id),
           adminService.getAnnouncements(),
-          supabase.from('certificates').select('*, courses:enrollment_id(courses(*))').eq('user_id', user.id),
-          supabase.from('payments').select('*, enrollments(*, courses(*))').eq('user_id', user.id).order('created_at', { ascending: false }),
-          supabase.from('installment_records').select('*, enrollments(*, courses(*))').eq('status', 'active')
+          adminService.getUserCertificates(user.id),
+          adminService.getUserPayments(user.id)
         ]);
         
-        if (enrollmentsRes.error) throw enrollmentsRes.error;
-        if (certificatesRes.error) throw certificatesRes.error;
-        if (paymentsRes.error) throw paymentsRes.error;
-        if (installmentsRes.error) throw installmentsRes.error;
-
-        let currentEnrollments = [];
-        if (isSupabaseConfigured) {
-          currentEnrollments = enrollmentsRes.data || [];
-        } else {
-          currentEnrollments = (enrollmentsRes.data && enrollmentsRes.data.length > 0) ? enrollmentsRes.data : MOCK_ENROLLMENTS;
-        }
-        setEnrollments(currentEnrollments);
-
-        if (certificatesRes.data) {
-          setCertificates(certificatesRes.data);
-        }
-
-        if (paymentsRes.data) {
-          setPayments(paymentsRes.data);
-        }
-
-        if (installmentsRes.data) {
-          // Filter installments for current user's enrollments
-          const userEnrollmentIds = currentEnrollments.map(e => e.id);
-          const userInstallments = installmentsRes.data.filter(i => userEnrollmentIds.includes(i.enrollment_id));
-          setInstallments(userInstallments);
-        }
+        setEnrollments(enrollmentsData || []);
+        setCertificates(certificatesData || []);
+        setPayments(paymentsData || []);
         
+        // Fetch installments based on user's enrollments
+        if (enrollmentsData && enrollmentsData.length > 0) {
+          const userEnrollmentIds = enrollmentsData.map((e: any) => e.id);
+          const installmentsData = await adminService.getUserInstallments(user.id, userEnrollmentIds);
+          setInstallments(installmentsData || []);
+        }
+
         // Fetch progress and quizzes for each enrollment
         const progressMap: {[key: string]: ProgressData} = {};
         const qMap: {[key: string]: any[]} = {};
-        await Promise.all(currentEnrollments.map(async (e: any) => {
+        await Promise.all((enrollmentsData || []).map(async (e: any) => {
           const [progress, quizzes] = await Promise.all([
             progressService.calculateProgress(user.id, e.course_id),
             adminService.getQuizzesByCourse(e.course_id)
@@ -126,11 +110,6 @@ export const DashboardPage = () => {
         }
       } catch (err: any) {
         console.error('Error fetching dashboard data:', err);
-        if (!isSupabaseConfigured) {
-          setEnrollments(MOCK_ENROLLMENTS);
-        } else {
-          alert(`Error loading dashboard: ${err.message}`);
-        }
       } finally {
         setLoading(false);
       }

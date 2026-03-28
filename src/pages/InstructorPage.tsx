@@ -88,10 +88,10 @@ export const InstructorPage = () => {
     setLoading(true);
     try {
       const records: AttendanceRecord[] = students.map(student => ({
-        student_id: student.id,
+        user_id: student.id,
         course_id: selectedCourse,
         session_id: selectedSession,
-        date: new Date().toISOString().split('T')[0],
+        session_date: new Date().toISOString().split('T')[0],
         status: attendanceData[student.id] || 'absent'
       }));
       await progressService.markAttendance(records);
@@ -109,7 +109,7 @@ export const InstructorPage = () => {
     setLoading(true);
     try {
       const records: AssessmentRecord[] = students.map(student => ({
-        student_id: student.id,
+        user_id: student.id,
         course_id: selectedCourse,
         assessment_name: assessmentName,
         score: scores[student.id] || 0,
@@ -130,7 +130,7 @@ export const InstructorPage = () => {
     if (!selectedCourse) return;
     try {
       await progressService.updateAssignmentStatus({
-        student_id: studentId,
+        user_id: studentId,
         course_id: selectedCourse,
         assignment_name: assignmentName,
         status,
