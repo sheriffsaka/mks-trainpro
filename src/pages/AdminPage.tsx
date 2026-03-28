@@ -93,18 +93,24 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }: { isOpen: 
 const OverviewTab = () => {
   const [stats, setStats] = useState<any>(null);
   const [recentEnrollments, setRecentEnrollments] = useState<any[]>([]);
+  const [recentPayments, setRecentPayments] = useState<any[]>([]);
 
   const [seeding, setSeeding] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsData, enrollmentsData] = await Promise.all([
+        const [statsData, enrollmentsData, paymentsData] = await Promise.all([
           adminService.getStats(),
-          adminService.getRecentEnrollments(5)
+          adminService.getRecentEnrollments(5),
+          adminService.getRecentPayments(5)
         ]);
+        console.log('Admin Stats fetched:', statsData);
+        console.log('Recent Enrollments fetched:', enrollmentsData);
+        console.log('Recent Payments fetched:', paymentsData);
         setStats(statsData);
         setRecentEnrollments(enrollmentsData);
+        setRecentPayments(paymentsData);
       } catch (error) {
         console.error('Error fetching overview data:', error);
       }
@@ -115,7 +121,9 @@ const OverviewTab = () => {
   const handleSeed = async () => {
     try {
       setSeeding(true);
+      console.log('Starting database seed...');
       await adminService.seedDatabase();
+      console.log('Database seeded successfully, reloading...');
       alert('Database seeded successfully! Please refresh to see the changes.');
       window.location.reload();
     } catch (error: any) {
@@ -148,8 +156,8 @@ const OverviewTab = () => {
           { label: 'Total Enrollments', value: stats?.enrollmentsCount || '...', trend: '+12', icon: <CreditCard className="text-amber-600" />, bg: 'bg-amber-50' },
           { label: 'Total Quizzes', value: stats?.quizzesCount || '...', trend: '+4', icon: <FileQuestion className="text-indigo-600" />, bg: 'bg-indigo-50' },
           { label: 'Announcements', value: stats?.announcementsCount || '...', trend: 'Active', icon: <Megaphone className="text-purple-600" />, bg: 'bg-purple-50' },
-          { label: 'Pass Rate', value: '94.2%', trend: '+1.5%', icon: <CheckCircle2 className="text-emerald-600" />, bg: 'bg-emerald-50' },
-          { label: 'New Signups', value: '48', trend: '+12', icon: <UserPlus className="text-blue-600" />, bg: 'bg-blue-50' }
+          { label: 'Pass Rate', value: stats ? `${stats.passRate}%` : '...', trend: '+1.5%', icon: <CheckCircle2 className="text-emerald-600" />, bg: 'bg-emerald-50' },
+          { label: 'New Signups', value: stats?.newSignups || '...', trend: '+12', icon: <UserPlus className="text-blue-600" />, bg: 'bg-blue-50' }
         ].map((stat, i) => (
           <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
             <div className="flex justify-between items-start mb-4">
@@ -176,7 +184,7 @@ const OverviewTab = () => {
           </div>
           <div>
             <p className="text-slate-500 text-xs font-medium">Monthly Growth</p>
-            <p className="text-xl font-bold text-slate-900">24.8%</p>
+            <p className="text-xl font-bold text-slate-900">{stats ? `${stats.growth}%` : '...'}</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
@@ -185,7 +193,7 @@ const OverviewTab = () => {
           </div>
           <div>
             <p className="text-slate-500 text-xs font-medium">Course Completion</p>
-            <p className="text-xl font-bold text-slate-900">82%</p>
+            <p className="text-xl font-bold text-slate-900">{stats ? `${stats.completionRate}%` : '...'}</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">

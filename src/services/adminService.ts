@@ -198,13 +198,20 @@ export const adminService = {
         faqsCount: MOCK_FAQS.length,
         quizzesCount: MOCK_QUIZZES.length,
         enrollmentsCount: MOCK_ENROLLMENTS.length,
-        ...MOCK_STATS
+        totalRevenue: MOCK_STATS.totalRevenue,
+        studentsCount: MOCK_STATS.totalStudents,
+        passRate: MOCK_STATS.completionRate,
+        newSignups: 48 // Placeholder for mock
       };
     }
 
-    const fetchCount = async (table: string) => {
+    const fetchCount = async (table: string, filter?: { column: string, value: any }) => {
       try {
-        const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true });
+        let query = supabase.from(table).select('*', { count: 'exact', head: true });
+        if (filter) {
+          query = query.eq(filter.column, filter.value);
+        }
+        const { count, error } = await query;
         if (error) throw error;
         return count || 0;
       } catch (err) {
@@ -217,22 +224,90 @@ export const adminService = {
       try {
         const { data, error } = await supabase.from('payments').select('amount').eq('payment_status', 'succeeded');
         if (error) throw error;
-        return data?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
+        const total = data?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
+        return total;
       } catch (err) {
         console.error('Error fetching revenue:', err);
         return 0;
       }
     };
 
+    const fetchPassRate = async () => {
+      try {
+        const { data, error } = await supabase.from('quiz_attempts').select('passed');
+        if (error) throw error;
+        if (!data || data.length === 0) return 0;
+        const passedCount = data.filter(a => a.passed).length;
+        return (passedCount / data.length) * 100;
+      } catch (err) {
+        console.error('Error fetching pass rate:', err);
+        return 0;
+      }
+    };
+
+    const fetchCompletionRate = async () => {
+      try {
+        const { data, error } = await supabase.from('enrollments').select('status');
+        if (error) throw error;
+        if (!data || data.length === 0) return 0;
+        const completedCount = data.filter(e => e.status === 'completed').length;
+        return (completedCount / data.length) * 100;
+      } catch (err) {
+        console.error('Error fetching completion rate:', err);
+        return 0;
+      }
+    };
+
+    const fetchGrowth = async () => {
+      try {
+        const now = new Date();
+        const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+
+        const { count: thisMonth, error: err1 } = await supabase
+          .from('enrollments')
+          .select('*', { count: 'exact', head: true })
+          .gte('enrolled_at', firstDayThisMonth);
+        
+        const { count: lastMonth, error: err2 } = await supabase
+          .from('enrollments')
+          .select('*', { count: 'exact', head: true })
+          .gte('enrolled_at', firstDayLastMonth)
+          .lt('enrolled_at', firstDayThisMonth);
+        
+        if (err1 || err2) throw err1 || err2;
+
+        if (!lastMonth || lastMonth === 0) return thisMonth ? 100 : 0;
+        return ((thisMonth! - lastMonth) / lastMonth) * 100;
+      } catch (err) {
+        console.error('Error fetching growth:', err);
+        return 0;
+      }
+    };
+
     try {
-      const [coursesCount, announcementsCount, faqsCount, quizzesCount, enrollmentsCount, totalRevenue, studentsCount] = await Promise.all([
+      const [
+        coursesCount, 
+        announcementsCount, 
+        faqsCount, 
+        quizzesCount, 
+        enrollmentsCount, 
+        totalRevenue, 
+        studentsCount,
+        passRate,
+        completionRate,
+        growth
+      ] = await Promise.all([
         fetchCount('courses'),
         fetchCount('announcements'),
         fetchCount('faqs'),
         fetchCount('quizzes'),
         fetchCount('enrollments'),
         fetchRevenue(),
-        fetchCount('profiles')
+        fetchCount('profiles', { column: 'role', value: 'student' }),
+        fetchPassRate(),
+        fetchCompletionRate(),
+        fetchGrowth()
       ]);
 
       return {
@@ -242,7 +317,11 @@ export const adminService = {
         quizzesCount,
         enrollmentsCount,
         totalRevenue,
-        studentsCount
+        studentsCount,
+        passRate: passRate.toFixed(1),
+        completionRate: completionRate.toFixed(1),
+        growth: growth.toFixed(1),
+        newSignups: studentsCount // For now, use total students as new signups placeholder
       };
     } catch (error: any) {
       console.error('Error in getStats:', error);
@@ -253,7 +332,11 @@ export const adminService = {
         quizzesCount: 0,
         enrollmentsCount: 0,
         totalRevenue: 0,
-        studentsCount: 0
+        studentsCount: 0,
+        passRate: 0,
+        completionRate: 0,
+        growth: 0,
+        newSignups: 0
       };
     }
   },
@@ -474,6 +557,41 @@ export const adminService = {
     const { data: existingSettings } = await supabase.from('site_settings').select('key');
     if (!existingSettings || existingSettings.length === 0) {
       await supabase.from('site_settings').insert(MOCK_SITE_SETTINGS);
+    }
+
+    // Enrollments & Payments
+    const { data: existingEnrollments } = await supabase.from('enrollments').select('id');
+    if (!existingEnrollments || existingEnrollments.length === 0) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: dbCourses } = await supabase.from('courses').select('id').limit(2);
+        if (dbCourses && dbCourses.length > 0) {
+          // Create a few mock enrollments for the current user
+          const enrollmentsToInsert = dbCourses.map(course => ({
+            user_id: user.id,
+            course_id: course.id,
+            status: 'active',
+            payment_status: 'paid',
+            enrolled_at: new Date().toISOString()
+          }));
+
+          const { data: insertedEnrollments } = await supabase.from('enrollments').insert(enrollmentsToInsert).select();
+
+          if (insertedEnrollments) {
+            // Create corresponding payments
+            const paymentsToInsert = insertedEnrollments.map(enrollment => ({
+              user_id: user.id,
+              enrollment_id: enrollment.id,
+              amount: 450,
+              currency: 'GBP',
+              payment_method: 'bank_transfer',
+              payment_status: 'succeeded',
+              transaction_id: `seed_${Math.random().toString(36).substring(7)}`
+            }));
+            await supabase.from('payments').insert(paymentsToInsert);
+          }
+        }
+      }
     }
   }
 };

@@ -53,7 +53,7 @@ export const progressService = {
     if (!isSupabaseConfigured) return [];
     let query = supabase
       .from('attendance')
-      .select('*, profiles!user_id(full_name)')
+      .select('*')
       .eq('course_id', courseId);
     
     if (sessionId) {
