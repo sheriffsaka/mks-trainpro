@@ -31,9 +31,11 @@ export const AuthPage = ({ type }: { type: 'login' | 'register' }) => {
         if (error) throw error;
         
         if (data.user) {
-          await supabase.from('profiles').insert({
+          // We use upsert in case the database trigger already created the profile
+          await supabase.from('profiles').upsert({
             id: data.user.id,
             full_name: fullName,
+            email: email,
             role: 'student'
           });
         }

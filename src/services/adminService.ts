@@ -240,7 +240,7 @@ export const adminService = {
   async getRecentEnrollments(limit: number = 5) {
     const { data, error } = await supabase
       .from('enrollments')
-      .select('*, profiles:user_id(*), courses:course_id(*)')
+      .select('*, profiles(*), courses(*)')
       .order('enrolled_at', { ascending: false })
       .limit(limit);
     if (error) throw error;
@@ -250,7 +250,7 @@ export const adminService = {
   async getRecentPayments(limit: number = 5) {
     const { data, error } = await supabase
       .from('payments')
-      .select('*, profiles:user_id(*), enrollments(*, courses(*))')
+      .select('*, profiles(*), enrollments(*, courses(*))')
       .order('created_at', { ascending: false })
       .limit(limit);
     if (error) throw error;

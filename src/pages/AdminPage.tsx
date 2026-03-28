@@ -846,8 +846,8 @@ const EnrollmentsTab = () => {
         .from('enrollments')
         .select(`
           *,
-          profiles:user_id(*),
-          courses:course_id(*),
+          profiles(*),
+          courses(*),
           payments(*)
         `)
         .order('enrolled_at', { ascending: false });
@@ -1004,7 +1004,7 @@ const PaymentsTab = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('payments')
-        .select('*, profiles:user_id(*), enrollments(*, courses(*))')
+        .select('*, profiles(*), enrollments(*, courses(*))')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -1601,7 +1601,7 @@ const CertificatesTab = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('enrollments')
-        .select('*, profiles:user_id(*), courses:course_id(*), certificates(*)')
+        .select('*, profiles(*), courses(*), certificates(*)')
         .in('status', ['active', 'completed'])
         .order('enrolled_at', { ascending: false });
       
