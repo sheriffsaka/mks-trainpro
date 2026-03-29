@@ -110,6 +110,11 @@ export const DashboardPage = () => {
         }
       } catch (err: any) {
         console.error('Error fetching dashboard data:', err);
+        if (err.message?.includes('JWT') || err.status === 401) {
+          // Session might be expired
+          supabase.auth.signOut();
+          navigate('/login');
+        }
       } finally {
         setLoading(false);
       }

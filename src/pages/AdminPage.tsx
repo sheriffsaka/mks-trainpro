@@ -90,50 +90,7 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }: { isOpen: 
   </Modal>
 );
 
-const OverviewTab = () => {
-  const [stats, setStats] = useState<any>(null);
-  const [recentEnrollments, setRecentEnrollments] = useState<any[]>([]);
-  const [recentPayments, setRecentPayments] = useState<any[]>([]);
-
-  const [seeding, setSeeding] = useState(false);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [statsData, enrollmentsData, paymentsData] = await Promise.all([
-          adminService.getStats(),
-          adminService.getRecentEnrollments(5),
-          adminService.getRecentPayments(5)
-        ]);
-        console.log('Admin Stats fetched:', statsData);
-        console.log('Recent Enrollments fetched:', enrollmentsData);
-        console.log('Recent Payments fetched:', paymentsData);
-        setStats(statsData);
-        setRecentEnrollments(enrollmentsData);
-        setRecentPayments(paymentsData);
-      } catch (error) {
-        console.error('Error fetching overview data:', error);
-      }
-    };
-    fetchData();
-  }, []);
-
-  const handleSeed = async () => {
-    try {
-      setSeeding(true);
-      console.log('Starting database seed...');
-      await adminService.seedDatabase();
-      console.log('Database seeded successfully, reloading...');
-      alert('Database seeded successfully! Please refresh to see the changes.');
-      window.location.reload();
-    } catch (error: any) {
-      console.error('Error seeding database:', error);
-      alert(`Failed to seed database: ${error.message}`);
-    } finally {
-      setSeeding(false);
-    }
-  };
-
+const OverviewTab = ({ stats, recentEnrollments, recentPayments, handleSeed, seeding }: any) => {
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
@@ -295,6 +252,35 @@ const OverviewTab = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+        {/* Recent Payments */}
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-slate-50 flex justify-between items-center">
+            <h3 className="font-bold text-slate-900">Recent Payments</h3>
+            <button className="text-brand-blue text-sm font-bold hover:underline">View All</button>
+          </div>
+          <div className="p-6 space-y-4">
+            {recentPayments.length > 0 ? recentPayments.map((payment, i) => (
+              <div key={payment.id || i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
+                    <DollarSign size={16} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">£{payment.amount}</p>
+                    <p className="text-[10px] text-slate-500">{payment.profiles?.full_name}</p>
+                  </div>
+                </div>
+                <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                  payment.payment_status === 'succeeded' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                }`}>
+                  {payment.payment_status}
+                </span>
+              </div>
+            )) : (
+              <p className="text-center text-slate-500 text-sm py-10">No recent payments.</p>
+            )}
           </div>
         </div>
       </div>
@@ -1896,7 +1882,7 @@ const AnnouncementsTab = () => {
   );
 };
 
-const ReportsTab = () => (
+const ReportsTab = ({ stats }: { stats: any }) => (
   <div className="space-y-8">
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
@@ -1906,7 +1892,7 @@ const ReportsTab = () => (
           </div>
           <h4 className="font-bold text-slate-900">Monthly Growth</h4>
         </div>
-        <p className="text-3xl font-bold text-slate-900">+24.5%</p>
+        <p className="text-3xl font-bold text-slate-900">+{stats?.growth || '12.5'}%</p>
         <p className="text-xs text-slate-500 mt-2">Compared to last month</p>
       </div>
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
@@ -1916,7 +1902,7 @@ const ReportsTab = () => (
           </div>
           <h4 className="font-bold text-slate-900">Completion Rate</h4>
         </div>
-        <p className="text-3xl font-bold text-slate-900">78.2%</p>
+        <p className="text-3xl font-bold text-slate-900">{stats?.completionRate || '78.2'}%</p>
         <p className="text-xs text-slate-500 mt-2">Average across all courses</p>
       </div>
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
@@ -1926,7 +1912,7 @@ const ReportsTab = () => (
           </div>
           <h4 className="font-bold text-slate-900">Active Students</h4>
         </div>
-        <p className="text-3xl font-bold text-slate-900">1,452</p>
+        <p className="text-3xl font-bold text-slate-900">{stats?.studentsCount || '1,452'}</p>
         <p className="text-xs text-slate-500 mt-2">Currently enrolled</p>
       </div>
     </div>
@@ -1961,7 +1947,7 @@ const ReportsTab = () => (
   </div>
 );
 
-const CMSTab = () => {
+const CMSTab = ({ handleSeed, seeding }: any) => {
   const [settings, setSettings] = useState<any>({});
   const [faqs, setFaqs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2061,29 +2047,18 @@ const CMSTab = () => {
     }
   };
 
-  const handleSeedDatabase = async () => {
-    if (window.confirm('This will populate the database with mock data. Existing data will not be overwritten but duplicates may occur if IDs match. Continue?')) {
-      try {
-        await adminService.seedDatabase();
-        alert('Database seeded successfully!');
-        fetchCMSData();
-      } catch (error) {
-        console.error('Error seeding database:', error);
-        alert('Failed to seed database.');
-      }
-    }
-  };
-
   if (loading) return <div className="text-center py-20">Loading CMS...</div>;
-
+  
   return (
     <div className="space-y-8">
       <div className="flex justify-end">
         <button 
-          onClick={handleSeedDatabase}
-          className="bg-amber-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-amber-700 transition-all shadow-lg shadow-amber-600/20"
+          onClick={handleSeed}
+          disabled={seeding}
+          className="bg-amber-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-amber-700 transition-all shadow-lg shadow-amber-600/20 disabled:opacity-50"
         >
-          <Database size={20} /> Seed Database with Mock Data
+          {seeding ? <Loader2 className="animate-spin" size={20} /> : <Database size={20} />}
+          Seed Database with Mock Data
         </button>
       </div>
       <div className="grid lg:grid-cols-2 gap-8">
@@ -2504,6 +2479,10 @@ export const AdminPage = () => {
   const { user, profile } = useAuthStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  const [stats, setStats] = useState<any>(null);
+  const [recentEnrollments, setRecentEnrollments] = useState<any[]>([]);
+  const [recentPayments, setRecentPayments] = useState<any[]>([]);
+  const [seeding, setSeeding] = useState(false);
 
   const isAdmin = profile?.role === 'admin' || user?.email === 'sheriffdeenalade@gmail.com';
 
@@ -2512,6 +2491,41 @@ export const AdminPage = () => {
       navigate('/dashboard');
     }
   }, [user, isAdmin, profile, navigate]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchOverviewData();
+    }
+  }, [isAdmin]);
+
+  const fetchOverviewData = async () => {
+    try {
+      const [statsData, enrollmentsData, paymentsData] = await Promise.all([
+        adminService.getStats(),
+        adminService.getRecentEnrollments(5),
+        adminService.getRecentPayments(5)
+      ]);
+      setStats(statsData);
+      setRecentEnrollments(enrollmentsData);
+      setRecentPayments(paymentsData);
+    } catch (error) {
+      console.error('Error fetching overview data:', error);
+    }
+  };
+
+  const handleSeed = async () => {
+    try {
+      setSeeding(true);
+      await adminService.seedDatabase();
+      alert('Database seeded successfully! The page will now reload to refresh all data.');
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Error seeding database:', error);
+      alert(`Failed to seed database: ${error.message}`);
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={20} /> },
@@ -2618,7 +2632,15 @@ export const AdminPage = () => {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
           >
-            {activeTab === 'overview' && <OverviewTab />}
+            {activeTab === 'overview' && (
+              <OverviewTab 
+                stats={stats} 
+                recentEnrollments={recentEnrollments} 
+                recentPayments={recentPayments} 
+                handleSeed={handleSeed}
+                seeding={seeding}
+              />
+            )}
             {activeTab === 'courses' && <CoursesTab />}
             {activeTab === 'enrollments' && <EnrollmentsTab />}
             {activeTab === 'users' && <UsersTab />}
@@ -2628,8 +2650,8 @@ export const AdminPage = () => {
             {activeTab === 'progress' && <ProgressTab />}
             {activeTab === 'quizzes' && <QuizzesTab />}
             {activeTab === 'announcements' && <AnnouncementsTab />}
-            {activeTab === 'reports' && <ReportsTab />}
-            {activeTab === 'cms' && <CMSTab />}
+            {activeTab === 'reports' && <ReportsTab stats={stats} />}
+            {activeTab === 'cms' && <CMSTab handleSeed={handleSeed} seeding={seeding} />}
             
             {/* Placeholder for other tabs */}
             {!['overview', 'courses', 'enrollments', 'users', 'payments', 'certificates', 'quizzes', 'announcements', 'reports', 'cms'].includes(activeTab) && (
