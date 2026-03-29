@@ -33,7 +33,12 @@ import {
   FileText,
   Award,
   Loader2,
-  Shield
+  Shield,
+  Calendar,
+  ClipboardList,
+  GraduationCap,
+  FileCheck,
+  Activity
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { useAuthStore } from '../store/authStore';
@@ -89,6 +94,387 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
     </div>
   </Modal>
 );
+
+const DiagnosticTab = () => {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    const result = await adminService.getDiagnosticData();
+    setData(result);
+    setLoading(false);
+  };
+
+  if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-brand-blue" /></div>;
+
+  return (
+    <div className="space-y-8">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-slate-900">System Diagnostics</h2>
+        <button onClick={fetchData} className="p-2 bg-slate-100 rounded-lg hover:bg-slate-200"><Activity size={20} /></button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {data?.counts && Object.entries(data.counts).map(([key, value]: any) => (
+          <div key={key} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+            <p className="text-slate-500 text-sm capitalize">{key}</p>
+            <h3 className="text-2xl font-bold text-slate-900">{value}</h3>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">
+        <h3 className="text-lg font-bold text-slate-900">Current Session</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="p-4 bg-slate-50 rounded-2xl">
+            <p className="text-slate-500">Auth User ID</p>
+            <p className="font-mono font-bold">{data?.currentUser?.id || 'N/A'}</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-2xl">
+            <p className="text-slate-500">Auth Email</p>
+            <p className="font-bold">{data?.currentUser?.email || 'N/A'}</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-2xl">
+            <p className="text-slate-500">Profile Role</p>
+            <p className="font-bold capitalize">{data?.currentUser?.profile?.role || 'No Profile Found'}</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-2xl">
+            <p className="text-slate-500">Supabase Configured</p>
+            <p className="font-bold">{isSupabaseConfigured ? 'Yes' : 'No'}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100">
+        <div className="flex gap-3 text-amber-800">
+          <AlertCircle className="shrink-0" />
+          <div>
+            <h4 className="font-bold">Troubleshooting Data Visibility</h4>
+            <p className="text-sm mt-1">If you see data in Supabase but not here, check if:</p>
+            <ul className="text-sm list-disc list-inside mt-2 space-y-1">
+              <li>The current user's email matches the admin email in the security rules.</li>
+              <li>The enrollments point to valid course IDs and user IDs.</li>
+              <li>The RLS policies have been correctly applied in the Supabase SQL Editor.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AttendanceTab = ({ courses }: { courses: any[] }) => {
+  const [selectedCourse, setSelectedCourse] = useState('');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [attendance, setAttendance] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (selectedCourse) {
+      fetchData();
+    }
+  }, [selectedCourse, selectedDate]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [enrollments, attendanceData] = await Promise.all([
+        adminService.getEnrollmentsByCourse(selectedCourse),
+        adminService.getAttendance(selectedCourse, selectedDate)
+      ]);
+      setStudents(enrollments.map((e: any) => e.profiles));
+      
+      const initialAttendance: Record<string, string> = {};
+      attendanceData.forEach((a: any) => {
+        initialAttendance[a.user_id] = a.status;
+      });
+      setAttendance(initialAttendance);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const records = Object.entries(attendance).map(([userId, status]) => ({
+        user_id: userId,
+        course_id: selectedCourse,
+        session_date: selectedDate,
+        status
+      }));
+      await adminService.markAttendance(records);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+        <h2 className="text-2xl font-bold text-slate-900">Attendance Management</h2>
+        <div className="flex gap-4 w-full md:w-auto">
+          <select 
+            value={selectedCourse}
+            onChange={(e) => setSelectedCourse(e.target.value)}
+            className="flex-1 md:w-64 px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+          >
+            <option value="">Select Course</option>
+            {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+          </select>
+          <input 
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+          />
+        </div>
+      </div>
+
+      {selectedCourse ? (
+        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+          <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+            <h3 className="font-bold text-slate-900">Student List</h3>
+            <button 
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-brand-blue text-white px-6 py-2 rounded-xl font-bold hover:bg-brand-blue/90 transition-all flex items-center gap-2"
+            >
+              {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+              Save Attendance
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-slate-50 text-slate-400 text-xs uppercase tracking-widest">
+                  <th className="px-8 py-4 font-bold">Student</th>
+                  <th className="px-8 py-4 font-bold">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {students.map((student) => (
+                  <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-8 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-brand-blue/10 rounded-full flex items-center justify-center text-brand-blue font-bold">
+                          {student.full_name?.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900">{student.full_name}</p>
+                          <p className="text-xs text-slate-500">{student.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-8 py-4">
+                      <div className="flex gap-2">
+                        {['present', 'absent', 'late'].map(status => (
+                          <button
+                            key={status}
+                            onClick={() => setAttendance(prev => ({ ...prev, [student.id]: status }))}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
+                              attendance[student.id] === status 
+                                ? status === 'present' ? 'bg-emerald-500 text-white' : status === 'absent' ? 'bg-brand-red text-white' : 'bg-amber-500 text-white'
+                                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                            }`}
+                          >
+                            {status}
+                          </button>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-20 bg-white rounded-[2.5rem] border border-slate-100">
+          <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
+            <Users size={32} />
+          </div>
+          <h3 className="text-lg font-bold text-slate-900">No Course Selected</h3>
+          <p className="text-slate-500">Please select a course to manage attendance.</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const SchedulesTab = ({ courses }: { courses: any[] }) => {
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<any>(null);
+  const [formData, setFormData] = useState({
+    course_id: '',
+    title: '',
+    description: '',
+    meeting_link: '',
+    start_time: '',
+    end_time: ''
+  });
+
+  useEffect(() => {
+    fetchSchedules();
+  }, []);
+
+  const fetchSchedules = async () => {
+    setLoading(true);
+    try {
+      const data = await adminService.getSchedules();
+      setSchedules(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editingSchedule) {
+        await adminService.updateSchedule(editingSchedule.id, formData);
+      } else {
+        await adminService.createSchedule(formData);
+      }
+      setIsModalOpen(false);
+      fetchSchedules();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-slate-900">Class Schedules</h2>
+        <button 
+          onClick={() => { setEditingSchedule(null); setFormData({ course_id: '', title: '', description: '', meeting_link: '', start_time: '', end_time: '' }); setIsModalOpen(true); }}
+          className="bg-brand-blue text-white px-6 py-2 rounded-xl font-bold hover:bg-brand-blue/90 transition-all flex items-center gap-2"
+        >
+          <Plus size={18} />
+          Schedule Class
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {schedules.map((schedule) => (
+          <div key={schedule.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all space-y-4">
+            <div className="flex justify-between items-start">
+              <div className="bg-brand-blue/10 p-3 rounded-2xl text-brand-blue">
+                <Calendar size={24} />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => { setEditingSchedule(schedule); setFormData(schedule); setIsModalOpen(true); }} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><Edit size={16} /></button>
+                <button onClick={async () => { if(confirm('Delete?')) { await adminService.deleteSchedule(schedule.id); fetchSchedules(); } }} className="p-2 hover:bg-brand-red/10 rounded-lg text-brand-red"><Trash2 size={16} /></button>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-brand-blue uppercase tracking-wider">{schedule.courses?.title}</p>
+              <h3 className="text-lg font-bold text-slate-900 mt-1">{schedule.title}</h3>
+              <p className="text-sm text-slate-500 line-clamp-2 mt-2">{schedule.description}</p>
+            </div>
+            <div className="pt-4 border-t border-slate-50 space-y-2">
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <Clock size={14} />
+                <span>{new Date(schedule.start_time).toLocaleString()}</span>
+              </div>
+              {schedule.meeting_link && (
+                <a href={schedule.meeting_link} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-xs text-brand-blue font-bold hover:underline">
+                  <Play size={14} />
+                  Join Meeting
+                </a>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingSchedule ? 'Edit Schedule' : 'New Schedule'}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-1">Course</label>
+            <select 
+              required
+              value={formData.course_id}
+              onChange={(e) => setFormData({ ...formData, course_id: e.target.value })}
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+            >
+              <option value="">Select Course</option>
+              {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-1">Title</label>
+            <input 
+              required
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-1">Description</label>
+            <textarea 
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none h-24"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-1">Meeting Link</label>
+            <input 
+              type="url"
+              value={formData.meeting_link}
+              onChange={(e) => setFormData({ ...formData, meeting_link: e.target.value })}
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">Start Time</label>
+              <input 
+                required
+                type="datetime-local"
+                value={formData.start_time}
+                onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">End Time</label>
+              <input 
+                required
+                type="datetime-local"
+                value={formData.end_time}
+                onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+              />
+            </div>
+          </div>
+          <button type="submit" className="w-full bg-brand-blue text-white py-3 rounded-xl font-bold hover:bg-brand-blue/90 transition-all mt-4">
+            {editingSchedule ? 'Update Schedule' : 'Create Schedule'}
+          </button>
+        </form>
+      </Modal>
+    </div>
+  );
+};
 
 const OverviewTab = ({ stats, recentEnrollments, recentPayments, handleSeed, seeding }: any) => {
   return (
@@ -2584,10 +2970,465 @@ const ProgressTab = () => {
   );
 };
 
+export const AssessmentsTab = ({ courses }: { courses: any[] }) => {
+  const [selectedCourse, setSelectedCourse] = useState('');
+  const [assessments, setAssessments] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    user_id: '',
+    assessment_name: '',
+    score: 0,
+    max_score: 100
+  });
+
+  useEffect(() => {
+    if (selectedCourse) {
+      fetchData();
+    }
+  }, [selectedCourse]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [enrollments, assessmentData] = await Promise.all([
+        adminService.getEnrollmentsByCourse(selectedCourse),
+        adminService.getAssessments(selectedCourse)
+      ]);
+      setStudents(enrollments.map((e: any) => e.profiles));
+      setAssessments(assessmentData);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await adminService.recordAssessment({
+        ...formData,
+        course_id: selectedCourse
+      });
+      setIsModalOpen(false);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-slate-900">Assessments & Grading</h2>
+        <div className="flex gap-4">
+          <select 
+            value={selectedCourse}
+            onChange={(e) => setSelectedCourse(e.target.value)}
+            className="px-4 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue"
+          >
+            <option value="">Select Course</option>
+            {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+          </select>
+          {selectedCourse && (
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="bg-brand-blue text-white px-6 py-2 rounded-xl font-bold hover:bg-brand-blue/90 transition-all flex items-center gap-2"
+            >
+              <Plus size={18} /> Record Score
+            </button>
+          )}
+        </div>
+      </div>
+
+      {selectedCourse ? (
+        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-slate-50 text-slate-400 text-xs uppercase tracking-widest">
+                <th className="px-8 py-4 font-bold">Student</th>
+                <th className="px-8 py-4 font-bold">Assessment</th>
+                <th className="px-8 py-4 font-bold">Score</th>
+                <th className="px-8 py-4 font-bold">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {assessments.map((a) => (
+                <tr key={a.id} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="px-8 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 font-bold text-xs">
+                        {a.profiles?.full_name?.charAt(0)}
+                      </div>
+                      <p className="font-bold text-slate-900">{a.profiles?.full_name}</p>
+                    </div>
+                  </td>
+                  <td className="px-8 py-4 text-sm text-slate-600">{a.assessment_name}</td>
+                  <td className="px-8 py-4 font-bold text-slate-900">{a.score} / {a.max_score}</td>
+                  <td className="px-8 py-4 text-xs text-slate-500">{new Date(a.date_recorded).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="text-center py-20 bg-white rounded-[2.5rem] border border-slate-100">
+          <GraduationCap size={48} className="mx-auto text-slate-300 mb-4" />
+          <h3 className="text-lg font-bold text-slate-900">No Course Selected</h3>
+          <p className="text-slate-500">Select a course to manage assessments.</p>
+        </div>
+      )}
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Record Assessment Score">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Student</label>
+            <select 
+              required
+              value={formData.user_id}
+              onChange={(e) => setFormData({...formData, user_id: e.target.value})}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+            >
+              <option value="">Select Student</option>
+              {students.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Assessment Name</label>
+            <input 
+              required
+              type="text"
+              value={formData.assessment_name}
+              onChange={(e) => setFormData({...formData, assessment_name: e.target.value})}
+              placeholder="e.g. Mid-term Exam, Final Project"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Score</label>
+              <input 
+                required
+                type="number"
+                value={formData.score}
+                onChange={(e) => setFormData({...formData, score: parseFloat(e.target.value)})}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Max Score</label>
+              <input 
+                required
+                type="number"
+                value={formData.max_score}
+                onChange={(e) => setFormData({...formData, max_score: parseFloat(e.target.value)})}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+              />
+            </div>
+          </div>
+          <button type="submit" className="w-full bg-brand-blue text-white py-4 rounded-xl font-bold hover:bg-brand-blue/90 transition-all">
+            Save Assessment
+          </button>
+        </form>
+      </Modal>
+    </div>
+  );
+};
+
+const AssignmentsTab = ({ courses }: { courses: any[] }) => {
+  const [selectedCourse, setSelectedCourse] = useState('');
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
+  const [formData, setFormData] = useState({
+    status: '',
+    instructor_note: ''
+  });
+
+  useEffect(() => {
+    if (selectedCourse) {
+      fetchData();
+    }
+  }, [selectedCourse]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const data = await adminService.getAssignments(selectedCourse);
+      setAssignments(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await adminService.updateAssignment(selectedAssignment.id, formData);
+      setIsModalOpen(false);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-slate-900">Assignment Submissions</h2>
+        <select 
+          value={selectedCourse}
+          onChange={(e) => setSelectedCourse(e.target.value)}
+          className="px-4 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue"
+        >
+          <option value="">Select Course</option>
+          {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+        </select>
+      </div>
+
+      {selectedCourse ? (
+        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-slate-50 text-slate-400 text-xs uppercase tracking-widest">
+                <th className="px-8 py-4 font-bold">Student</th>
+                <th className="px-8 py-4 font-bold">Assignment</th>
+                <th className="px-8 py-4 font-bold">Status</th>
+                <th className="px-8 py-4 font-bold text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {assignments.map((a) => (
+                <tr key={a.id} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="px-8 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 font-bold text-xs">
+                        {a.profiles?.full_name?.charAt(0)}
+                      </div>
+                      <p className="font-bold text-slate-900">{a.profiles?.full_name}</p>
+                    </div>
+                  </td>
+                  <td className="px-8 py-4 text-sm text-slate-600">{a.assignment_name}</td>
+                  <td className="px-8 py-4">
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      a.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 
+                      a.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-brand-red/10 text-brand-red'
+                    }`}>
+                      {a.status}
+                    </span>
+                  </td>
+                  <td className="px-8 py-4 text-right">
+                    <button 
+                      onClick={() => { setSelectedAssignment(a); setFormData({ status: a.status, instructor_note: a.instructor_note || '' }); setIsModalOpen(true); }}
+                      className="text-brand-blue font-bold text-xs hover:underline"
+                    >
+                      Review
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="text-center py-20 bg-white rounded-[2.5rem] border border-slate-100">
+          <FileCheck size={48} className="mx-auto text-slate-300 mb-4" />
+          <h3 className="text-lg font-bold text-slate-900">No Course Selected</h3>
+          <p className="text-slate-500">Select a course to review assignments.</p>
+        </div>
+      )}
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Review Assignment">
+        <form onSubmit={handleUpdate} className="space-y-6">
+          <div>
+            <p className="text-sm font-bold text-slate-700 mb-1">Student</p>
+            <p className="text-slate-600">{selectedAssignment?.profiles?.full_name}</p>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-slate-700 mb-1">Assignment</p>
+            <p className="text-slate-600">{selectedAssignment?.assignment_name}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Status</label>
+            <select 
+              required
+              value={formData.status}
+              onChange={(e) => setFormData({...formData, status: e.target.value})}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+            >
+              <option value="pending">Pending</option>
+              <option value="submitted">Submitted</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Instructor Note</label>
+            <textarea 
+              value={formData.instructor_note}
+              onChange={(e) => setFormData({...formData, instructor_note: e.target.value})}
+              rows={4}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl resize-none"
+              placeholder="Provide feedback to the student..."
+            />
+          </div>
+          <button type="submit" className="w-full bg-brand-blue text-white py-4 rounded-xl font-bold hover:bg-brand-blue/90 transition-all">
+            Update Status
+          </button>
+        </form>
+      </Modal>
+    </div>
+  );
+};
+
+const CertificateTemplatesTab = () => {
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    image_url: '',
+    is_active: false
+  });
+
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
+
+  const fetchTemplates = async () => {
+    setLoading(true);
+    try {
+      const data = await adminService.getCertificateTemplates();
+      setTemplates(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const fileInput = (e.currentTarget as HTMLFormElement).elements.namedItem('template_file') as HTMLInputElement;
+      const file = fileInput?.files?.[0];
+      
+      let imageUrl = formData.image_url;
+      if (file) {
+        imageUrl = await adminService.uploadFile(file);
+      }
+
+      await adminService.createCertificateTemplate({
+        ...formData,
+        image_url: imageUrl
+      });
+      setIsModalOpen(false);
+      setFormData({ name: '', image_url: '', is_active: false });
+      fetchTemplates();
+    } catch (err: any) {
+      console.error(err);
+      alert(`Failed to upload template: ${err.message}`);
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-slate-900">Certificate Templates</h2>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="bg-brand-blue text-white px-6 py-2 rounded-xl font-bold hover:bg-brand-blue/90 transition-all flex items-center gap-2"
+        >
+          <Plus size={18} /> Add Template
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {templates.map((t) => (
+          <div key={t.id} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden group">
+            <div className="aspect-[1.414/1] bg-slate-100 relative overflow-hidden">
+              <img src={t.image_url} className="w-full h-full object-cover" alt={t.name} referrerPolicy="no-referrer" />
+              <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <button onClick={async () => { if(confirm('Delete?')) { await adminService.deleteCertificateTemplate(t.id); fetchTemplates(); } }} className="bg-white/20 backdrop-blur-md text-white p-3 rounded-full hover:bg-brand-red transition-all">
+                  <Trash2 size={20} />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-slate-900">{t.name}</h3>
+                <p className="text-xs text-slate-500">{new Date(t.created_at).toLocaleDateString()}</p>
+              </div>
+              <div className={`w-3 h-3 rounded-full ${t.is_active ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-slate-300'}`} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add Certificate Template">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Template Name</label>
+            <input 
+              required
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              placeholder="e.g. Standard Completion Certificate"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Template Image</label>
+            <div className="flex gap-4">
+              <input 
+                type="text"
+                value={formData.image_url}
+                onChange={(e) => setFormData({...formData, image_url: e.target.value})}
+                placeholder="https://..."
+                className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+              />
+              <div className="relative">
+                <input 
+                  type="file" 
+                  name="template_file"
+                  accept="image/*"
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+                <button type="button" className="bg-slate-100 p-3 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors">
+                  <ImageIcon size={20} />
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <input 
+              type="checkbox"
+              checked={formData.is_active}
+              onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
+              className="w-5 h-5 text-brand-blue rounded border-slate-300"
+            />
+            <span className="text-sm font-bold text-slate-700">Set as Active Template</span>
+          </div>
+          <button type="submit" className="w-full bg-brand-blue text-white py-4 rounded-xl font-bold hover:bg-brand-blue/90 transition-all">
+            Upload Template
+          </button>
+        </form>
+      </Modal>
+    </div>
+  );
+};
+
 export const AdminPage = () => {
   const { user, profile } = useAuthStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  const [courses, setCourses] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [recentEnrollments, setRecentEnrollments] = useState<any[]>([]);
   const [recentPayments, setRecentPayments] = useState<any[]>([]);
@@ -2595,16 +3436,18 @@ export const AdminPage = () => {
   const [isSeedConfirmOpen, setIsSeedConfirmOpen] = useState(false);
 
   const isAdmin = profile?.role === 'admin' || user?.email === 'sheriffdeenalade@gmail.com';
+  const isInstructor = profile?.role === 'instructor' || isAdmin;
 
   useEffect(() => {
-    if (user && !isAdmin && profile) {
+    if (user && !isInstructor && profile) {
       navigate('/dashboard');
     }
-  }, [user, isAdmin, profile, navigate]);
+  }, [user, isInstructor, profile, navigate]);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isInstructor) {
       fetchOverviewData();
+      fetchCourses();
 
       if (isSupabaseConfigured) {
         const channels = [
@@ -2669,6 +3512,15 @@ export const AdminPage = () => {
     }
   };
 
+  const fetchCourses = async () => {
+    try {
+      const data = await adminService.getCourses();
+      setCourses(data || []);
+    } catch (err) {
+      console.error('Error fetching courses:', err);
+    }
+  };
+
   const handleSeed = () => {
     setIsSeedConfirmOpen(true);
   };
@@ -2689,21 +3541,27 @@ export const AdminPage = () => {
   };
 
   const tabs = [
-    { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={20} /> },
-    { id: 'courses', label: 'Courses', icon: <BookOpen size={20} /> },
-    { id: 'enrollments', label: 'Enrollments', icon: <CheckCircle2 size={20} /> },
-    { id: 'users', label: 'Users', icon: <Users size={20} /> },
-    { id: 'payments', label: 'Payments', icon: <CreditCard size={20} /> },
-    { id: 'installments', label: 'Installments', icon: <Clock size={20} /> },
-    { id: 'certificates', label: 'Certificates', icon: <Award size={20} /> },
-    { id: 'progress', label: 'Progress', icon: <BarChart3 size={20} /> },
-    { id: 'quizzes', label: 'Quizzes', icon: <FileQuestion size={20} /> },
-    { id: 'announcements', label: 'Announcements', icon: <Megaphone size={20} /> },
-    { id: 'reports', label: 'Reports', icon: <BarChart3 size={20} /> },
-    { id: 'cms', label: 'CMS', icon: <Settings size={20} /> }
-  ];
+    { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={20} />, roles: ['admin', 'instructor'] },
+    { id: 'courses', label: 'Courses', icon: <BookOpen size={20} />, roles: ['admin', 'instructor'] },
+    { id: 'enrollments', label: 'Enrollments', icon: <CheckCircle2 size={20} />, roles: ['admin', 'instructor'] },
+    { id: 'users', label: 'Users', icon: <Users size={20} />, roles: ['admin'] },
+    { id: 'payments', label: 'Payments', icon: <CreditCard size={20} />, roles: ['admin'] },
+    { id: 'installments', label: 'Installments', icon: <Clock size={20} />, roles: ['admin'] },
+    { id: 'attendance', label: 'Attendance', icon: <ClipboardList size={20} />, roles: ['admin', 'instructor'] },
+    { id: 'schedules', label: 'Schedules', icon: <Calendar size={20} />, roles: ['admin', 'instructor'] },
+    { id: 'assessments', label: 'Assessments', icon: <GraduationCap size={20} />, roles: ['admin', 'instructor'] },
+    { id: 'assignments', label: 'Assignments', icon: <FileCheck size={20} />, roles: ['admin', 'instructor'] },
+    { id: 'certificates', label: 'Certificates', icon: <Award size={20} />, roles: ['admin'] },
+    { id: 'certificate-templates', label: 'Cert. Templates', icon: <Award size={20} />, roles: ['admin'] },
+    { id: 'progress', label: 'Progress', icon: <BarChart3 size={20} />, roles: ['admin', 'instructor'] },
+    { id: 'quizzes', label: 'Quizzes', icon: <FileQuestion size={20} />, roles: ['admin', 'instructor'] },
+    { id: 'announcements', label: 'Announcements', icon: <Megaphone size={20} />, roles: ['admin', 'instructor'] },
+    { id: 'reports', label: 'Reports', icon: <BarChart3 size={20} />, roles: ['admin'] },
+    { id: 'cms', label: 'CMS', icon: <Settings size={20} />, roles: ['admin'] },
+    { id: 'diagnostics', label: 'Diagnostics', icon: <Activity size={20} />, roles: ['admin', 'instructor'] }
+  ].filter(tab => tab.roles.includes(profile?.role || (isAdmin ? 'admin' : 'instructor')));
 
-  if (!user || !isAdmin) {
+  if (!user || !isInstructor) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
@@ -2761,7 +3619,8 @@ export const AdminPage = () => {
             </div>
             <div className="overflow-hidden">
               <p className="text-sm font-bold text-slate-900 truncate">{profile?.full_name || 'Admin User'}</p>
-              <p className="text-[10px] text-brand-red font-bold uppercase tracking-wider">System Admin</p>
+              <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
+              <p className="text-[10px] text-brand-red font-bold uppercase tracking-wider mt-1">{profile?.role || 'System Admin'}</p>
             </div>
           </div>
         </div>
@@ -2807,15 +3666,21 @@ export const AdminPage = () => {
             {activeTab === 'users' && <UsersTab />}
             {activeTab === 'payments' && <PaymentsTab />}
             {activeTab === 'installments' && <InstallmentsTab />}
+            {activeTab === 'attendance' && <AttendanceTab courses={courses} />}
+            {activeTab === 'schedules' && <SchedulesTab courses={courses} />}
+            {activeTab === 'assessments' && <AssessmentsTab courses={courses} />}
+            {activeTab === 'assignments' && <AssignmentsTab courses={courses} />}
             {activeTab === 'certificates' && <CertificatesTab />}
+            {activeTab === 'certificate-templates' && <CertificateTemplatesTab />}
             {activeTab === 'progress' && <ProgressTab />}
             {activeTab === 'quizzes' && <QuizzesTab />}
             {activeTab === 'announcements' && <AnnouncementsTab />}
             {activeTab === 'reports' && <ReportsTab stats={stats} />}
             {activeTab === 'cms' && <CMSTab handleSeed={handleSeed} seeding={seeding} />}
+            {activeTab === 'diagnostics' && <DiagnosticTab />}
             
             {/* Placeholder for other tabs */}
-            {!['overview', 'courses', 'enrollments', 'users', 'payments', 'installments', 'progress', 'certificates', 'quizzes', 'announcements', 'reports', 'cms'].includes(activeTab) && (
+            {!['overview', 'courses', 'enrollments', 'users', 'payments', 'installments', 'progress', 'certificates', 'quizzes', 'announcements', 'reports', 'cms', 'attendance', 'schedules', 'assessments', 'assignments', 'certificate-templates', 'diagnostics'].includes(activeTab) && (
               <div className="bg-white rounded-[3rem] border border-slate-100 p-20 text-center shadow-sm">
                 <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-8">
                   {tabs.find(t => t.id === activeTab)?.icon}

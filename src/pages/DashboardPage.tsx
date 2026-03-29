@@ -23,7 +23,8 @@ import {
   Loader2,
   Monitor,
   MapPin,
-  Video
+  Video,
+  Calendar
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -40,6 +41,7 @@ export const DashboardPage = () => {
   const [payments, setPayments] = useState<any[]>([]);
   const [installments, setInstallments] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>(MOCK_ANNOUNCEMENTS);
+  const [schedules, setSchedules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('courses');
   const [isEditing, setIsEditing] = useState(false);
@@ -83,6 +85,15 @@ export const DashboardPage = () => {
         setEnrollments(enrollmentsData || []);
         setCertificates(certificatesData || []);
         setPayments(paymentsData || []);
+        
+        // Fetch schedules for enrolled courses
+        if (enrollmentsData && enrollmentsData.length > 0) {
+          const courseIds = enrollmentsData.map((e: any) => e.course_id);
+          const schedulesData = await adminService.getSchedules();
+          // Filter schedules for user's courses
+          const userSchedules = (schedulesData || []).filter((s: any) => courseIds.includes(s.course_id));
+          setSchedules(userSchedules);
+        }
         
         // Fetch installments based on user's enrollments
         if (enrollmentsData && enrollmentsData.length > 0) {
@@ -193,6 +204,7 @@ export const DashboardPage = () => {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-12">
             {[
               { id: 'courses', label: 'My Courses', icon: <BookOpen size={20} /> },
+              { id: 'schedules', label: 'Class Schedule', icon: <Calendar size={20} /> },
               { id: 'quizzes', label: 'Quizzes', icon: <FileQuestion size={20} /> },
               { id: 'certificates', label: 'Certificates', icon: <Award size={20} /> },
               { id: 'billing', label: 'Billing & Invoices', icon: <CreditCard size={20} /> },
@@ -363,6 +375,104 @@ export const DashboardPage = () => {
                       <p className="text-slate-500 mb-10 max-w-md mx-auto">You haven't enrolled in any courses. Start your learning journey today and transform your career!</p>
                       <Link to="/courses" className="inline-flex items-center gap-2 bg-brand-blue text-white px-10 py-4 rounded-2xl font-bold hover:bg-brand-blue-hover transition-all shadow-xl shadow-brand-blue/20">
                         Explore Courses <ArrowRight size={20} />
+                      </Link>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {activeTab === 'schedules' && (
+                <motion.div
+                  key="schedules"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="space-y-8"
+                >
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-slate-900">Class Schedule</h2>
+                    <div className="bg-brand-blue/10 text-brand-blue px-4 py-2 rounded-xl text-xs font-bold">
+                      {schedules.length} Upcoming Classes
+                    </div>
+                  </div>
+
+                  {schedules.length > 0 ? (
+                    <div className="space-y-6">
+                      {schedules.map((schedule) => {
+                        const startDate = new Date(schedule.start_time);
+                        const endDate = new Date(schedule.end_time);
+                        const isToday = startDate.toDateString() === new Date().toDateString();
+
+                        return (
+                          <div key={schedule.id} className={`bg-white p-8 rounded-[2.5rem] border transition-all hover:shadow-xl ${isToday ? 'border-brand-blue ring-1 ring-brand-blue/20' : 'border-slate-100'}`}>
+                            <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
+                              <div className={`w-20 h-20 rounded-3xl flex flex-col items-center justify-center shrink-0 ${isToday ? 'bg-brand-blue text-white shadow-lg shadow-brand-blue/20' : 'bg-slate-50 text-slate-400'}`}>
+                                <span className="text-[10px] font-black uppercase tracking-widest">{startDate.toLocaleDateString('en-GB', { month: 'short' })}</span>
+                                <span className="text-2xl font-black">{startDate.getDate()}</span>
+                              </div>
+                              
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${isToday ? 'bg-brand-red text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                    {isToday ? 'LIVE TODAY' : 'UPCOMING'}
+                                  </span>
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                    {schedule.courses?.title}
+                                  </span>
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-900 mb-2">{schedule.title}</h3>
+                                <p className="text-sm text-slate-500 mb-4 line-clamp-2">{schedule.description}</p>
+                                
+                                <div className="flex flex-wrap gap-6 text-xs font-bold text-slate-400">
+                                  <div className="flex items-center gap-2">
+                                    <Clock size={14} className="text-brand-blue" />
+                                    <span>{startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <UserIcon size={14} className="text-brand-blue" />
+                                    <span>Instructor: {schedule.profiles?.full_name || 'TBA'}</span>
+                                  </div>
+                                  {schedule.meeting_link && (
+                                    <div className="flex items-center gap-2">
+                                      <Video size={14} className="text-brand-red" />
+                                      <span className="text-brand-red">Virtual Class</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              <div className="shrink-0 w-full md:w-auto">
+                                {schedule.meeting_link ? (
+                                  <a 
+                                    href={schedule.meeting_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full md:w-auto bg-brand-blue text-white px-8 py-4 rounded-2xl font-bold hover:bg-brand-blue-hover transition-all flex items-center justify-center gap-2 shadow-xl shadow-brand-blue/20"
+                                  >
+                                    <Video size={20} /> Join Class
+                                  </a>
+                                ) : (
+                                  <div className="bg-slate-50 text-slate-400 px-8 py-4 rounded-2xl font-bold border border-slate-100 flex items-center justify-center gap-2">
+                                    <MapPin size={20} /> Physical Class
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="bg-white p-20 rounded-[3rem] border border-slate-100 text-center">
+                      <div className="bg-slate-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8">
+                        <Calendar className="text-slate-300" size={48} />
+                      </div>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-4">No Scheduled Classes</h3>
+                      <p className="text-slate-500 max-w-md mx-auto mb-10 leading-relaxed">
+                        There are no live or virtual classes scheduled for your enrolled courses at the moment. Check back later for updates from your instructors.
+                      </p>
+                      <Link to="/courses" className="bg-brand-blue text-white px-10 py-4 rounded-2xl font-bold hover:bg-brand-blue-hover transition-all shadow-xl shadow-brand-blue/20">
+                        Explore More Courses
                       </Link>
                     </div>
                   )}

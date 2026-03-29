@@ -170,6 +170,125 @@ export const adminService = {
     if (error) throw error;
   },
 
+  // Class Schedules
+  async getSchedules(courseId?: string) {
+    if (!isSupabaseConfigured) return [];
+    let query = supabase.from('class_schedules').select('*, courses(title)');
+    if (courseId) query = query.eq('course_id', courseId);
+    const { data, error } = await query.order('start_time', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+  async createSchedule(schedule: any) {
+    const { data, error } = await supabase.from('class_schedules').insert([schedule]).select();
+    if (error) throw error;
+    return data[0];
+  },
+  async updateSchedule(id: string, updates: any) {
+    const { data, error } = await supabase.from('class_schedules').update(updates).eq('id', id).select();
+    if (error) throw error;
+    return data[0];
+  },
+  async deleteSchedule(id: string) {
+    const { error } = await supabase.from('class_schedules').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  // Certificate Templates
+  async getCertificateTemplates() {
+    if (!isSupabaseConfigured) return [];
+    const { data, error } = await supabase.from('certificate_templates').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+  async createCertificateTemplate(template: any) {
+    const { data, error } = await supabase.from('certificate_templates').insert([template]).select();
+    if (error) throw error;
+    return data[0];
+  },
+  async updateCertificateTemplate(id: string, updates: any) {
+    const { data, error } = await supabase.from('certificate_templates').update(updates).eq('id', id).select();
+    if (error) throw error;
+    return data[0];
+  },
+  async deleteCertificateTemplate(id: string) {
+    const { error } = await supabase.from('certificate_templates').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  // Attendance
+  async getAttendance(courseId: string, date?: string) {
+    if (!isSupabaseConfigured) return [];
+    let query = supabase.from('attendance').select('*, profiles(*)').eq('course_id', courseId);
+    if (date) query = query.eq('session_date', date);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data;
+  },
+  async markAttendance(records: any[]) {
+    const { data, error } = await supabase.from('attendance').upsert(records, { onConflict: 'user_id,course_id,session_date' }).select();
+    if (error) throw error;
+    return data;
+  },
+
+  // Assessments & Assignments
+  async getAssessments(courseId: string) {
+    if (!isSupabaseConfigured) return [];
+    const { data, error } = await supabase.from('assessments').select('*, profiles(*)').eq('course_id', courseId);
+    if (error) throw error;
+    return data;
+  },
+  async recordAssessment(assessment: any) {
+    const { data, error } = await supabase.from('assessments').upsert([assessment], { onConflict: 'user_id,course_id,assessment_name' }).select();
+    if (error) throw error;
+    return data[0];
+  },
+  async getAssignments(courseId: string) {
+    if (!isSupabaseConfigured) return [];
+    const { data, error } = await supabase.from('assignments').select('*, profiles(*)').eq('course_id', courseId);
+    if (error) throw error;
+    return data;
+  },
+  async updateAssignment(id: string, updates: any) {
+    const { data, error } = await supabase.from('assignments').update(updates).eq('id', id).select();
+    if (error) throw error;
+    return data[0];
+  },
+
+  // Diagnostics
+  async getDiagnosticData() {
+    if (!isSupabaseConfigured) return { status: 'Not Configured' };
+    try {
+      const { count: enrollments } = await supabase.from('enrollments').select('*', { count: 'exact', head: true });
+      const { count: payments } = await supabase.from('payments').select('*', { count: 'exact', head: true });
+      const { count: courses } = await supabase.from('courses').select('*', { count: 'exact', head: true });
+      const { count: profiles } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+      const { data: currentUser } = await supabase.auth.getUser();
+      
+      let profile = null;
+      if (currentUser.user) {
+        const { data } = await supabase.from('profiles').select('*').eq('id', currentUser.user.id).single();
+        profile = data;
+      }
+
+      return {
+        counts: {
+          enrollments: enrollments || 0,
+          payments: payments || 0,
+          courses: courses || 0,
+          profiles: profiles || 0
+        },
+        currentUser: {
+          id: currentUser.user?.id,
+          email: currentUser.user?.email,
+          profile
+        }
+      };
+    } catch (err) {
+      return { error: err };
+    }
+  },
+
   // Site Settings (CMS)
   async getSettings() {
     if (!isSupabaseConfigured) return {};

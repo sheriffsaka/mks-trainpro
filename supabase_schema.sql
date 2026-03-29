@@ -243,13 +243,34 @@ CREATE TABLE IF NOT EXISTS corporate_accounts (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- Helper function to check if user is admin without recursion
+-- Helper function to check if user is admin
 CREATE OR REPLACE FUNCTION is_admin()
 RETURNS boolean AS $$
 BEGIN
+  -- Use a direct check against the JWT email first to break recursion
+  IF (auth.jwt() ->> 'email' = 'sheriffdeenalade@gmail.com') THEN
+    RETURN true;
+  END IF;
+  
   RETURN EXISTS (
-    SELECT 1 FROM profiles
-    WHERE id = auth.uid() AND (role = 'admin' OR email = 'sheriffdeenalade@gmail.com')
+    SELECT 1 FROM public.profiles 
+    WHERE id = auth.uid() AND role = 'admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Helper function to check if user is instructor
+CREATE OR REPLACE FUNCTION is_instructor()
+RETURNS boolean AS $$
+BEGIN
+  -- Use a direct check against the JWT email first to break recursion
+  IF (auth.jwt() ->> 'email' = 'sheriffdeenalade@gmail.com') THEN
+    RETURN true;
+  END IF;
+
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE id = auth.uid() AND role IN ('admin', 'instructor')
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -290,16 +311,28 @@ CREATE TABLE IF NOT EXISTS assignments (
   UNIQUE(user_id, course_id, assignment_name)
 );
 
--- Helper function to check if user is instructor
-CREATE OR REPLACE FUNCTION is_instructor()
-RETURNS boolean AS $$
-BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM profiles
-    WHERE id = auth.uid() AND role IN ('admin', 'instructor')
-  );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- 18. Class Schedules (For Live/Virtual Classes)
+CREATE TABLE IF NOT EXISTS class_schedules (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT,
+  meeting_link TEXT,
+  start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  instructor_id UUID REFERENCES profiles(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- 19. Certificate Templates
+CREATE TABLE IF NOT EXISTS certificate_templates (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  image_url TEXT NOT NULL,
+  is_active BOOLEAN DEFAULT false,
+  config JSONB DEFAULT '{}'::jsonb, -- Store coordinates for text placement
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
 
 -- RLS for attendance
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
@@ -322,9 +355,37 @@ CREATE POLICY "Users can view own assignments" ON assignments FOR SELECT USING (
 DROP POLICY IF EXISTS "Instructors can manage assignments" ON assignments;
 CREATE POLICY "Instructors can manage assignments" ON assignments FOR ALL USING (is_instructor());
 
+-- RLS for Class Schedules
+ALTER TABLE class_schedules ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can view class schedules" ON class_schedules;
+CREATE POLICY "Anyone can view class schedules" ON class_schedules FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Instructors can manage class schedules" ON class_schedules;
+CREATE POLICY "Instructors can manage class schedules" ON class_schedules FOR ALL USING (is_instructor());
+
+-- RLS for Certificate Templates
+ALTER TABLE certificate_templates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can view active templates" ON certificate_templates;
+CREATE POLICY "Anyone can view active templates" ON certificate_templates FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admins can manage templates" ON certificate_templates;
+CREATE POLICY "Admins can manage templates" ON certificate_templates FOR ALL USING (is_admin());
+
+-- Update existing RLS policies to allow instructors
+DROP POLICY IF EXISTS "Admins can manage courses" ON courses;
+CREATE POLICY "Instructors can manage courses" ON courses FOR ALL USING (is_instructor());
+
+DROP POLICY IF EXISTS "Admins can manage announcements" ON announcements;
+CREATE POLICY "Instructors can manage announcements" ON announcements FOR ALL USING (is_instructor());
+
+-- Ensure Realtime is enabled for new tables
+ALTER PUBLICATION supabase_realtime ADD TABLE class_schedules;
+ALTER PUBLICATION supabase_realtime ADD TABLE certificate_templates;
+ALTER PUBLICATION supabase_realtime ADD TABLE attendance;
+ALTER PUBLICATION supabase_realtime ADD TABLE assessments;
+ALTER PUBLICATION supabase_realtime ADD TABLE assignments;
+
 -- Row Level Security (RLS) Policies
 
--- Profiles: Users can read their own profile, admins can read all
+-- Profiles: Users can read their own profile, admins/instructors can read all
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
 CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
@@ -332,42 +393,42 @@ DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
 CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
-DROP POLICY IF EXISTS "Admins can manage all profiles" ON profiles;
-CREATE POLICY "Admins can manage all profiles" ON profiles FOR ALL USING (is_admin());
+DROP POLICY IF EXISTS "Admins and instructors can manage all profiles" ON profiles;
+CREATE POLICY "Admins and instructors can manage all profiles" ON profiles FOR ALL USING (is_instructor());
 
 -- Courses: Everyone can read published courses, admins can manage
 ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Anyone can view published courses" ON courses;
 CREATE POLICY "Anyone can view published courses" ON courses FOR SELECT USING (is_published = true);
 DROP POLICY IF EXISTS "Admins can manage courses" ON courses;
-CREATE POLICY "Admins can manage courses" ON courses FOR ALL USING (is_admin());
+CREATE POLICY "Admins and instructors can manage courses" ON courses FOR ALL USING (is_instructor());
 
 -- Categories: Everyone can read
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Anyone can view categories" ON categories;
 CREATE POLICY "Anyone can view categories" ON categories FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Admins can manage categories" ON categories;
-CREATE POLICY "Admins can manage categories" ON categories FOR ALL USING (is_admin());
+DROP POLICY IF EXISTS "Admins and instructors can manage categories" ON categories;
+CREATE POLICY "Admins and instructors can manage categories" ON categories FOR ALL USING (is_instructor());
 
--- Enrollments: Users can view their own, admins can view all
+-- Enrollments: Users can view their own, admins/instructors can view all
 ALTER TABLE enrollments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view own enrollments" ON enrollments;
 CREATE POLICY "Users can view own enrollments" ON enrollments FOR SELECT USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Users can insert own enrollments" ON enrollments;
 CREATE POLICY "Users can insert own enrollments" ON enrollments FOR INSERT WITH CHECK (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Admins can view all enrollments" ON enrollments;
-CREATE POLICY "Admins can view all enrollments" ON enrollments FOR SELECT USING (is_admin());
-DROP POLICY IF EXISTS "Admins can manage all enrollments" ON enrollments;
-CREATE POLICY "Admins can manage all enrollments" ON enrollments FOR ALL USING (is_admin());
+DROP POLICY IF EXISTS "Admins and instructors can view all enrollments" ON enrollments;
+CREATE POLICY "Admins and instructors can view all enrollments" ON enrollments FOR SELECT USING (is_instructor());
+DROP POLICY IF EXISTS "Admins and instructors can manage all enrollments" ON enrollments;
+CREATE POLICY "Admins and instructors can manage all enrollments" ON enrollments FOR ALL USING (is_instructor());
 
--- Payments: Users can view their own, admins can view all
+-- Payments: Users can view their own, admins/instructors can view all
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view own payments" ON payments;
 CREATE POLICY "Users can view own payments" ON payments FOR SELECT USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Users can insert own payments" ON payments;
 CREATE POLICY "Users can insert own payments" ON payments FOR INSERT WITH CHECK (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Admins can manage all payments" ON payments;
-CREATE POLICY "Admins can manage all payments" ON payments FOR ALL USING (is_admin());
+DROP POLICY IF EXISTS "Admins and instructors can manage all payments" ON payments;
+CREATE POLICY "Admins and instructors can manage all payments" ON payments FOR ALL USING (is_instructor());
 
 -- FAQs: Everyone can read
 ALTER TABLE faqs ENABLE ROW LEVEL SECURITY;
@@ -394,8 +455,8 @@ CREATE POLICY "Admins can manage site settings" ON site_settings FOR ALL USING (
 ALTER TABLE quizzes ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Authenticated users can view quizzes" ON quizzes;
 CREATE POLICY "Authenticated users can view quizzes" ON quizzes FOR SELECT USING (auth.uid() IS NOT NULL);
-DROP POLICY IF EXISTS "Admins can manage quizzes" ON quizzes;
-CREATE POLICY "Admins can manage quizzes" ON quizzes FOR ALL USING (is_admin());
+DROP POLICY IF EXISTS "Admins and instructors can manage quizzes" ON quizzes;
+CREATE POLICY "Admins and instructors can manage quizzes" ON quizzes FOR ALL USING (is_instructor());
 ALTER TABLE installment_records ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view own installment_records" ON installment_records;
 CREATE POLICY "Users can view own installment_records" ON installment_records FOR SELECT USING (
@@ -413,8 +474,8 @@ CREATE POLICY "Users can insert own installment_records" ON installment_records 
     AND enrollments.user_id = auth.uid()
   )
 );
-DROP POLICY IF EXISTS "Admins can manage all installment_records" ON installment_records;
-CREATE POLICY "Admins can manage all installment_records" ON installment_records FOR ALL USING (is_admin());
+DROP POLICY IF EXISTS "Admins and instructors can manage all installment_records" ON installment_records;
+CREATE POLICY "Admins and instructors can manage all installment_records" ON installment_records FOR ALL USING (is_instructor());
 
 -- Quiz Attempts: Users can view their own, admins can view all
 ALTER TABLE quiz_attempts ENABLE ROW LEVEL SECURITY;
