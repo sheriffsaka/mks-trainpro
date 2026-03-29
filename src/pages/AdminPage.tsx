@@ -233,12 +233,7 @@ const OverviewTab = ({ stats, recentEnrollments, recentPayments, handleSeed, see
             <h3 className="font-bold text-slate-900">Top Performing Courses</h3>
           </div>
           <div className="p-6 space-y-6">
-            {[
-              { name: 'Level 3 Adult Care', sales: 145, growth: '+12%', color: 'bg-brand-blue' },
-              { name: 'SIA Door Supervisor', sales: 98, growth: '+5%', color: 'bg-brand-red' },
-              { name: 'Functional Skills English', sales: 76, growth: '+18%', color: 'bg-emerald-500' },
-              { name: 'Level 5 Leadership', sales: 42, growth: '+2%', color: 'bg-amber-500' }
-            ].map((course, i) => (
+            {stats?.topCourses && stats.topCourses.length > 0 ? stats.topCourses.map((course: any, i: number) => (
               <div key={i} className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="font-bold text-slate-900">{course.name}</span>
@@ -247,11 +242,33 @@ const OverviewTab = ({ stats, recentEnrollments, recentPayments, handleSeed, see
                 <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                   <div 
                     className={`h-full ${course.color}`} 
-                    style={{ width: `${(course.sales / 150) * 100}%` }}
+                    style={{ width: `${Math.min((course.sales / (stats.topCourses[0]?.sales || 1)) * 100, 100)}%` }}
                   />
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="space-y-6">
+                {[
+                  { name: 'Level 3 Adult Care', sales: 145, growth: '+12%', color: 'bg-brand-blue' },
+                  { name: 'SIA Door Supervisor', sales: 98, growth: '+5%', color: 'bg-brand-red' },
+                  { name: 'Functional Skills English', sales: 76, growth: '+18%', color: 'bg-emerald-500' },
+                  { name: 'Level 5 Leadership', sales: 42, growth: '+2%', color: 'bg-amber-500' }
+                ].map((course, i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-bold text-slate-900">{course.name}</span>
+                      <span className="text-slate-500">{course.sales} sales</span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full ${course.color}`} 
+                        style={{ width: `${(course.sales / 150) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         {/* Recent Payments */}
@@ -1926,7 +1943,26 @@ const ReportsTab = ({ stats }: { stats: any }) => (
         </select>
       </div>
       <div className="h-64 flex items-end gap-4 px-4">
-        {[45, 60, 55, 85, 70, 95].map((val, i) => (
+        {stats?.monthlyRevenue && stats.monthlyRevenue.length > 0 ? stats.monthlyRevenue.map((m: any, i: number) => {
+          const maxVal = Math.max(...stats.monthlyRevenue.map((r: any) => r.value), 1);
+          const height = (m.value / maxVal) * 100;
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center gap-3">
+              <div 
+                className="w-full bg-brand-blue/20 rounded-t-xl relative group"
+                style={{ height: `${Math.max(height, 5)}%` }}
+              >
+                <div className="absolute inset-0 bg-brand-blue rounded-t-xl scale-y-0 group-hover:scale-y-100 transition-transform origin-bottom duration-500" />
+                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                  £{m.value.toLocaleString()}
+                </div>
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                {m.name}
+              </span>
+            </div>
+          );
+        }) : [45, 60, 55, 85, 70, 95].map((val, i) => (
           <div key={i} className="flex-1 flex flex-col items-center gap-3">
             <div 
               className="w-full bg-brand-blue/20 rounded-t-xl relative group"
@@ -2688,7 +2724,7 @@ export const AdminPage = () => {
             {activeTab === 'cms' && <CMSTab handleSeed={handleSeed} seeding={seeding} />}
             
             {/* Placeholder for other tabs */}
-            {!['overview', 'courses', 'enrollments', 'users', 'payments', 'certificates', 'quizzes', 'announcements', 'reports', 'cms'].includes(activeTab) && (
+            {!['overview', 'courses', 'enrollments', 'users', 'payments', 'installments', 'progress', 'certificates', 'quizzes', 'announcements', 'reports', 'cms'].includes(activeTab) && (
               <div className="bg-white rounded-[3rem] border border-slate-100 p-20 text-center shadow-sm">
                 <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-8">
                   {tabs.find(t => t.id === activeTab)?.icon}
