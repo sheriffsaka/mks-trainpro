@@ -1035,6 +1035,7 @@ const PaymentsTab = () => {
               <th className="px-8 py-5 font-bold">Student</th>
               <th className="px-8 py-5 font-bold">Course</th>
               <th className="px-8 py-5 font-bold">Amount</th>
+              <th className="px-8 py-5 font-bold">Method</th>
               <th className="px-8 py-5 font-bold">Receipt</th>
               <th className="px-8 py-5 font-bold">Status</th>
               <th className="px-8 py-5 font-bold text-right">Date</th>
@@ -1049,6 +1050,11 @@ const PaymentsTab = () => {
                 </td>
                 <td className="px-8 py-5 text-sm text-slate-600">{p.enrollments?.courses?.title}</td>
                 <td className="px-8 py-5 font-bold text-slate-900">£{p.amount}</td>
+                <td className="px-8 py-5">
+                  <span className="text-xs font-bold uppercase text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">
+                    {p.payment_method || 'bank_transfer'}
+                  </span>
+                </td>
                 <td className="px-8 py-5">
                   {p.receipt_url ? (
                     <a 
@@ -1117,17 +1123,30 @@ const InstallmentsTab = () => {
     }
   };
 
-  const handleUpdateInstallment = async (id: string, paidAmount: number, totalAmount: number) => {
+  const handleUpdateInstallment = async (inst: any, amount: number) => {
     try {
-      const newPaidAmount = paidAmount;
-      const status = newPaidAmount >= totalAmount ? 'completed' : 'active';
+      const newPaidAmount = inst.paid_amount + amount;
+      const status = newPaidAmount >= inst.total_amount ? 'completed' : 'active';
       
-      await adminService.updateInstallment(id, { 
+      // 1. Update installment record
+      await adminService.updateInstallment(inst.id, { 
         paid_amount: newPaidAmount,
         status: status
       });
+
+      // 2. Create a payment record
+      await supabase.from('payments').insert({
+        user_id: inst.enrollments?.user_id,
+        enrollment_id: inst.enrollment_id,
+        amount: amount,
+        currency: 'GBP',
+        payment_method: 'bank_transfer',
+        payment_status: 'succeeded',
+        is_installment: true,
+        created_at: new Date().toISOString()
+      });
       
-      alert('Installment updated successfully!');
+      alert('Installment payment recorded successfully!');
       fetchInstallments();
     } catch (err: any) {
       console.error('Error updating installment:', err);
@@ -1192,7 +1211,7 @@ const InstallmentsTab = () => {
                       onClick={() => {
                         const amount = prompt('Enter amount paid for the second installment:', (inst.total_amount - inst.paid_amount).toString());
                         if (amount) {
-                          handleUpdateInstallment(inst.id, inst.paid_amount + parseFloat(amount), inst.total_amount);
+                          handleUpdateInstallment(inst, parseFloat(amount));
                         }
                       }}
                       className="text-brand-blue hover:underline text-xs font-bold"
@@ -1992,6 +2011,8 @@ const CMSTab = ({ handleSeed, seeding }: any) => {
   const [faqToDelete, setFaqToDelete] = useState<string | null>(null);
   const [editingFaq, setEditingFaq] = useState<any>(null);
 
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
   useEffect(() => {
     fetchCMSData();
   }, []);
@@ -2012,17 +2033,25 @@ const CMSTab = ({ handleSeed, seeding }: any) => {
   };
 
   const handleSettingChange = async (key: string, value: string) => {
+    // Don't update if value hasn't changed
+    if (settings[key] === value) return;
+    
     try {
+      setSaveStatus(`Saving ${key.replace('_', ' ')}...`);
       await adminService.updateSetting(key, value);
       setSettings({ ...settings, [key]: value });
-      alert('Setting updated successfully!');
+      setSaveStatus('Settings saved successfully!');
+      setTimeout(() => setSaveStatus(null), 3000);
     } catch (error: any) {
       console.error(`Error updating setting ${key}:`, error);
       if (isSupabaseConfigured) {
-        alert(`Failed to update setting: ${error.message || 'Unknown error'}`);
+        setSaveStatus(`Error: ${error.message || 'Failed to save'}`);
+        setTimeout(() => setSaveStatus(null), 5000);
       } else {
         // Mock update for presentation
         setSettings({ ...settings, [key]: value });
+        setSaveStatus('Settings saved (Mock)!');
+        setTimeout(() => setSaveStatus(null), 3000);
       }
     }
   };
@@ -2099,7 +2128,12 @@ const CMSTab = ({ handleSeed, seeding }: any) => {
       </div>
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Site Settings */}
-        <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+        <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm relative">
+          {saveStatus && (
+            <div className="absolute top-8 right-8 bg-brand-blue text-white px-4 py-2 rounded-xl text-xs font-bold animate-fade-in z-10 shadow-lg">
+              {saveStatus}
+            </div>
+          )}
           <h3 className="text-xl font-bold text-slate-900 mb-8">General Settings</h3>
           <div className="space-y-6">
             <div>

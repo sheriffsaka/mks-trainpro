@@ -305,8 +305,7 @@ export const adminService = {
       try {
         const { data, error } = await supabase
           .from('enrollments')
-          .select('course_id, courses:course_id(title)')
-          .eq('status', 'active');
+          .select('course_id, courses(title)');
         
         if (error) throw error;
         if (!data || data.length === 0) return [];
@@ -688,12 +687,31 @@ export const adminService = {
     }
 
     // Enrollments & Payments
+    console.log('Seeding enrollments and payments...');
     const { data: existingEnrollments } = await supabase.from('enrollments').select('id');
-    const { data: allProfiles } = await supabase.from('profiles').select('id, role');
+    let { data: allProfiles } = await supabase.from('profiles').select('id, role');
     const { data: dbCourses } = await supabase.from('courses').select('id').limit(5);
     
+    // If we have no students, create some dummy ones
+    const students = allProfiles?.filter(p => p.role === 'student') || [];
+    if (force || students.length < 3) {
+      console.log('Creating dummy students...');
+      const dummyStudents = [
+        { id: crypto.randomUUID(), full_name: 'John Doe', email: 'john@example.com', role: 'student' },
+        { id: crypto.randomUUID(), full_name: 'Jane Smith', email: 'jane@example.com', role: 'student' },
+        { id: crypto.randomUUID(), full_name: 'Alice Johnson', email: 'alice@example.com', role: 'student' },
+        { id: crypto.randomUUID(), full_name: 'Bob Brown', email: 'bob@example.com', role: 'student' }
+      ];
+      
+      const { data: insertedStudents } = await supabase.from('profiles').upsert(dummyStudents, { onConflict: 'email' }).select();
+      if (insertedStudents) {
+        allProfiles = [...(allProfiles || []), ...insertedStudents];
+      }
+    }
+
     // If we have few enrollments or force, seed more for all profiles
     if ((force || !existingEnrollments || existingEnrollments.length < 5) && allProfiles && allProfiles.length > 0 && dbCourses && dbCourses.length > 0) {
+      console.log(`Seeding enrollments for ${allProfiles.length} profiles...`);
       const enrollmentsToInsert: any[] = [];
       const paymentsToInsert: any[] = [];
       const installmentsToInsert: any[] = [];
@@ -723,7 +741,7 @@ export const adminService = {
               enrollment_id: enrollmentId,
               amount: 450,
               currency: 'GBP',
-              payment_method: 'bank_transfer',
+              payment_method: Math.random() > 0.3 ? 'bank_transfer' : 'paypal',
               payment_status: 'succeeded',
               stripe_payment_intent_id: `seed_${Math.random().toString(36).substring(7)}`,
               created_at: enrolledAt
@@ -746,7 +764,7 @@ export const adminService = {
               enrollment_id: enrollmentId,
               amount: paidAmount,
               currency: 'GBP',
-              payment_method: 'bank_transfer',
+              payment_method: Math.random() > 0.5 ? 'bank_transfer' : 'paypal',
               payment_status: 'succeeded',
               stripe_payment_intent_id: `seed_inst_${Math.random().toString(36).substring(7)}`,
               created_at: enrolledAt,
@@ -758,9 +776,19 @@ export const adminService = {
 
       if (enrollmentsToInsert.length > 0) {
         try {
-          await supabase.from('enrollments').upsert(enrollmentsToInsert);
-          if (paymentsToInsert.length > 0) await supabase.from('payments').upsert(paymentsToInsert);
-          if (installmentsToInsert.length > 0) await supabase.from('installment_records').upsert(installmentsToInsert, { onConflict: 'enrollment_id' });
+          console.log(`Inserting ${enrollmentsToInsert.length} enrollments...`);
+          const { error: eErr } = await supabase.from('enrollments').upsert(enrollmentsToInsert);
+          if (eErr) throw eErr;
+          
+          console.log(`Inserting ${paymentsToInsert.length} payments...`);
+          const { error: pErr } = await supabase.from('payments').upsert(paymentsToInsert);
+          if (pErr) throw pErr;
+          
+          console.log(`Inserting ${installmentsToInsert.length} installments...`);
+          const { error: iErr } = await supabase.from('installment_records').upsert(installmentsToInsert, { onConflict: 'enrollment_id' });
+          if (iErr) throw iErr;
+          
+          console.log('Enrollments and payments seeded successfully.');
         } catch (err) {
           console.error('Error inserting seeded enrollments/payments:', err);
         }

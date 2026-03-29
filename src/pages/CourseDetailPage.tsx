@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
-import { Clock, BookOpen, Award, CheckCircle2, Shield, Zap, ArrowRight, Loader2, MapPin, Video, Monitor, X, Copy, AlertCircle, Download } from 'lucide-react';
+import { Clock, BookOpen, Award, CheckCircle2, Shield, Zap, ArrowRight, Loader2, MapPin, Video, Monitor, X, Copy, AlertCircle, Download, Building2, CreditCard } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { adminService } from '../services/adminService';
 import { motion, AnimatePresence } from 'motion/react';
@@ -50,6 +50,8 @@ export const CourseDetailPage = () => {
     fetchData();
   }, [slug]);
 
+  const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'paypal'>('bank_transfer');
+
   const handleEnrollClick = (partPayment: boolean) => {
     if (!user) {
       navigate('/login');
@@ -70,13 +72,17 @@ export const CourseDetailPage = () => {
         throw new Error('This course is not yet available for enrollment in the database. Please try a different course or contact support.');
       }
 
-      if (!receiptFile) {
+      if (!receiptFile && paymentMethod === 'bank_transfer') {
         throw new Error('Please upload your payment proof (receipt) before submitting.');
       }
 
       setUploading(true);
-      // Upload receipt
-      const receiptUrl = await adminService.uploadFile(receiptFile, 'payment-proofs');
+      
+      let receiptUrl = '';
+      if (receiptFile) {
+        // Upload receipt
+        receiptUrl = await adminService.uploadFile(receiptFile, 'payment-proofs');
+      }
 
       const amountToPay = isPartPayment ? partPaymentAmount : totalPrice;
 
@@ -104,7 +110,7 @@ export const CourseDetailPage = () => {
           enrollment_id: enrollment.id,
           user_id: user.id,
           amount: amountToPay,
-          payment_method: 'bank_transfer',
+          payment_method: paymentMethod,
           payment_status: 'pending',
           is_installment: isPartPayment,
           receipt_url: receiptUrl
@@ -393,73 +399,148 @@ export const CourseDetailPage = () => {
                 <div className="space-y-4">
                   <h4 className="font-bold text-slate-900 flex items-center gap-2">
                     <Shield className="text-brand-blue" size={18} />
-                    Bank Transfer Details
+                    Select Payment Method
                   </h4>
-                  <div className="grid grid-cols-1 gap-3">
-                    {[
-                      { label: 'Bank Name', value: settings.bank_name || 'Barclays Bank' },
-                      { label: 'Account Name', value: settings.account_name || 'MKS Consults Ltd' },
-                      { label: 'Account Number', value: settings.account_number || '12345678' },
-                      { label: 'Sort Code', value: settings.sort_code || '20-30-40' }
-                    ].map((item, i) => (
-                      <div key={i} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100 group">
-                        <div>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{item.label}</p>
-                          <p className="font-bold text-slate-900">{item.value}</p>
-                        </div>
-                        <button 
-                          onClick={() => {
-                            navigator.clipboard.writeText(item.value);
-                            alert(`${item.label} copied!`);
-                          }}
-                          className="p-2 text-slate-400 hover:text-brand-blue hover:bg-brand-blue/5 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                        >
-                          <Copy size={16} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex gap-3">
-                  <AlertCircle className="text-amber-600 shrink-0" size={20} />
-                  <p className="text-xs text-amber-800 leading-relaxed">
-                    Please use your <strong>Full Name</strong> as the payment reference. Once transferred, please upload the proof of payment below.
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <label className="block text-sm font-bold text-slate-700 ml-1">Upload Payment Proof (Receipt)</label>
-                  <div className="relative group">
-                    <input 
-                      type="file" 
-                      accept="image/*,.pdf"
-                      onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
-                      className="hidden" 
-                      id="receipt-upload"
-                    />
-                    <label 
-                      htmlFor="receipt-upload"
-                      className={`w-full flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-[2rem] cursor-pointer transition-all ${
-                        receiptFile ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-brand-blue hover:bg-slate-50'
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      onClick={() => setPaymentMethod('bank_transfer')}
+                      className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${
+                        paymentMethod === 'bank_transfer' 
+                          ? 'border-brand-blue bg-brand-blue/5' 
+                          : 'border-slate-100 hover:border-slate-200'
                       }`}
                     >
-                      {receiptFile ? (
-                        <>
-                          <CheckCircle2 className="text-emerald-500 mb-2" size={32} />
-                          <p className="text-sm font-bold text-emerald-700">{receiptFile.name}</p>
-                          <p className="text-xs text-emerald-600">Click to change file</p>
-                        </>
-                      ) : (
-                        <>
-                          <Download className="text-slate-400 mb-2 group-hover:text-brand-blue transition-colors" size={32} />
-                          <p className="text-sm font-bold text-slate-600">Click to select receipt</p>
-                          <p className="text-xs text-slate-400">JPG, PNG or PDF (Max 5MB)</p>
-                        </>
-                      )}
-                    </label>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        paymentMethod === 'bank_transfer' ? 'bg-brand-blue text-white' : 'bg-slate-100 text-slate-400'
+                      }`}>
+                        <Building2 size={20} />
+                      </div>
+                      <span className={`text-sm font-bold ${paymentMethod === 'bank_transfer' ? 'text-brand-blue' : 'text-slate-600'}`}>
+                        Bank Transfer
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setPaymentMethod('paypal')}
+                      className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${
+                        paymentMethod === 'paypal' 
+                          ? 'border-brand-blue bg-brand-blue/5' 
+                          : 'border-slate-100 hover:border-slate-200'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        paymentMethod === 'paypal' ? 'bg-brand-blue text-white' : 'bg-slate-100 text-slate-400'
+                      }`}>
+                        <CreditCard size={20} />
+                      </div>
+                      <span className={`text-sm font-bold ${paymentMethod === 'paypal' ? 'text-brand-blue' : 'text-slate-600'}`}>
+                        PayPal
+                      </span>
+                    </button>
                   </div>
                 </div>
+
+                {paymentMethod === 'bank_transfer' ? (
+                  <div className="space-y-4">
+                    <h4 className="font-bold text-slate-900 flex items-center gap-2">
+                      <Shield className="text-brand-blue" size={18} />
+                      Bank Transfer Details
+                    </h4>
+                    <div className="grid grid-cols-1 gap-3">
+                      {[
+                        { label: 'Bank Name', value: settings.bank_name || 'Barclays Bank' },
+                        { label: 'Account Name', value: settings.account_name || 'MKS Consults Ltd' },
+                        { label: 'Account Number', value: settings.account_number || '12345678' },
+                        { label: 'Sort Code', value: settings.sort_code || '20-30-40' }
+                      ].map((item, i) => (
+                        <div key={i} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100 group">
+                          <div>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{item.label}</p>
+                            <p className="font-bold text-slate-900">{item.value}</p>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              navigator.clipboard.writeText(item.value);
+                              alert(`${item.label} copied!`);
+                            }}
+                            className="p-2 text-slate-400 hover:text-brand-blue hover:bg-brand-blue/5 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          >
+                            <Copy size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex gap-3">
+                      <AlertCircle className="text-amber-600 shrink-0" size={20} />
+                      <p className="text-xs text-amber-800 leading-relaxed">
+                        Please use your <strong>Full Name</strong> as the payment reference. Once transferred, please upload the proof of payment below.
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="block text-sm font-bold text-slate-700 ml-1">Upload Payment Proof (Receipt)</label>
+                      <div className="relative group">
+                        <input 
+                          type="file" 
+                          accept="image/*,.pdf"
+                          onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                          className="hidden" 
+                          id="receipt-upload"
+                        />
+                        <label 
+                          htmlFor="receipt-upload"
+                          className={`w-full flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-[2rem] cursor-pointer transition-all ${
+                            receiptFile ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-brand-blue hover:bg-slate-50'
+                          }`}
+                        >
+                          {receiptFile ? (
+                            <>
+                              <CheckCircle2 className="text-emerald-500 mb-2" size={32} />
+                              <p className="text-sm font-bold text-emerald-700">{receiptFile.name}</p>
+                              <p className="text-xs text-emerald-600">Click to change file</p>
+                            </>
+                          ) : (
+                            <>
+                              <Download className="text-slate-400 mb-2 group-hover:text-brand-blue transition-colors" size={32} />
+                              <p className="text-sm font-bold text-slate-600">Click to select receipt</p>
+                              <p className="text-xs text-slate-400">JPG, PNG or PDF (Max 5MB)</p>
+                            </>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="bg-brand-blue/5 p-6 rounded-3xl border border-brand-blue/10 flex flex-col items-center text-center gap-4">
+                      <div className="w-16 h-16 bg-brand-blue text-white rounded-full flex items-center justify-center">
+                        <CreditCard size={32} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-lg">PayPal Payment</h4>
+                        <p className="text-sm text-slate-500 mt-1">
+                          Click the button below to pay securely via PayPal. After payment, click "Submit Enrollment Request" to notify us.
+                        </p>
+                      </div>
+                      <a 
+                        href={`https://www.paypal.com/paypalme/mksconsults/${(isPartPayment ? partPaymentAmount : totalPrice).toFixed(2)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full bg-[#0070ba] text-white py-4 rounded-2xl font-bold hover:bg-[#005ea6] transition-all flex items-center justify-center gap-2"
+                      >
+                        Pay with PayPal
+                        <ArrowRight size={20} />
+                      </a>
+                    </div>
+                    
+                    <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 flex gap-3">
+                      <CheckCircle2 className="text-emerald-600 shrink-0" size={20} />
+                      <p className="text-xs text-emerald-800 leading-relaxed">
+                        Once you've completed the PayPal payment, click the button below to submit your enrollment request. We will verify the transaction using your email address.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <button 
                   onClick={handleEnrollment}

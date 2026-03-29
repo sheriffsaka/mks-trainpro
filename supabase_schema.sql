@@ -26,9 +26,9 @@ END$$;
 
 -- 2. Profiles (Extends Supabase Auth Users)
 CREATE TABLE IF NOT EXISTS profiles (
-  id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+  id UUID PRIMARY KEY,
   full_name TEXT,
-  email TEXT,
+  email TEXT UNIQUE,
   avatar_url TEXT,
   phone TEXT,
   address TEXT,
@@ -249,8 +249,8 @@ RETURNS boolean AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1 FROM profiles
-    WHERE id = auth.uid() AND role = 'admin'
-  ) OR (auth.jwt() ->> 'email' = 'sheriffdeenalade@gmail.com');
+    WHERE id = auth.uid() AND (role = 'admin' OR email = 'sheriffdeenalade@gmail.com')
+  );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -332,8 +332,8 @@ DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
 CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
-DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
-CREATE POLICY "Admins can view all profiles" ON profiles FOR SELECT USING (is_admin());
+DROP POLICY IF EXISTS "Admins can manage all profiles" ON profiles;
+CREATE POLICY "Admins can manage all profiles" ON profiles FOR ALL USING (is_admin());
 
 -- Courses: Everyone can read published courses, admins can manage
 ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
@@ -366,8 +366,8 @@ DROP POLICY IF EXISTS "Users can view own payments" ON payments;
 CREATE POLICY "Users can view own payments" ON payments FOR SELECT USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Users can insert own payments" ON payments;
 CREATE POLICY "Users can insert own payments" ON payments FOR INSERT WITH CHECK (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Admins can view all payments" ON payments;
-CREATE POLICY "Admins can view all payments" ON payments FOR SELECT USING (is_admin());
+DROP POLICY IF EXISTS "Admins can manage all payments" ON payments;
+CREATE POLICY "Admins can manage all payments" ON payments FOR ALL USING (is_admin());
 
 -- FAQs: Everyone can read
 ALTER TABLE faqs ENABLE ROW LEVEL SECURITY;
@@ -422,8 +422,8 @@ DROP POLICY IF EXISTS "Users can view own quiz_attempts" ON quiz_attempts;
 CREATE POLICY "Users can view own quiz_attempts" ON quiz_attempts FOR SELECT USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Users can insert own quiz_attempts" ON quiz_attempts;
 CREATE POLICY "Users can insert own quiz_attempts" ON quiz_attempts FOR INSERT WITH CHECK (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Admins can view all quiz_attempts" ON quiz_attempts;
-CREATE POLICY "Admins can view all quiz_attempts" ON quiz_attempts FOR SELECT USING (is_admin());
+DROP POLICY IF EXISTS "Admins can manage all quiz_attempts" ON quiz_attempts;
+CREATE POLICY "Admins can manage all quiz_attempts" ON quiz_attempts FOR ALL USING (is_admin());
 
 -- Certificates: Users can view their own, admins can view all
 ALTER TABLE certificates ENABLE ROW LEVEL SECURITY;
