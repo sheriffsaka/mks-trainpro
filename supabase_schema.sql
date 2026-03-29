@@ -429,5 +429,21 @@ CREATE POLICY "Admins can manage all quiz_attempts" ON quiz_attempts FOR ALL USI
 ALTER TABLE certificates ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view own certificates" ON certificates;
 CREATE POLICY "Users can view own certificates" ON certificates FOR SELECT USING (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Admins can manage all certificates" ON certificates;
-CREATE POLICY "Admins can manage all certificates" ON certificates FOR ALL USING (is_admin());
+-- Enable Realtime for all relevant tables
+BEGIN;
+  DROP PUBLICATION IF EXISTS supabase_realtime;
+  CREATE PUBLICATION supabase_realtime;
+COMMIT;
+
+ALTER PUBLICATION supabase_realtime ADD TABLE profiles;
+ALTER PUBLICATION supabase_realtime ADD TABLE categories;
+ALTER PUBLICATION supabase_realtime ADD TABLE courses;
+ALTER PUBLICATION supabase_realtime ADD TABLE enrollments;
+ALTER PUBLICATION supabase_realtime ADD TABLE payments;
+ALTER PUBLICATION supabase_realtime ADD TABLE installment_records;
+ALTER PUBLICATION supabase_realtime ADD TABLE quizzes;
+ALTER PUBLICATION supabase_realtime ADD TABLE quiz_attempts;
+ALTER PUBLICATION supabase_realtime ADD TABLE certificates;
+ALTER PUBLICATION supabase_realtime ADD TABLE announcements;
+ALTER PUBLICATION supabase_realtime ADD TABLE faqs;
+ALTER PUBLICATION supabase_realtime ADD TABLE site_settings;

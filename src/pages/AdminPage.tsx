@@ -68,7 +68,7 @@ const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose:
   );
 };
 
-const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }: { isOpen: boolean, onClose: () => void, onConfirm: () => void, title: string, message: string }) => (
+const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Delete", confirmColor = "bg-brand-red" }: { isOpen: boolean, onClose: () => void, onConfirm: () => void, title: string, message: string, confirmText?: string, confirmColor?: string }) => (
   <Modal isOpen={isOpen} onClose={onClose} title={title}>
     <div className="space-y-6">
       <p className="text-slate-600">{message}</p>
@@ -81,9 +81,9 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }: { isOpen: 
         </button>
         <button 
           onClick={() => { onConfirm(); onClose(); }}
-          className="flex-1 px-6 py-3 bg-brand-red text-white rounded-xl font-bold hover:bg-brand-red-hover transition-all"
+          className={`flex-1 px-6 py-3 ${confirmColor} text-white rounded-xl font-bold hover:opacity-90 transition-all`}
         >
-          Delete
+          {confirmText}
         </button>
       </div>
     </div>
@@ -816,6 +816,19 @@ const EnrollmentsTab = () => {
 
   useEffect(() => {
     fetchEnrollments();
+
+    if (isSupabaseConfigured) {
+      const channel = supabase
+        .channel('realtime-enrollments')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'enrollments' }, () => {
+          fetchEnrollments();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, []);
 
   const fetchEnrollments = async () => {
@@ -956,6 +969,19 @@ const PaymentsTab = () => {
 
   useEffect(() => {
     fetchPayments();
+
+    if (isSupabaseConfigured) {
+      const channel = supabase
+        .channel('realtime-payments')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => {
+          fetchPayments();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, []);
 
   const fetchPayments = async () => {
@@ -1110,6 +1136,19 @@ const InstallmentsTab = () => {
 
   useEffect(() => {
     fetchInstallments();
+
+    if (isSupabaseConfigured) {
+      const channel = supabase
+        .channel('realtime-installments')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'installment_records' }, () => {
+          fetchInstallments();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, []);
 
   const fetchInstallments = async () => {
@@ -2553,6 +2592,7 @@ export const AdminPage = () => {
   const [recentEnrollments, setRecentEnrollments] = useState<any[]>([]);
   const [recentPayments, setRecentPayments] = useState<any[]>([]);
   const [seeding, setSeeding] = useState(false);
+  const [isSeedConfirmOpen, setIsSeedConfirmOpen] = useState(false);
 
   const isAdmin = profile?.role === 'admin' || user?.email === 'sheriffdeenalade@gmail.com';
 
@@ -2565,6 +2605,18 @@ export const AdminPage = () => {
   useEffect(() => {
     if (isAdmin) {
       fetchOverviewData();
+
+      if (isSupabaseConfigured) {
+        const channels = [
+          supabase.channel('overview-enrollments').on('postgres_changes', { event: '*', schema: 'public', table: 'enrollments' }, () => fetchOverviewData()).subscribe(),
+          supabase.channel('overview-payments').on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => fetchOverviewData()).subscribe(),
+          supabase.channel('overview-profiles').on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchOverviewData()).subscribe()
+        ];
+
+        return () => {
+          channels.forEach(channel => supabase.removeChannel(channel));
+        };
+      }
     }
   }, [isAdmin, user, profile]);
 
@@ -2617,17 +2669,22 @@ export const AdminPage = () => {
     }
   };
 
-  const handleSeed = async () => {
+  const handleSeed = () => {
+    setIsSeedConfirmOpen(true);
+  };
+
+  const executeSeed = async () => {
     try {
       setSeeding(true);
       await adminService.seedDatabase(true);
-      alert('Database seeded successfully! The page will now reload to refresh all data.');
+      alert('Database seeded successfully! The page will now refresh to show the new data.');
       window.location.reload();
     } catch (error: any) {
       console.error('Error seeding database:', error);
       alert(`Failed to seed database: ${error.message}`);
     } finally {
       setSeeding(false);
+      setIsSeedConfirmOpen(false);
     }
   };
 
@@ -2774,6 +2831,16 @@ export const AdminPage = () => {
             )}
           </motion.div>
         </AnimatePresence>
+
+        <ConfirmModal 
+          isOpen={isSeedConfirmOpen}
+          onClose={() => setIsSeedConfirmOpen(false)}
+          onConfirm={executeSeed}
+          title="Seed Database with Mock Data?"
+          message="This will add dummy students, enrollments, and payments to your database for testing. It uses 'upsert', which means if a record with the same unique identifier (like an email) already exists, it will be updated with the mock data. This is intended for development and testing only. Are you sure you want to proceed?"
+          confirmText="Proceed with Seeding"
+          confirmColor="bg-amber-600"
+        />
       </main>
     </div>
   );
