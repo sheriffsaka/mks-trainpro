@@ -2496,7 +2496,7 @@ export const AdminPage = () => {
     if (isAdmin) {
       fetchOverviewData();
     }
-  }, [isAdmin]);
+  }, [isAdmin, user, profile]);
 
   const fetchOverviewData = async () => {
     try {
@@ -2505,18 +2505,52 @@ export const AdminPage = () => {
         adminService.getRecentEnrollments(5),
         adminService.getRecentPayments(5)
       ]);
-      setStats(statsData);
-      setRecentEnrollments(enrollmentsData);
-      setRecentPayments(paymentsData);
+      
+      if (statsData) {
+        setStats(statsData);
+      } else {
+        // Fallback if getStats returns null/undefined for some reason
+        setStats({
+          coursesCount: 0,
+          announcementsCount: 0,
+          faqsCount: 0,
+          quizzesCount: 0,
+          enrollmentsCount: 0,
+          totalRevenue: 0,
+          studentsCount: 0,
+          passRate: '0.0',
+          completionRate: '0.0',
+          growth: '0.0',
+          newSignups: 0
+        });
+      }
+      setRecentEnrollments(enrollmentsData || []);
+      setRecentPayments(paymentsData || []);
     } catch (error) {
       console.error('Error fetching overview data:', error);
+      // Ensure we set some state so it doesn't stay in loading "..." state forever
+      if (!stats) {
+        setStats({
+          coursesCount: 0,
+          announcementsCount: 0,
+          faqsCount: 0,
+          quizzesCount: 0,
+          enrollmentsCount: 0,
+          totalRevenue: 0,
+          studentsCount: 0,
+          passRate: '0.0',
+          completionRate: '0.0',
+          growth: '0.0',
+          newSignups: 0
+        });
+      }
     }
   };
 
   const handleSeed = async () => {
     try {
       setSeeding(true);
-      await adminService.seedDatabase();
+      await adminService.seedDatabase(true);
       alert('Database seeded successfully! The page will now reload to refresh all data.');
       window.location.reload();
     } catch (error: any) {

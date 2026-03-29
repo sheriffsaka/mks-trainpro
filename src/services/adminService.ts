@@ -344,46 +344,44 @@ export const adminService = {
       };
     } catch (error: any) {
       console.error('Error in getStats:', error);
-      return {
-        coursesCount: 0,
-        announcementsCount: 0,
-        faqsCount: 0,
-        quizzesCount: 0,
-        enrollmentsCount: 0,
-        totalRevenue: 0,
-        studentsCount: 0,
-        passRate: 0,
-        completionRate: 0,
-        growth: 0,
-        newSignups: 0
-      };
+      return null;
     }
   },
 
   async getRecentEnrollments(limit: number = 5) {
     if (!isSupabaseConfigured) return MOCK_ENROLLMENTS.slice(0, limit);
-    const { data, error } = await supabase
-      .from('enrollments')
-      .select('*, profiles(*), courses(*)')
-      .order('enrolled_at', { ascending: false })
-      .limit(limit);
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('enrollments')
+        .select('*, profiles:user_id(*), courses:course_id(*)')
+        .order('enrolled_at', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching recent enrollments:', err);
+      return [];
+    }
   },
 
   async getAllEnrollments() {
     if (!isSupabaseConfigured) return MOCK_ENROLLMENTS;
-    const { data, error } = await supabase
-      .from('enrollments')
-      .select(`
-        *,
-        profiles(*),
-        courses(*),
-        payments(*)
-      `)
-      .order('enrolled_at', { ascending: false });
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('enrollments')
+        .select(`
+          *,
+          profiles:user_id(*),
+          courses:course_id(*),
+          payments(*)
+        `)
+        .order('enrolled_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching all enrollments:', err);
+      return [];
+    }
   },
 
   async getEnrollmentsForCertificates() {
@@ -399,12 +397,17 @@ export const adminService = {
 
   async getAllPayments() {
     if (!isSupabaseConfigured) return [];
-    const { data, error } = await supabase
-      .from('payments')
-      .select('*, profiles(*), enrollments(*, courses(*))')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*, profiles:user_id(*), enrollments:enrollment_id(*, courses:course_id(*))')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching all payments:', err);
+      return [];
+    }
   },
 
   async getEnrollmentsByCourse(courseId: string) {
@@ -439,13 +442,18 @@ export const adminService = {
 
   async getUserPayments(userId: string) {
     if (!isSupabaseConfigured) return [];
-    const { data, error } = await supabase
-      .from('payments')
-      .select('*, enrollments(*, courses(*))')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*, enrollments:enrollment_id(*, courses:course_id(*))')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching user payments:', err);
+      return [];
+    }
   },
 
   async getUserInstallments(userId: string, enrollmentIds: string[]) {
@@ -461,24 +469,34 @@ export const adminService = {
 
   async getRecentPayments(limit: number = 5) {
     if (!isSupabaseConfigured) return [];
-    const { data, error } = await supabase
-      .from('payments')
-      .select('*, profiles(*), enrollments(*, courses(*))')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*, profiles:user_id(*), enrollments:enrollment_id(*, courses:course_id(*))')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching recent payments:', err);
+      return [];
+    }
   },
 
   // Installments
   async getInstallments() {
     if (!isSupabaseConfigured) return [];
-    const { data, error } = await supabase
-      .from('installment_records')
-      .select('*, enrollments(*, profiles(*), courses(*))')
-      .order('next_payment_date', { ascending: true });
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('installment_records')
+        .select('*, enrollments(*, profiles:user_id(*), courses:course_id(*))')
+        .order('next_payment_date', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching installments:', err);
+      return [];
+    }
   },
   async updateInstallment(id: string, updates: any) {
     const { data, error } = await supabase
@@ -520,23 +538,26 @@ export const adminService = {
   },
 
   // Seed Data
-  async seedDatabase() {
-    // Categories
+  async seedDatabase(force = false) {
+    if (!isSupabaseConfigured) return;
+    console.log('Starting database seed...');
     const { data: existingCats } = await supabase.from('categories').select('id');
-    if (!existingCats || existingCats.length === 0) {
-      const { data: cats } = await supabase.from('categories').insert(
-        MOCK_CATEGORIES.map(({ id, ...rest }) => rest)
+    if (force || !existingCats || existingCats.length === 0) {
+      const { data: cats } = await supabase.from('categories').upsert(
+        MOCK_CATEGORIES.map(({ id, ...rest }) => rest),
+        { onConflict: 'slug' }
       ).select();
       
       if (cats) {
         // Courses
         const { data: existingCourses } = await supabase.from('courses').select('id');
-        if (!existingCourses || existingCourses.length === 0) {
-          await supabase.from('courses').insert(
+        if (force || !existingCourses || existingCourses.length === 0) {
+          await supabase.from('courses').upsert(
             MOCK_COURSES.map(({ id, category_id, categories, ...rest }) => ({
               ...rest,
               category_id: cats.find(c => c.slug === (categories as any).slug)?.id
-            }))
+            })),
+            { onConflict: 'slug' }
           );
         }
       }
@@ -544,26 +565,26 @@ export const adminService = {
 
     // FAQs
     const { data: existingFaqs } = await supabase.from('faqs').select('id');
-    if (!existingFaqs || existingFaqs.length === 0) {
-      await supabase.from('faqs').insert(
+    if (force || !existingFaqs || existingFaqs.length === 0) {
+      await supabase.from('faqs').upsert(
         MOCK_FAQS.map(({ id, ...rest }) => rest)
       );
     }
 
     // Announcements
     const { data: existingAnnouncements } = await supabase.from('announcements').select('id');
-    if (!existingAnnouncements || existingAnnouncements.length === 0) {
-      await supabase.from('announcements').insert(
+    if (force || !existingAnnouncements || existingAnnouncements.length === 0) {
+      await supabase.from('announcements').upsert(
         MOCK_ANNOUNCEMENTS.map(({ id, ...rest }) => rest)
       );
     }
 
     // Quizzes
     const { data: existingQuizzes } = await supabase.from('quizzes').select('id');
-    if (!existingQuizzes || existingQuizzes.length === 0) {
+    if (force || !existingQuizzes || existingQuizzes.length === 0) {
       const { data: dbCourses } = await supabase.from('courses').select('id, slug');
       if (dbCourses) {
-        await supabase.from('quizzes').insert(
+        await supabase.from('quizzes').upsert(
           MOCK_QUIZZES.map(({ id, course_id, ...rest }) => ({
             ...rest,
             course_id: dbCourses.find(c => c.slug === course_id)?.id
@@ -574,101 +595,108 @@ export const adminService = {
 
     // Site Settings
     const { data: existingSettings } = await supabase.from('site_settings').select('key');
-    if (!existingSettings || existingSettings.length === 0) {
-      await supabase.from('site_settings').insert(MOCK_SITE_SETTINGS);
+    if (force || !existingSettings || existingSettings.length === 0) {
+      await supabase.from('site_settings').upsert(MOCK_SITE_SETTINGS);
     }
 
     // Enrollments & Payments
     const { data: existingEnrollments } = await supabase.from('enrollments').select('id');
-    if (!existingEnrollments || existingEnrollments.length === 0) {
-      const { data: allProfiles } = await supabase.from('profiles').select('id, role');
-      const { data: dbCourses } = await supabase.from('courses').select('id').limit(3);
-      
-      if (allProfiles && allProfiles.length > 0 && dbCourses && dbCourses.length > 0) {
-        const enrollmentsToInsert: any[] = [];
-        const paymentsToInsert: any[] = [];
-        const installmentsToInsert: any[] = [];
+    const { data: allProfiles } = await supabase.from('profiles').select('id, role');
+    const { data: dbCourses } = await supabase.from('courses').select('id').limit(5);
+    
+    // If we have few enrollments or force, seed more for all profiles
+    if ((force || !existingEnrollments || existingEnrollments.length < 5) && allProfiles && allProfiles.length > 0 && dbCourses && dbCourses.length > 0) {
+      const enrollmentsToInsert: any[] = [];
+      const paymentsToInsert: any[] = [];
+      const installmentsToInsert: any[] = [];
 
-        allProfiles.forEach(profile => {
-          // Enroll each profile in 1-2 courses
-          const numCourses = Math.floor(Math.random() * 2) + 1;
-          const selectedCourses = [...dbCourses].sort(() => 0.5 - Math.random()).slice(0, numCourses);
+      allProfiles.forEach(profile => {
+        // Enroll each profile in 1-3 courses
+        const numCourses = Math.floor(Math.random() * 3) + 1;
+        const selectedCourses = [...dbCourses].sort(() => 0.5 - Math.random()).slice(0, numCourses);
 
-          selectedCourses.forEach(course => {
-            const enrollmentId = crypto.randomUUID();
-            const enrolledAt = new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString();
-            const isInstallment = Math.random() > 0.5;
+        selectedCourses.forEach(course => {
+          const enrollmentId = crypto.randomUUID();
+          const enrolledAt = new Date(Date.now() - Math.floor(Math.random() * 60) * 24 * 60 * 60 * 1000).toISOString();
+          const isInstallment = Math.random() > 0.4;
 
-            enrollmentsToInsert.push({
-              id: enrollmentId,
+          enrollmentsToInsert.push({
+            id: enrollmentId,
+            user_id: profile.id,
+            course_id: course.id,
+            status: Math.random() > 0.8 ? 'completed' : 'active',
+            enrolled_at: enrolledAt,
+            package_type: Math.random() > 0.5 ? 'platinum' : 'standard'
+          });
+
+          if (!isInstallment) {
+            paymentsToInsert.push({
               user_id: profile.id,
-              course_id: course.id,
-              status: 'active',
-              payment_status: isInstallment ? 'partial' : 'paid',
-              enrolled_at: enrolledAt,
-              package_type: Math.random() > 0.5 ? 'platinum' : 'standard'
+              enrollment_id: enrollmentId,
+              amount: 450,
+              currency: 'GBP',
+              payment_method: 'bank_transfer',
+              payment_status: 'succeeded',
+              stripe_payment_intent_id: `seed_${Math.random().toString(36).substring(7)}`,
+              created_at: enrolledAt
+            });
+          } else {
+            // Create installment record
+            const totalAmount = 450;
+            const paidAmount = 150;
+            installmentsToInsert.push({
+              enrollment_id: enrollmentId,
+              total_amount: totalAmount,
+              paid_amount: paidAmount,
+              next_payment_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+              status: 'active'
             });
 
-            if (!isInstallment) {
-              paymentsToInsert.push({
-                user_id: profile.id,
-                enrollment_id: enrollmentId,
-                amount: 450,
-                currency: 'GBP',
-                payment_method: 'bank_transfer',
-                payment_status: 'succeeded',
-                transaction_id: `seed_${Math.random().toString(36).substring(7)}`,
-                created_at: enrolledAt
-              });
-            } else {
-              // Create installment record
-              const totalAmount = 450;
-              const paidAmount = 150;
-              installmentsToInsert.push({
-                enrollment_id: enrollmentId,
-                user_id: profile.id,
-                total_amount: totalAmount,
-                paid_amount: paidAmount,
-                installment_count: 3,
-                next_payment_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
-              });
-
-              // Initial installment payment
-              paymentsToInsert.push({
-                user_id: profile.id,
-                enrollment_id: enrollmentId,
-                amount: paidAmount,
-                currency: 'GBP',
-                payment_method: 'bank_transfer',
-                payment_status: 'succeeded',
-                transaction_id: `seed_inst_${Math.random().toString(36).substring(7)}`,
-                created_at: enrolledAt
-              });
-            }
-          });
+            // Initial installment payment
+            paymentsToInsert.push({
+              user_id: profile.id,
+              enrollment_id: enrollmentId,
+              amount: paidAmount,
+              currency: 'GBP',
+              payment_method: 'bank_transfer',
+              payment_status: 'succeeded',
+              stripe_payment_intent_id: `seed_inst_${Math.random().toString(36).substring(7)}`,
+              created_at: enrolledAt,
+              is_installment: true
+            });
+          }
         });
+      });
 
-        if (enrollmentsToInsert.length > 0) {
-          await supabase.from('enrollments').insert(enrollmentsToInsert);
-          if (paymentsToInsert.length > 0) await supabase.from('payments').insert(paymentsToInsert);
-          if (installmentsToInsert.length > 0) await supabase.from('installment_records').insert(installmentsToInsert);
+      if (enrollmentsToInsert.length > 0) {
+        try {
+          await supabase.from('enrollments').upsert(enrollmentsToInsert);
+          if (paymentsToInsert.length > 0) await supabase.from('payments').upsert(paymentsToInsert);
+          if (installmentsToInsert.length > 0) await supabase.from('installment_records').upsert(installmentsToInsert, { onConflict: 'enrollment_id' });
+        } catch (err) {
+          console.error('Error inserting seeded enrollments/payments:', err);
         }
+      }
 
-        // 7. Seed Quiz Attempts for stats
-        const { data: quizzes } = await supabase.from('quizzes').select('id').limit(5);
-        if (quizzes && quizzes.length > 0) {
-          const attempts = allProfiles.flatMap(p => 
-            quizzes.map(q => ({
-              profile_id: p.id,
-              quiz_id: q.id,
-              score: Math.floor(Math.random() * 40) + 60,
-              passed: true,
-              completed_at: new Date().toISOString()
-            }))
-          );
-          await supabase.from('quiz_attempts').insert(attempts);
+      // 7. Seed Quiz Attempts for stats
+      const { data: quizzes } = await supabase.from('quizzes').select('id').limit(5);
+      if (quizzes && quizzes.length > 0) {
+        const attempts = allProfiles.flatMap(p => 
+          quizzes.map(q => ({
+            user_id: p.id,
+            quiz_id: q.id,
+            score: Math.floor(Math.random() * 40) + 60,
+            passed: Math.random() > 0.2,
+            attempted_at: new Date(Date.now() - Math.floor(Math.random() * 15) * 24 * 60 * 60 * 1000).toISOString()
+          }))
+        );
+        try {
+          await supabase.from('quiz_attempts').upsert(attempts);
+        } catch (err) {
+          console.error('Error inserting seeded quiz attempts:', err);
         }
       }
     }
+    console.log('Seeding complete.');
   }
 };
