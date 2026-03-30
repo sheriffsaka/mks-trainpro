@@ -81,7 +81,7 @@ export const CourseDetailPage = () => {
       let receiptUrl = '';
       if (receiptFile) {
         // Upload receipt
-        receiptUrl = await adminService.uploadFile(receiptFile, 'payment-proofs');
+        receiptUrl = await adminService.uploadFile(receiptFile, 'payment-proofs', user.id);
       }
 
       const amountToPay = isPartPayment ? partPaymentAmount : totalPrice;

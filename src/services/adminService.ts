@@ -764,11 +764,11 @@ export const adminService = {
   },
 
   // File Uploads
-  async uploadFile(file: File, bucket: string = 'training-assets') {
+  async uploadFile(file: File, bucket: string = 'training-assets', userId?: string) {
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${fileName}`;
+      const filePath = userId ? `${userId}/${fileName}` : `${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from(bucket)
