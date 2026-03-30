@@ -116,17 +116,62 @@ const DiagnosticTab = () => {
     try {
       setTesting(true);
       setTestResult(null);
+      
+      // 1. Simple fetch (no joins)
+      const { data: simpleEnrollments, error: simpleError } = await supabase.from('enrollments').select('*').limit(1);
+      
+      // 2. Full fetch (with joins)
       const enrollments = await adminService.getAllEnrollments();
       const payments = await adminService.getAllPayments();
       const installments = await adminService.getInstallments();
       
+      // 3. Profile check
+      const { data: profileData, error: profileError } = await supabase.from('profiles').select('*').eq('id', (await supabase.auth.getUser()).data.user?.id).single();
+      
       setTestResult({
-        enrollments: { count: enrollments?.length || 0, sample: enrollments?.slice(0, 1) },
-        payments: { count: payments?.length || 0, sample: payments?.slice(0, 1) },
-        installments: { count: installments?.length || 0, sample: installments?.slice(0, 1) }
+        auth: {
+          email: (await supabase.auth.getUser()).data.user?.email,
+          id: (await supabase.auth.getUser()).data.user?.id,
+        },
+        profile: {
+          data: profileData,
+          error: profileError?.message
+        },
+        simpleFetch: {
+          enrollmentsCount: simpleEnrollments?.length || 0,
+          error: simpleError?.message
+        },
+        fullFetch: {
+          enrollments: { count: enrollments?.length || 0, sample: enrollments?.slice(0, 1) },
+          payments: { count: payments?.length || 0, sample: payments?.slice(0, 1) },
+          installments: { count: installments?.length || 0, sample: installments?.slice(0, 1) }
+        }
       });
     } catch (err: any) {
       setTestResult({ error: err.message || String(err) });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const fixAdminProfile = async () => {
+    try {
+      setTesting(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user logged in');
+      
+      const { error } = await supabase.from('profiles').upsert({
+        id: user.id,
+        email: user.email,
+        full_name: user.user_metadata?.full_name || 'Admin User',
+        role: 'admin'
+      });
+      
+      if (error) throw error;
+      alert('Admin profile fixed! Refreshing data...');
+      fetchData();
+    } catch (err: any) {
+      alert('Error fixing profile: ' + (err.message || String(err)));
     } finally {
       setTesting(false);
     }
@@ -190,13 +235,22 @@ const DiagnosticTab = () => {
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-bold text-slate-900">Data Fetch Test</h3>
-          <button 
-            onClick={runTestFetch}
-            disabled={testing}
-            className="px-4 py-2 bg-brand-blue text-white rounded-xl text-xs font-bold hover:bg-brand-blue-hover transition-all disabled:opacity-50"
-          >
-            {testing ? 'Testing...' : 'Run Test Fetch'}
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={fixAdminProfile}
+              disabled={testing}
+              className="px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-bold hover:bg-amber-600 transition-all disabled:opacity-50"
+            >
+              {testing ? 'Fixing...' : 'Fix Admin Profile'}
+            </button>
+            <button 
+              onClick={runTestFetch}
+              disabled={testing}
+              className="px-4 py-2 bg-brand-blue text-white rounded-xl text-xs font-bold hover:bg-brand-blue-hover transition-all disabled:opacity-50"
+            >
+              {testing ? 'Testing...' : 'Run Test Fetch'}
+            </button>
+          </div>
         </div>
         
         {testResult && (
