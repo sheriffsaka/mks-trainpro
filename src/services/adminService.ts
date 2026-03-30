@@ -8,6 +8,8 @@ import {
   MOCK_SITE_SETTINGS,
   MOCK_ENROLLMENTS,
   MOCK_PAYMENTS,
+  MOCK_INSTALLMENTS,
+  MOCK_COURSE_MATERIALS,
   MOCK_STATS
 } from '../data/mockData';
 
@@ -173,14 +175,16 @@ export const adminService = {
   // Class Schedules
   async getSchedules(courseId?: string) {
     if (!isSupabaseConfigured) return [];
-    let query = supabase.from('class_schedules').select('*, courses(title)');
+    let query = supabase.from('class_schedules').select('*, courses(title), profiles(full_name)');
     if (courseId) query = query.eq('course_id', courseId);
     const { data, error } = await query.order('start_time', { ascending: true });
     if (error) throw error;
     return data;
   },
   async createSchedule(schedule: any) {
-    const { data, error } = await supabase.from('class_schedules').insert([schedule]).select();
+    const { data: { user } } = await supabase.auth.getUser();
+    const scheduleWithInstructor = { ...schedule, instructor_id: user?.id };
+    const { data, error } = await supabase.from('class_schedules').insert([scheduleWithInstructor]).select();
     if (error) throw error;
     return data[0];
   },
@@ -592,7 +596,7 @@ export const adminService = {
   },
 
   async getAllPayments() {
-    if (!isSupabaseConfigured) return [];
+    if (!isSupabaseConfigured) return MOCK_PAYMENTS;
     try {
       const { data, error } = await supabase
         .from('payments')
@@ -674,7 +678,7 @@ export const adminService = {
   },
 
   async getRecentPayments(limit: number = 5) {
-    if (!isSupabaseConfigured) return [];
+    if (!isSupabaseConfigured) return MOCK_PAYMENTS.slice(0, limit);
     try {
       const { data, error } = await supabase
         .from('payments')
@@ -691,7 +695,7 @@ export const adminService = {
 
   // Installments
   async getInstallments() {
-    if (!isSupabaseConfigured) return [];
+    if (!isSupabaseConfigured) return MOCK_INSTALLMENTS;
     try {
       const { data, error } = await supabase
         .from('installment_records')
@@ -712,6 +716,56 @@ export const adminService = {
       .select();
     if (error) throw error;
     return data[0];
+  },
+
+  // Course Materials
+  async getCourseMaterials(courseId?: string) {
+    if (!isSupabaseConfigured) {
+      return courseId ? MOCK_COURSE_MATERIALS.filter(m => m.course_id === courseId) : MOCK_COURSE_MATERIALS;
+    }
+    try {
+      let query = supabase.from('course_materials').select('*, courses:course_id(*)');
+      if (courseId) {
+        query = query.eq('course_id', courseId);
+      }
+      const { data, error } = await query.order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching course materials:', err);
+      return [];
+    }
+  },
+
+  async createCourseMaterial(material: any) {
+    if (!isSupabaseConfigured) return { id: Math.random().toString(), ...material };
+    try {
+      const { data, error } = await supabase
+        .from('course_materials')
+        .insert([material])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.error('Error creating course material:', err);
+      throw err;
+    }
+  },
+
+  async deleteCourseMaterial(id: string) {
+    if (!isSupabaseConfigured) return true;
+    try {
+      const { error } = await supabase
+        .from('course_materials')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.error('Error deleting course material:', err);
+      throw err;
+    }
   },
 
   // File Uploads

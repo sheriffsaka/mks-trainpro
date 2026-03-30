@@ -259,19 +259,44 @@ export const MOCK_PAYMENTS = [
     amount: 100.00,
     payment_status: 'succeeded',
     created_at: new Date().toISOString(),
-    enrollments: MOCK_ENROLLMENTS[0]
+    enrollments: MOCK_ENROLLMENTS[0],
+    profiles: { full_name: 'John Doe', email: 'john@example.com' }
+  }
+];
+
+export const MOCK_INSTALLMENTS = [
+  {
+    id: 'i1',
+    enrollment_id: 'e1',
+    amount: 150.00,
+    due_date: new Date(Date.now() + 86400000 * 7).toISOString(),
+    status: 'pending',
+    enrollments: MOCK_ENROLLMENTS[0],
+    profiles: { full_name: 'John Doe' }
+  }
+];
+
+export const MOCK_COURSE_MATERIALS = [
+  {
+    id: 'm1',
+    course_id: 'c1',
+    title: 'SAP Introduction PDF',
+    description: 'Basic introduction to SAP ERP systems.',
+    file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    type: 'pdf',
+    created_at: new Date().toISOString()
   }
 ];
 
 export const MOCK_STATS = {
-  totalStudents: 1250,
-  activeEnrollments: 850,
-  completedCourses: 400,
-  totalRevenue: 125000,
-  revenueGrowth: 15.5,
-  studentGrowth: 12.2,
-  completionRate: 78.5,
-  activeQuizzes: 45
+  totalStudents: 1,
+  activeEnrollments: 1,
+  completedCourses: 0,
+  totalRevenue: 100,
+  revenueGrowth: 0,
+  studentGrowth: 0,
+  completionRate: 0,
+  activeQuizzes: 1
 };
 
 export const MOCK_SITE_SETTINGS = [

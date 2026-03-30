@@ -13,19 +13,66 @@ import {
   ChevronRight,
   Filter,
   AlertCircle,
-  MessageSquare
+  MessageSquare,
+  Plus,
+  Edit,
+  Trash2,
+  Image as ImageIcon,
+  Video,
+  Play,
+  X,
+  Loader2,
+  Megaphone,
+  Clock,
+  ExternalLink,
+  Download
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { progressService, AttendanceRecord, AssessmentRecord, AssignmentRecord } from '../services/progressService';
 import { adminService } from '../services/adminService';
-import { MOCK_COURSES } from '../data/mockData';
+
+// Reusable Modal Component
+const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+      />
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="relative bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+      >
+        <div className="p-8 border-b border-slate-100 flex justify-between items-center shrink-0">
+          <h3 className="text-2xl font-bold text-slate-900">{title}</h3>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+            <X size={24} />
+          </button>
+        </div>
+        <div className="p-8 overflow-y-auto flex-1">
+          {children}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
 
 export const InstructorPage = () => {
   const [activeTab, setActiveTab] = useState('attendance');
-  const [courses, setCourses] = useState<any[]>(MOCK_COURSES);
+  const [courses, setCourses] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<string>('');
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<'course' | 'schedule' | 'announcement' | 'material'>('course');
+  const [editingItem, setEditingItem] = useState<any>(null);
 
   // Attendance State
   const [selectedSession, setSelectedSession] = useState('Session 1');
@@ -39,23 +86,50 @@ export const InstructorPage = () => {
   const [assignmentName, setAssignmentName] = useState('Case Study Report');
   const [assignmentStatus, setAssignmentStatus] = useState<{[key: string]: any}>({});
 
-  useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        const data = await adminService.getCourses();
-        if (data && data.length > 0) setCourses(data);
-      } catch (err) {
-        console.error('Error fetching courses:', err);
-      }
-    };
-    fetchCourses();
-  }, []);
+  // Schedules, Announcements & Materials State
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [materials, setMaterials] = useState<any[]>([]);
 
   useEffect(() => {
-    if (selectedCourse) {
-      fetchStudents();
+    fetchInitialData();
+  }, []);
+
+  const fetchInitialData = async () => {
+    try {
+      const [coursesData, categoriesData] = await Promise.all([
+        adminService.getCourses(),
+        adminService.getCategories()
+      ]);
+      setCourses(coursesData || []);
+      setCategories(categoriesData || []);
+    } catch (err) {
+      console.error('Error fetching initial data:', err);
     }
-  }, [selectedCourse]);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'schedules') fetchSchedules();
+    if (activeTab === 'announcements') fetchAnnouncements();
+    if (activeTab === 'courses') fetchInitialData();
+    if (activeTab === 'materials') fetchMaterials();
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (selectedCourse && (activeTab === 'attendance' || activeTab === 'assessments' || activeTab === 'assignments' || activeTab === 'materials')) {
+      fetchStudents();
+      if (activeTab === 'materials') fetchMaterials();
+    }
+  }, [selectedCourse, activeTab]);
+
+  const fetchMaterials = async () => {
+    try {
+      const data = await adminService.getCourseMaterials(selectedCourse || undefined);
+      setMaterials(data || []);
+    } catch (err) {
+      console.error('Error fetching materials:', err);
+    }
+  };
 
   const fetchStudents = async () => {
     setLoading(true);
@@ -75,11 +149,29 @@ export const InstructorPage = () => {
         .eq('course_id', selectedCourse);
       
       if (error) throw error;
-      setStudents(data.map((e: any) => e.profiles));
+      setStudents(data.map((e: any) => e.profiles).filter(Boolean));
     } catch (err) {
       console.error('Error fetching students:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSchedules = async () => {
+    try {
+      const data = await adminService.getSchedules();
+      setSchedules(data || []);
+    } catch (err) {
+      console.error('Error fetching schedules:', err);
+    }
+  };
+
+  const fetchAnnouncements = async () => {
+    try {
+      const data = await adminService.getAnnouncements();
+      setAnnouncements(data || []);
+    } catch (err) {
+      console.error('Error fetching announcements:', err);
     }
   };
 
@@ -142,6 +234,123 @@ export const InstructorPage = () => {
     }
   };
 
+  const handleCourseSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const courseData: any = {
+      title: formData.get('title'),
+      slug: (formData.get('title') as string).toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, ''),
+      category_id: formData.get('category_id'),
+      price_standard: parseFloat(formData.get('price_standard') as string),
+      price_platinum: parseFloat(formData.get('price_platinum') as string),
+      image_url: formData.get('image_url'),
+      video_url: formData.get('video_url'),
+      document_url: formData.get('document_url'),
+      description: formData.get('description'),
+      duration: formData.get('duration'),
+      mode: formData.get('mode'),
+      is_published: formData.get('is_published') === 'on',
+      instructor_id: (await supabase.auth.getUser()).data.user?.id
+    };
+
+    try {
+      if (editingItem) {
+        await adminService.updateCourse(editingItem.id, courseData);
+        alert('Course updated!');
+      } else {
+        await adminService.createCourse(courseData);
+        alert('Course created!');
+      }
+      setIsModalOpen(false);
+      fetchInitialData();
+    } catch (err) {
+      console.error(err);
+      alert('Error saving course');
+    }
+  };
+
+  const handleScheduleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const scheduleData = {
+      course_id: formData.get('course_id'),
+      title: formData.get('title'),
+      description: formData.get('description'),
+      meeting_link: formData.get('meeting_link'),
+      start_time: formData.get('start_time'),
+      end_time: formData.get('end_time'),
+    };
+
+    try {
+      if (editingItem) {
+        await adminService.updateSchedule(editingItem.id, scheduleData);
+      } else {
+        await adminService.createSchedule(scheduleData);
+      }
+      setIsModalOpen(false);
+      fetchSchedules();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleAnnouncementSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const announcementData = {
+      title: formData.get('title'),
+      content: formData.get('content'),
+      type: formData.get('type'),
+      created_by: (await supabase.auth.getUser()).data.user?.id
+    };
+
+    try {
+      if (editingItem) {
+        await adminService.updateAnnouncement(editingItem.id, announcementData);
+      } else {
+        await adminService.createAnnouncement(announcementData);
+      }
+      setIsModalOpen(false);
+      fetchAnnouncements();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleMaterialSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const materialData = {
+      course_id: formData.get('course_id'),
+      title: formData.get('title'),
+      description: formData.get('description'),
+      file_url: formData.get('file_url'),
+      type: formData.get('type')
+    };
+
+    try {
+      if (editingItem) {
+        await supabase.from('course_materials').update(materialData).eq('id', editingItem.id);
+      } else {
+        await adminService.createCourseMaterial(materialData);
+      }
+      setIsModalOpen(false);
+      fetchMaterials();
+    } catch (err) {
+      console.error('Error saving material:', err);
+    }
+  };
+
+  const handleDeleteMaterial = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this material?')) return;
+    try {
+      await adminService.deleteCourseMaterial(id);
+      fetchMaterials();
+    } catch (err) {
+      console.error('Error deleting material:', err);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
       <div className="bg-white border-b border-slate-100">
@@ -149,32 +358,24 @@ export const InstructorPage = () => {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
               <h1 className="text-3xl font-bold text-slate-900 mb-2">Instructor Dashboard</h1>
-              <p className="text-slate-500">Manage classroom attendance, assessments, and assignments.</p>
-            </div>
-            <div className="flex gap-4 w-full md:w-auto">
-              <select 
-                value={selectedCourse}
-                onChange={(e) => setSelectedCourse(e.target.value)}
-                className="flex-1 md:w-64 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-blue"
-              >
-                <option value="">Select Course</option>
-                {courses.map(course => (
-                  <option key={course.id} value={course.id}>{course.title}</option>
-                ))}
-              </select>
+              <p className="text-slate-500">Manage courses, students, and schedules.</p>
             </div>
           </div>
 
-          <div className="flex gap-8 mt-12 border-b border-slate-100">
+          <div className="flex gap-8 mt-12 border-b border-slate-100 overflow-x-auto no-scrollbar">
             {[
               { id: 'attendance', label: 'Attendance', icon: <Calendar size={18} /> },
               { id: 'assessments', label: 'Assessments', icon: <FileQuestion size={18} /> },
-              { id: 'assignments', label: 'Assignments', icon: <FileText size={18} /> }
+              { id: 'assignments', label: 'Assignments', icon: <FileText size={18} /> },
+              { id: 'materials', label: 'Course Materials', icon: <BookOpen size={18} /> },
+              { id: 'courses', label: 'My Courses', icon: <BookOpen size={18} /> },
+              { id: 'schedules', label: 'Class Schedules', icon: <Clock size={18} /> },
+              { id: 'announcements', label: 'Announcements', icon: <Megaphone size={18} /> }
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 pb-4 text-sm font-bold transition-all relative ${
+                className={`flex items-center gap-2 pb-4 text-sm font-bold transition-all relative whitespace-nowrap ${
                   activeTab === tab.id ? 'text-brand-blue' : 'text-slate-400 hover:text-slate-600'
                 }`}
               >
@@ -190,24 +391,116 @@ export const InstructorPage = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {!selectedCourse ? (
-          <div className="bg-white p-16 rounded-[3rem] border border-slate-100 text-center">
-            <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-8">
-              <BookOpen className="text-slate-300" size={40} />
+        {/* Course Selection for Student-related tabs */}
+        {(activeTab === 'attendance' || activeTab === 'assessments' || activeTab === 'assignments') && (
+          <div className="mb-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="bg-brand-blue/10 p-3 rounded-2xl text-brand-blue">
+                <Filter size={20} />
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-900">Filter by Course</h4>
+                <p className="text-xs text-slate-500">Select a course to manage its students.</p>
+              </div>
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 mb-3">Select a Course</h3>
-            <p className="text-slate-500 max-w-md mx-auto">Please select a course from the dropdown above to manage student progress.</p>
+            <select 
+              value={selectedCourse}
+              onChange={(e) => setSelectedCourse(e.target.value)}
+              className="w-full md:w-64 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-blue"
+            >
+              <option value="">Select Course</option>
+              {courses.map(course => (
+                <option key={course.id} value={course.id}>{course.title}</option>
+              ))}
+            </select>
           </div>
-        ) : (
-          <AnimatePresence mode="wait">
-            {activeTab === 'attendance' && (
-              <motion.div
-                key="attendance"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="space-y-8"
-              >
+        )}
+
+        <AnimatePresence mode="wait">
+          {activeTab === 'materials' && (
+            <motion.div key="materials" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-slate-900">Course Materials</h2>
+                <button 
+                  onClick={() => {
+                    setModalType('material');
+                    setEditingItem(null);
+                    setIsModalOpen(true);
+                  }}
+                  className="flex items-center gap-2 bg-brand-blue text-white px-6 py-3 rounded-2xl font-bold hover:bg-brand-blue/90 transition-all shadow-lg shadow-brand-blue/20"
+                >
+                  <Plus size={20} />
+                  Add Material
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {materials.map((material) => (
+                  <div key={material.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all group">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className={`p-3 rounded-2xl ${
+                        material.type === 'pdf' ? 'bg-red-50 text-red-600' :
+                        material.type === 'video' ? 'bg-blue-50 text-blue-600' :
+                        'bg-indigo-50 text-indigo-600'
+                      }`}>
+                        {material.type === 'video' ? <Video size={24} /> : <FileText size={24} />}
+                      </div>
+                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => {
+                            setModalType('material');
+                            setEditingItem(material);
+                            setIsModalOpen(true);
+                          }}
+                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                        >
+                          <Edit size={18} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteMaterial(material.id)}
+                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">{material.title}</h3>
+                    <p className="text-slate-500 text-sm mb-4 line-clamp-2">{material.description}</p>
+                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-50">
+                      <span className="text-xs font-medium text-slate-400 flex items-center gap-1">
+                        <Clock size={14} />
+                        {new Date(material.created_at).toLocaleDateString()}
+                      </span>
+                      <a 
+                        href={material.file_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-brand-blue hover:text-brand-blue/80 font-bold text-sm flex items-center gap-1"
+                      >
+                        View <ExternalLink size={14} />
+                      </a>
+                    </div>
+                  </div>
+                ))}
+                {materials.length === 0 && (
+                  <div className="col-span-full bg-white p-12 rounded-[2rem] border border-slate-100 text-center">
+                    <BookOpen className="text-slate-200 mx-auto mb-4" size={48} />
+                    <p className="text-slate-500">No materials found for this course.</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'attendance' && (
+            <motion.div key="attendance" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
+              {!selectedCourse ? (
+                <div className="bg-white p-16 rounded-[3rem] border border-slate-100 text-center">
+                  <BookOpen className="text-slate-300 mx-auto mb-8" size={40} />
+                  <h3 className="text-2xl font-bold text-slate-900 mb-3">Select a Course</h3>
+                  <p className="text-slate-500">Please select a course to mark attendance.</p>
+                </div>
+              ) : (
                 <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                   <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
                     <div className="flex items-center gap-4">
@@ -216,7 +509,7 @@ export const InstructorPage = () => {
                       </div>
                       <div>
                         <h3 className="text-xl font-bold text-slate-900">Mark Attendance</h3>
-                        <p className="text-sm text-slate-500">Record student presence for today's session.</p>
+                        <p className="text-sm text-slate-500">Today: {new Date().toLocaleDateString()}</p>
                       </div>
                     </div>
                     <div className="flex gap-4">
@@ -234,17 +527,15 @@ export const InstructorPage = () => {
                         disabled={loading}
                         className="bg-brand-blue text-white px-6 py-2 rounded-xl font-bold hover:bg-brand-blue-hover transition-all flex items-center gap-2"
                       >
-                        <Save size={18} /> Save Attendance
+                        <Save size={18} /> Save
                       </button>
                     </div>
                   </div>
-
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">
                       <thead>
                         <tr className="bg-slate-50 text-slate-400 text-[10px] uppercase tracking-widest">
                           <th className="px-6 py-4">Student Name</th>
-                          <th className="px-6 py-4">Email</th>
                           <th className="px-6 py-4 text-center">Status</th>
                         </tr>
                       </thead>
@@ -252,15 +543,12 @@ export const InstructorPage = () => {
                         {students.map((student) => (
                           <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="px-6 py-4 font-bold text-slate-900">{student.full_name}</td>
-                            <td className="px-6 py-4 text-slate-500">{student.email}</td>
                             <td className="px-6 py-4">
                               <div className="flex justify-center gap-4">
                                 <button 
                                   onClick={() => setAttendanceData({...attendanceData, [student.id]: 'present'})}
                                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                                    attendanceData[student.id] === 'present' 
-                                      ? 'bg-emerald-100 text-emerald-700' 
-                                      : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                                    attendanceData[student.id] === 'present' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'
                                   }`}
                                 >
                                   <CheckCircle2 size={16} /> Present
@@ -268,9 +556,7 @@ export const InstructorPage = () => {
                                 <button 
                                   onClick={() => setAttendanceData({...attendanceData, [student.id]: 'absent'})}
                                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                                    attendanceData[student.id] === 'absent' 
-                                      ? 'bg-brand-red/10 text-brand-red' 
-                                      : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                                    attendanceData[student.id] === 'absent' ? 'bg-brand-red/10 text-brand-red' : 'bg-slate-100 text-slate-400'
                                   }`}
                                 >
                                   <XCircle size={16} /> Absent
@@ -283,17 +569,19 @@ export const InstructorPage = () => {
                     </table>
                   </div>
                 </div>
-              </motion.div>
-            )}
+              )}
+            </motion.div>
+          )}
 
-            {activeTab === 'assessments' && (
-              <motion.div
-                key="assessments"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="space-y-8"
-              >
+          {activeTab === 'assessments' && (
+            <motion.div key="assessments" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
+              {!selectedCourse ? (
+                <div className="bg-white p-16 rounded-[3rem] border border-slate-100 text-center">
+                  <FileQuestion className="text-slate-300 mx-auto mb-8" size={40} />
+                  <h3 className="text-2xl font-bold text-slate-900 mb-3">Select a Course</h3>
+                  <p className="text-slate-500">Please select a course to record scores.</p>
+                </div>
+              ) : (
                 <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                   <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
                     <div className="flex items-center gap-4">
@@ -301,8 +589,8 @@ export const InstructorPage = () => {
                         <FileQuestion size={24} />
                       </div>
                       <div>
-                        <h3 className="text-xl font-bold text-slate-900">Record Assessment Scores</h3>
-                        <p className="text-sm text-slate-500">Enter quiz or test results for each student.</p>
+                        <h3 className="text-xl font-bold text-slate-900">Record Scores</h3>
+                        <p className="text-sm text-slate-500">Enter assessment results.</p>
                       </div>
                     </div>
                     <div className="flex gap-4">
@@ -318,17 +606,15 @@ export const InstructorPage = () => {
                         disabled={loading}
                         className="bg-brand-blue text-white px-6 py-2 rounded-xl font-bold hover:bg-brand-blue-hover transition-all flex items-center gap-2"
                       >
-                        <Save size={18} /> Save Scores
+                        <Save size={18} /> Save
                       </button>
                     </div>
                   </div>
-
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">
                       <thead>
                         <tr className="bg-slate-50 text-slate-400 text-[10px] uppercase tracking-widest">
                           <th className="px-6 py-4">Student Name</th>
-                          <th className="px-6 py-4">Email</th>
                           <th className="px-6 py-4 text-center">Score (%)</th>
                         </tr>
                       </thead>
@@ -336,7 +622,6 @@ export const InstructorPage = () => {
                         {students.map((student) => (
                           <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="px-6 py-4 font-bold text-slate-900">{student.full_name}</td>
-                            <td className="px-6 py-4 text-slate-500">{student.email}</td>
                             <td className="px-6 py-4">
                               <div className="flex justify-center">
                                 <input 
@@ -345,7 +630,7 @@ export const InstructorPage = () => {
                                   max="100"
                                   value={scores[student.id] || ''}
                                   onChange={(e) => setScores({...scores, [student.id]: parseInt(e.target.value)})}
-                                  className="w-24 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-center font-bold outline-none focus:ring-2 focus:ring-brand-blue"
+                                  className="w-24 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-center font-bold outline-none"
                                 />
                               </div>
                             </td>
@@ -355,17 +640,19 @@ export const InstructorPage = () => {
                     </table>
                   </div>
                 </div>
-              </motion.div>
-            )}
+              )}
+            </motion.div>
+          )}
 
-            {activeTab === 'assignments' && (
-              <motion.div
-                key="assignments"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="space-y-8"
-              >
+          {activeTab === 'assignments' && (
+            <motion.div key="assignments" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
+              {!selectedCourse ? (
+                <div className="bg-white p-16 rounded-[3rem] border border-slate-100 text-center">
+                  <FileText className="text-slate-300 mx-auto mb-8" size={40} />
+                  <h3 className="text-2xl font-bold text-slate-900 mb-3">Select a Course</h3>
+                  <p className="text-slate-500">Please select a course to review assignments.</p>
+                </div>
+              ) : (
                 <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                   <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
                     <div className="flex items-center gap-4">
@@ -374,7 +661,7 @@ export const InstructorPage = () => {
                       </div>
                       <div>
                         <h3 className="text-xl font-bold text-slate-900">Review Assignments</h3>
-                        <p className="text-sm text-slate-500">Approve or reject student coursework submissions.</p>
+                        <p className="text-sm text-slate-500">Manage student submissions.</p>
                       </div>
                     </div>
                     <input 
@@ -385,14 +672,12 @@ export const InstructorPage = () => {
                       className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 outline-none w-full md:w-64"
                     />
                   </div>
-
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">
                       <thead>
                         <tr className="bg-slate-50 text-slate-400 text-[10px] uppercase tracking-widest">
                           <th className="px-6 py-4">Student Name</th>
                           <th className="px-6 py-4">Status</th>
-                          <th className="px-6 py-4">Feedback</th>
                           <th className="px-6 py-4 text-right">Actions</th>
                         </tr>
                       </thead>
@@ -412,15 +697,6 @@ export const InstructorPage = () => {
                                 <option value="rejected">Rejected</option>
                               </select>
                             </td>
-                            <td className="px-6 py-4">
-                              <input 
-                                type="text"
-                                value={assignmentStatus[student.id]?.note || ''}
-                                onChange={(e) => setAssignmentStatus({...assignmentStatus, [student.id]: {...assignmentStatus[student.id], note: e.target.value}})}
-                                placeholder="Add feedback..."
-                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1 text-sm outline-none"
-                              />
-                            </td>
                             <td className="px-6 py-4 text-right">
                               <button 
                                 onClick={() => handleUpdateAssignment(student.id, assignmentStatus[student.id]?.status || 'pending', assignmentStatus[student.id]?.note || '')}
@@ -435,11 +711,342 @@ export const InstructorPage = () => {
                     </table>
                   </div>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        )}
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === 'courses' && (
+            <motion.div key="courses" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-bold text-slate-900">Manage Courses</h3>
+                <button 
+                  onClick={() => { setEditingItem(null); setModalType('course'); setIsModalOpen(true); }}
+                  className="bg-brand-blue text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-blue-hover transition-all"
+                >
+                  <Plus size={20} /> Add New Course
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {courses.map(course => (
+                  <div key={course.id} className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden group">
+                    <div className="aspect-video relative overflow-hidden">
+                      <img src={course.image_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="" referrerPolicy="no-referrer" />
+                      <div className="absolute top-4 right-4 flex gap-2">
+                        <button onClick={() => { setEditingItem(course); setModalType('course'); setIsModalOpen(true); }} className="p-2 bg-white/90 backdrop-blur-sm rounded-xl text-slate-600 hover:text-brand-blue transition-colors">
+                          <Edit size={16} />
+                        </button>
+                        <button onClick={async () => { if(confirm('Delete course?')) { await adminService.deleteCourse(course.id); fetchInitialData(); } }} className="p-2 bg-white/90 backdrop-blur-sm rounded-xl text-slate-600 hover:text-brand-red transition-colors">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <span className="text-[10px] font-bold text-brand-blue uppercase tracking-widest mb-2 block">{course.categories?.name}</span>
+                      <h4 className="font-bold text-slate-900 mb-2">{course.title}</h4>
+                      <div className="flex items-center justify-between mt-4">
+                        <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${course.is_published ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                          {course.is_published ? 'Published' : 'Draft'}
+                        </span>
+                        <span className="text-sm font-bold text-slate-900">£{course.price_standard}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'schedules' && (
+            <motion.div key="schedules" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-bold text-slate-900">Class Schedules</h3>
+                <button 
+                  onClick={() => { setEditingItem(null); setModalType('schedule'); setIsModalOpen(true); }}
+                  className="bg-brand-blue text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-blue-hover transition-all"
+                >
+                  <Plus size={20} /> Schedule Class
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {schedules.map(schedule => (
+                  <div key={schedule.id} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm relative group">
+                    <div className="absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => { setEditingItem(schedule); setModalType('schedule'); setIsModalOpen(true); }} className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-brand-blue transition-colors">
+                        <Edit size={16} />
+                      </button>
+                      <button onClick={async () => { if(confirm('Delete schedule?')) { await adminService.deleteSchedule(schedule.id); fetchSchedules(); } }} className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-brand-red transition-colors">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-12 h-12 bg-brand-blue/10 rounded-2xl flex items-center justify-center text-brand-blue">
+                        <Calendar size={24} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900">{schedule.title}</h4>
+                        <p className="text-xs text-slate-500">{schedule.courses?.title}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <Clock size={14} />
+                        <span>{new Date(schedule.start_time).toLocaleString()}</span>
+                      </div>
+                      {schedule.meeting_link && (
+                        <a href={schedule.meeting_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-brand-blue font-bold hover:underline">
+                          <ExternalLink size={14} /> Join Meeting
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'announcements' && (
+            <motion.div key="announcements" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-bold text-slate-900">Announcements</h3>
+                <button 
+                  onClick={() => { setEditingItem(null); setModalType('announcement'); setIsModalOpen(true); }}
+                  className="bg-brand-blue text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-blue-hover transition-all"
+                >
+                  <Plus size={20} /> New Announcement
+                </button>
+              </div>
+              <div className="space-y-4">
+                {announcements.map(announcement => (
+                  <div key={announcement.id} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-start justify-between group">
+                    <div className="flex gap-4">
+                      <div className={`p-3 rounded-2xl ${
+                        announcement.type === 'warning' ? 'bg-amber-100 text-amber-600' : 
+                        announcement.type === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-brand-blue/10 text-brand-blue'
+                      }`}>
+                        <Megaphone size={24} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 mb-1">{announcement.title}</h4>
+                        <p className="text-sm text-slate-500">{announcement.content}</p>
+                        <p className="text-[10px] text-slate-400 mt-2 uppercase tracking-widest font-bold">{new Date(announcement.created_at).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => { setEditingItem(announcement); setModalType('announcement'); setIsModalOpen(true); }} className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-brand-blue transition-colors">
+                        <Edit size={16} />
+                      </button>
+                      <button onClick={async () => { if(confirm('Delete announcement?')) { await adminService.deleteAnnouncement(announcement.id); fetchAnnouncements(); } }} className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-brand-red transition-colors">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
+
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        title={editingItem ? `Edit ${modalType}` : `New ${modalType}`}
+      >
+        {modalType === 'material' && (
+          <form onSubmit={handleMaterialSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Course</label>
+                <select 
+                  name="course_id" 
+                  required
+                  defaultValue={editingItem?.course_id || selectedCourse}
+                  className="w-full px-6 py-4 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all bg-slate-50"
+                >
+                  <option value="">Select Course</option>
+                  {courses.map(c => (
+                    <option key={c.id} value={c.id}>{c.title}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Material Type</label>
+                <select 
+                  name="type" 
+                  required
+                  defaultValue={editingItem?.type || 'pdf'}
+                  className="w-full px-6 py-4 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all bg-slate-50"
+                >
+                  <option value="pdf">PDF Document</option>
+                  <option value="video">Video Lecture</option>
+                  <option value="document">Word/Text Document</option>
+                  <option value="link">External Link</option>
+                </select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700">Title</label>
+              <input 
+                name="title" 
+                type="text" 
+                required 
+                defaultValue={editingItem?.title}
+                placeholder="e.g. Introduction to SAP Module 1"
+                className="w-full px-6 py-4 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all bg-slate-50"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700">Description</label>
+              <textarea 
+                name="description" 
+                rows={3}
+                defaultValue={editingItem?.description}
+                placeholder="Briefly describe what this material covers..."
+                className="w-full px-6 py-4 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all bg-slate-50"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700">File URL / Link</label>
+              <input 
+                name="file_url" 
+                type="text" 
+                required 
+                defaultValue={editingItem?.file_url}
+                placeholder="https://..."
+                className="w-full px-6 py-4 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all bg-slate-50"
+              />
+            </div>
+            <div className="flex justify-end gap-4 pt-4">
+              <button 
+                type="button" 
+                onClick={() => setIsModalOpen(false)}
+                className="px-8 py-4 rounded-2xl font-semibold text-slate-600 hover:bg-slate-100 transition-all"
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                className="px-8 py-4 rounded-2xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
+              >
+                {editingItem ? 'Update Material' : 'Add Material'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {modalType === 'course' && (
+          <form onSubmit={handleCourseSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Course Title</label>
+                <input name="title" type="text" defaultValue={editingItem?.title} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Category</label>
+                <select name="category_id" defaultValue={editingItem?.category_id} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+                  {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Standard Price (£)</label>
+                  <input name="price_standard" type="number" defaultValue={editingItem?.price_standard} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Platinum Price (£)</label>
+                  <input name="price_platinum" type="number" defaultValue={editingItem?.price_platinum} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+                </div>
+              </div>
+            </div>
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Image URL</label>
+                <input name="image_url" type="text" defaultValue={editingItem?.image_url} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Course Mode</label>
+                <select name="mode" defaultValue={editingItem?.mode || 'vod'} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+                  <option value="virtual">Virtual</option>
+                  <option value="vod">VOD</option>
+                  <option value="physical">Physical</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                <input name="is_published" type="checkbox" defaultChecked={editingItem?.is_published} className="w-5 h-5 text-brand-blue rounded border-slate-300" />
+                <span className="text-sm font-bold text-slate-900">Publish Immediately</span>
+              </div>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
+              <textarea name="description" rows={4} defaultValue={editingItem?.description} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none resize-none" />
+            </div>
+            <div className="md:col-span-2 flex justify-end gap-4">
+              <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-3 font-bold text-slate-600">Cancel</button>
+              <button type="submit" className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold">Save Course</button>
+            </div>
+          </form>
+        )}
+
+        {modalType === 'schedule' && (
+          <form onSubmit={handleScheduleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Course</label>
+              <select name="course_id" defaultValue={editingItem?.course_id} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+                <option value="">Select Course</option>
+                {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Title</label>
+              <input name="title" type="text" defaultValue={editingItem?.title} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Start Time</label>
+                <input name="start_time" type="datetime-local" defaultValue={editingItem?.start_time?.slice(0, 16)} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">End Time</label>
+                <input name="end_time" type="datetime-local" defaultValue={editingItem?.end_time?.slice(0, 16)} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Meeting Link</label>
+              <input name="meeting_link" type="url" defaultValue={editingItem?.meeting_link} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+            </div>
+            <div className="flex justify-end gap-4">
+              <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-3 font-bold text-slate-600">Cancel</button>
+              <button type="submit" className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold">Save Schedule</button>
+            </div>
+          </form>
+        )}
+
+        {modalType === 'announcement' && (
+          <form onSubmit={handleAnnouncementSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Title</label>
+              <input name="title" type="text" defaultValue={editingItem?.title} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Type</label>
+              <select name="type" defaultValue={editingItem?.type || 'info'} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+                <option value="info">Info</option>
+                <option value="warning">Warning</option>
+                <option value="success">Success</option>
+                <option value="error">Error</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Content</label>
+              <textarea name="content" rows={4} defaultValue={editingItem?.content} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none resize-none" />
+            </div>
+            <div className="flex justify-end gap-4">
+              <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-3 font-bold text-slate-600">Cancel</button>
+              <button type="submit" className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold">Post Announcement</button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 };
