@@ -564,7 +564,7 @@ export const adminService = {
     try {
       const { data, error } = await supabase
         .from('enrollments')
-        .select('*, profiles!user_id(*), courses!course_id(*), payments!enrollment_id(*)')
+        .select('*, profiles!enrollments_user_id_fkey(*), courses!enrollments_course_id_fkey(*), payments!payments_enrollment_id_fkey(*)')
         .order('enrolled_at', { ascending: false });
       if (error) throw error;
       return data || [];

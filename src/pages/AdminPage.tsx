@@ -125,10 +125,10 @@ const DiagnosticTab = () => {
       const { data: joinTest, error: joinError } = await supabase.from('enrollments').select('*, courses!course_id(*)').limit(1);
       
       // 1c. Profile join test
-      const { data: profileJoinTest, error: profileJoinError } = await supabase.from('enrollments').select('*, profiles!user_id(*)').limit(1);
+      const { data: profileJoinTest, error: profileJoinError } = await supabase.from('enrollments').select('*, profiles!enrollments_user_id_fkey(*)').limit(1);
       
       // 1d. Payments join test
-      const { data: paymentsJoinTest, error: paymentsJoinError } = await supabase.from('enrollments').select('*, payments!enrollment_id(*)').limit(1);
+      const { data: paymentsJoinTest, error: paymentsJoinError } = await supabase.from('enrollments').select('*, payments!payments_enrollment_id_fkey(*)').limit(1);
       
       // 2. Full fetch (with joins)
       let enrollmentsData: any = [];
@@ -136,7 +136,7 @@ const DiagnosticTab = () => {
       try {
         const { data, error } = await supabase
           .from('enrollments')
-          .select('*, profiles!user_id(*), courses!course_id(*), payments!enrollment_id(*)')
+          .select('*, profiles!enrollments_user_id_fkey(*), courses!enrollments_course_id_fkey(*), payments!payments_enrollment_id_fkey(*)')
           .order('enrolled_at', { ascending: false });
         enrollmentsData = data;
         enrollmentsError = error;

@@ -149,19 +149,35 @@ END$$;
 -- 5. Enrollments
 CREATE TABLE IF NOT EXISTS enrollments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES profiles(id),
-  course_id UUID REFERENCES courses(id),
+  user_id UUID REFERENCES public.profiles(id),
+  course_id UUID REFERENCES public.courses(id),
   package_type TEXT CHECK (package_type IN ('standard', 'platinum')),
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'completed', 'cancelled')),
   progress INTEGER DEFAULT 0,
   enrolled_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
+-- Explicitly add the foreign key if it's missing or incorrectly defined
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name='enrollments_user_id_fkey') THEN
+        ALTER TABLE public.enrollments 
+        ADD CONSTRAINT enrollments_user_id_fkey 
+        FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name='enrollments_course_id_fkey') THEN
+        ALTER TABLE public.enrollments 
+        ADD CONSTRAINT enrollments_course_id_fkey 
+        FOREIGN KEY (course_id) REFERENCES public.courses(id) ON DELETE CASCADE;
+    END IF;
+END$$;
+
 -- 6. Payments
 CREATE TABLE IF NOT EXISTS payments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  enrollment_id UUID REFERENCES enrollments(id),
-  user_id UUID REFERENCES profiles(id),
+  enrollment_id UUID REFERENCES public.enrollments(id),
+  user_id UUID REFERENCES public.profiles(id),
   amount DECIMAL(10,2) NOT NULL,
   currency TEXT DEFAULT 'GBP',
   payment_method TEXT, -- 'stripe', 'paypal'
@@ -171,6 +187,22 @@ CREATE TABLE IF NOT EXISTS payments (
   is_installment BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
+
+-- Explicitly add the foreign key if it's missing or incorrectly defined
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name='payments_enrollment_id_fkey') THEN
+        ALTER TABLE public.payments 
+        ADD CONSTRAINT payments_enrollment_id_fkey 
+        FOREIGN KEY (enrollment_id) REFERENCES public.enrollments(id) ON DELETE CASCADE;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name='payments_user_id_fkey') THEN
+        ALTER TABLE public.payments 
+        ADD CONSTRAINT payments_user_id_fkey 
+        FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+    END IF;
+END$$;
 
 -- 7. Installment Records
 CREATE TABLE IF NOT EXISTS installment_records (
