@@ -124,8 +124,26 @@ const DiagnosticTab = () => {
       // 1b. Join test (single join)
       const { data: joinTest, error: joinError } = await supabase.from('enrollments').select('*, courses!course_id(*)').limit(1);
       
+      // 1c. Profile join test
+      const { data: profileJoinTest, error: profileJoinError } = await supabase.from('enrollments').select('*, profiles!user_id(*)').limit(1);
+      
+      // 1d. Payments join test
+      const { data: paymentsJoinTest, error: paymentsJoinError } = await supabase.from('enrollments').select('*, payments!enrollment_id(*)').limit(1);
+      
       // 2. Full fetch (with joins)
-      const enrollments = await adminService.getAllEnrollments();
+      let enrollmentsData: any = [];
+      let enrollmentsError: any = null;
+      try {
+        const { data, error } = await supabase
+          .from('enrollments')
+          .select('*, profiles!user_id(*), courses!course_id(*), payments!enrollment_id(*)')
+          .order('enrolled_at', { ascending: false });
+        enrollmentsData = data;
+        enrollmentsError = error;
+      } catch (e: any) {
+        enrollmentsError = e;
+      }
+
       const payments = await adminService.getAllPayments();
       const installments = await adminService.getInstallments();
       
@@ -150,8 +168,22 @@ const DiagnosticTab = () => {
           hasCourseData: !!joinTest?.[0]?.courses,
           error: joinError?.message
         },
+        profileJoinTest: {
+          success: !!profileJoinTest && profileJoinTest.length > 0,
+          hasProfileData: !!profileJoinTest?.[0]?.profiles,
+          error: profileJoinError?.message
+        },
+        paymentsJoinTest: {
+          success: !!paymentsJoinTest && paymentsJoinTest.length > 0,
+          hasPaymentsData: !!paymentsJoinTest?.[0]?.payments,
+          error: paymentsJoinError?.message
+        },
         fullFetch: {
-          enrollments: { count: enrollments?.length || 0, sample: enrollments?.slice(0, 1) },
+          enrollments: { 
+            count: enrollmentsData?.length || 0, 
+            sample: enrollmentsData?.slice(0, 1),
+            error: enrollmentsError?.message || enrollmentsError
+          },
           payments: { count: payments?.length || 0, sample: payments?.slice(0, 1) },
           installments: { count: installments?.length || 0, sample: installments?.slice(0, 1) }
         }
@@ -184,6 +216,10 @@ const DiagnosticTab = () => {
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">
         <h3 className="text-lg font-bold text-slate-900">Current Session</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="p-4 bg-slate-50 rounded-2xl">
+            <p className="text-slate-500">Supabase Configured</p>
+            <p className="font-mono font-bold">{isSupabaseConfigured ? 'Yes' : 'No'}</p>
+          </div>
           <div className="p-4 bg-slate-50 rounded-2xl">
             <p className="text-slate-500">Auth User ID</p>
             <p className="font-mono font-bold">{data?.currentUser?.id || 'N/A'}</p>

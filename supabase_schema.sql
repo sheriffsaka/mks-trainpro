@@ -250,32 +250,32 @@ CREATE TABLE IF NOT EXISTS corporate_accounts (
 -- Helper function to check if user is admin
 CREATE OR REPLACE FUNCTION is_admin()
 RETURNS boolean AS $$
-DECLARE
-  user_role_val user_role;
 BEGIN
   -- Use a direct check against the JWT email first to break recursion
-  IF (LOWER(auth.jwt() ->> 'email') = 'sheriffdeenalade@gmail.com') THEN
+  IF (LOWER(auth.jwt() ->> 'email') IN ('sheriffdeenalade@gmail.com', 'sheriff.saka@cloudcraves.com')) THEN
     RETURN true;
   END IF;
 
-  SELECT role INTO user_role_val FROM public.profiles WHERE id = auth.uid();
-  RETURN user_role_val = 'admin';
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE id = auth.uid() AND role = 'admin'
+  );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Helper function to check if user is instructor
 CREATE OR REPLACE FUNCTION is_instructor()
 RETURNS boolean AS $$
-DECLARE
-  user_role_val user_role;
 BEGIN
   -- Use a direct check against the JWT email first to break recursion
-  IF (LOWER(auth.jwt() ->> 'email') = 'sheriffdeenalade@gmail.com') THEN
+  IF (is_admin()) THEN
     RETURN true;
   END IF;
 
-  SELECT role INTO user_role_val FROM public.profiles WHERE id = auth.uid();
-  RETURN user_role_val IN ('admin', 'instructor');
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE id = auth.uid() AND role = 'instructor'
+  );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
