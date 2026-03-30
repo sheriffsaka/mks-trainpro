@@ -41,6 +41,7 @@ import {
   Activity
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
+import { isSystemAdmin } from '../constants/admin';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { MOCK_COURSES, MOCK_CATEGORIES, MOCK_FAQS, MOCK_ANNOUNCEMENTS, MOCK_QUIZZES, MOCK_ENROLLMENTS } from '../data/mockData';
@@ -120,6 +121,9 @@ const DiagnosticTab = () => {
       // 1. Simple fetch (no joins)
       const { data: simpleEnrollments, error: simpleError } = await supabase.from('enrollments').select('*').limit(1);
       
+      // 1b. Join test (single join)
+      const { data: joinTest, error: joinError } = await supabase.from('enrollments').select('*, courses!course_id(*)').limit(1);
+      
       // 2. Full fetch (with joins)
       const enrollments = await adminService.getAllEnrollments();
       const payments = await adminService.getAllPayments();
@@ -141,6 +145,11 @@ const DiagnosticTab = () => {
           enrollmentsCount: simpleEnrollments?.length || 0,
           error: simpleError?.message
         },
+        joinTest: {
+          success: !!joinTest && joinTest.length > 0,
+          hasCourseData: !!joinTest?.[0]?.courses,
+          error: joinError?.message
+        },
         fullFetch: {
           enrollments: { count: enrollments?.length || 0, sample: enrollments?.slice(0, 1) },
           payments: { count: payments?.length || 0, sample: payments?.slice(0, 1) },
@@ -149,29 +158,6 @@ const DiagnosticTab = () => {
       });
     } catch (err: any) {
       setTestResult({ error: err.message || String(err) });
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  const fixAdminProfile = async () => {
-    try {
-      setTesting(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No user logged in');
-      
-      const { error } = await supabase.from('profiles').upsert({
-        id: user.id,
-        email: user.email,
-        full_name: user.user_metadata?.full_name || 'Admin User',
-        role: 'admin'
-      });
-      
-      if (error) throw error;
-      alert('Admin profile fixed! Refreshing data...');
-      fetchData();
-    } catch (err: any) {
-      alert('Error fixing profile: ' + (err.message || String(err)));
     } finally {
       setTesting(false);
     }
@@ -235,22 +221,13 @@ const DiagnosticTab = () => {
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-bold text-slate-900">Data Fetch Test</h3>
-          <div className="flex gap-2">
-            <button 
-              onClick={fixAdminProfile}
-              disabled={testing}
-              className="px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-bold hover:bg-amber-600 transition-all disabled:opacity-50"
-            >
-              {testing ? 'Fixing...' : 'Fix Admin Profile'}
-            </button>
-            <button 
-              onClick={runTestFetch}
-              disabled={testing}
-              className="px-4 py-2 bg-brand-blue text-white rounded-xl text-xs font-bold hover:bg-brand-blue-hover transition-all disabled:opacity-50"
-            >
-              {testing ? 'Testing...' : 'Run Test Fetch'}
-            </button>
-          </div>
+          <button 
+            onClick={runTestFetch}
+            disabled={testing}
+            className="px-4 py-2 bg-brand-blue text-white rounded-xl text-xs font-bold hover:bg-brand-blue-hover transition-all disabled:opacity-50"
+          >
+            {testing ? 'Testing...' : 'Run Test Fetch'}
+          </button>
         </div>
         
         {testResult && (
@@ -3532,7 +3509,7 @@ export const AdminPage = () => {
   const [seeding, setSeeding] = useState(false);
   const [isSeedConfirmOpen, setIsSeedConfirmOpen] = useState(false);
 
-  const isAdmin = profile?.role === 'admin' || user?.email === 'sheriffdeenalade@gmail.com';
+  const isAdmin = profile?.role === 'admin' || isSystemAdmin(user?.email);
   const isInstructor = profile?.role === 'instructor' || isAdmin;
 
   useEffect(() => {
