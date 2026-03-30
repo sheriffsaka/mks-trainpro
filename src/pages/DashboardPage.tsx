@@ -562,7 +562,7 @@ export const DashboardPage = () => {
                           <div className="bg-emerald-50 w-16 h-16 rounded-full flex items-center justify-center mb-6">
                             <Award className="text-emerald-500" size={32} />
                           </div>
-                          <h3 className="font-bold text-slate-900 mb-2">{cert.courses?.courses?.title || 'Course Certificate'}</h3>
+                          <h3 className="font-bold text-slate-900 mb-2">{cert.enrollments?.courses?.title || 'Course Certificate'}</h3>
                           <p className="text-xs text-slate-500 mb-6">Issued on {new Date(cert.issued_at).toLocaleDateString()}</p>
                           <a 
                             href={cert.certificate_url}

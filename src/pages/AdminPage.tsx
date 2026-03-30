@@ -98,6 +98,8 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
 const DiagnosticTab = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [testResult, setTestResult] = useState<any>(null);
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -108,6 +110,26 @@ const DiagnosticTab = () => {
     const result = await adminService.getDiagnosticData();
     setData(result);
     setLoading(false);
+  };
+
+  const runTestFetch = async () => {
+    try {
+      setTesting(true);
+      setTestResult(null);
+      const enrollments = await adminService.getAllEnrollments();
+      const payments = await adminService.getAllPayments();
+      const installments = await adminService.getInstallments();
+      
+      setTestResult({
+        enrollments: { count: enrollments?.length || 0, sample: enrollments?.slice(0, 1) },
+        payments: { count: payments?.length || 0, sample: payments?.slice(0, 1) },
+        installments: { count: installments?.length || 0, sample: installments?.slice(0, 1) }
+      });
+    } catch (err: any) {
+      setTestResult({ error: err.message || String(err) });
+    } finally {
+      setTesting(false);
+    }
   };
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-brand-blue" /></div>;
@@ -163,6 +185,27 @@ const DiagnosticTab = () => {
             </ul>
           </div>
         </div>
+      </div>
+
+      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-bold text-slate-900">Data Fetch Test</h3>
+          <button 
+            onClick={runTestFetch}
+            disabled={testing}
+            className="px-4 py-2 bg-brand-blue text-white rounded-xl text-xs font-bold hover:bg-brand-blue-hover transition-all disabled:opacity-50"
+          >
+            {testing ? 'Testing...' : 'Run Test Fetch'}
+          </button>
+        </div>
+        
+        {testResult && (
+          <div className="bg-slate-900 rounded-2xl p-6 overflow-hidden">
+            <pre className="text-xs text-emerald-400 font-mono overflow-x-auto">
+              {JSON.stringify(testResult, null, 2)}
+            </pre>
+          </div>
+        )}
       </div>
     </div>
   );
