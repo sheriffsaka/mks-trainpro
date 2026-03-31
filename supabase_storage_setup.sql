@@ -38,6 +38,13 @@ FOR SELECT USING (
   (SELECT (role = 'admin') FROM public.profiles WHERE id = auth.uid())
 );
 
+DROP POLICY IF EXISTS "Users can view their own payment proofs" ON storage.objects;
+CREATE POLICY "Users can view their own payment proofs" ON storage.objects
+FOR SELECT USING (
+  bucket_id = 'payment-proofs' AND 
+  (storage.foldername(name))[1] = auth.uid()
+);
+
 DROP POLICY IF EXISTS "Admins can manage all payment proofs" ON storage.objects;
 CREATE POLICY "Admins can manage all payment proofs" ON storage.objects
 FOR ALL USING (

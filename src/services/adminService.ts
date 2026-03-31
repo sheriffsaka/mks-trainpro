@@ -42,6 +42,14 @@ export const adminService = {
     if (error) throw error;
     return data[0];
   },
+  async bulkCreateQuizzes(quizzes: any[]) {
+    const { data, error } = await supabase
+      .from('quizzes')
+      .insert(quizzes)
+      .select();
+    if (error) throw error;
+    return data;
+  },
   async updateQuiz(id: string, updates: any) {
     const { data, error } = await supabase
       .from('quizzes')
@@ -785,6 +793,11 @@ export const adminService = {
           console.error('Failed to create bucket:', createError);
           throw new Error(`Storage bucket "${bucket}" not found. Please create it manually in your Supabase dashboard under Storage with "Public" access enabled.`);
         }
+      } else if (bucketData && !bucketData.public) {
+        // Update bucket to be public if it exists but is private
+        await supabase.storage.updateBucket(bucket, {
+          public: true
+        });
       }
 
       const { error: uploadError } = await supabase.storage
@@ -806,6 +819,21 @@ export const adminService = {
     } catch (error: any) {
       console.error('Upload error:', error);
       throw error;
+    }
+  },
+
+  async getSignedUrl(bucket: string, filePath: string, expiresIn: number = 3600) {
+    if (!isSupabaseConfigured) return null;
+    try {
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(filePath, expiresIn);
+      
+      if (error) throw error;
+      return data.signedUrl;
+    } catch (err) {
+      console.error('Error getting signed URL:', err);
+      return null;
     }
   },
 

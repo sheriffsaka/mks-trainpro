@@ -38,7 +38,8 @@ import {
   ClipboardList,
   GraduationCap,
   FileCheck,
-  Activity
+  Activity,
+  Upload
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { isSystemAdmin } from '../constants/admin';
@@ -1846,6 +1847,9 @@ const QuizzesTab = () => {
   const [quizToDelete, setQuizToDelete] = useState<string | null>(null);
   const [editingQuiz, setEditingQuiz] = useState<any>(null);
   const [questions, setQuestions] = useState<any[]>([]);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [bulkUploading, setBulkUploading] = useState(false);
 
   useEffect(() => {
     fetchQuizzes();
@@ -1945,16 +1949,57 @@ const QuizzesTab = () => {
     }
   };
 
+  const handleBulkUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkFile) return;
+
+    setBulkUploading(true);
+    try {
+      const text = await bulkFile.text();
+      const quizzesToUpload = JSON.parse(text);
+
+      if (!Array.isArray(quizzesToUpload)) {
+        throw new Error('Invalid format: Expected an array of quizzes');
+      }
+
+      // Validate quizzes
+      quizzesToUpload.forEach((q, i) => {
+        if (!q.title || !q.course_id || !Array.isArray(q.questions)) {
+          throw new Error(`Quiz at index ${i} is missing required fields (title, course_id, questions)`);
+        }
+      });
+
+      await adminService.bulkCreateQuizzes(quizzesToUpload);
+      alert('Bulk quizzes uploaded successfully!');
+      setIsBulkModalOpen(false);
+      setBulkFile(null);
+      fetchQuizzes();
+    } catch (error: any) {
+      console.error('Bulk upload error:', error);
+      alert(`Failed to upload quizzes: ${error.message}`);
+    } finally {
+      setBulkUploading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-xl font-bold text-slate-900">Manage Quizzes</h3>
-        <button 
-          onClick={() => { setEditingQuiz(null); setIsModalOpen(true); }}
-          className="bg-brand-blue text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-blue-hover transition-all"
-        >
-          <Plus size={20} /> Create New Quiz
-        </button>
+        <div className="flex gap-4">
+          <button 
+            onClick={() => setIsBulkModalOpen(true)}
+            className="bg-white text-slate-700 border border-slate-200 px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-slate-50 transition-all"
+          >
+            <Upload size={20} /> Bulk Upload
+          </button>
+          <button 
+            onClick={() => { setEditingQuiz(null); setIsModalOpen(true); }}
+            className="bg-brand-blue text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-blue-hover transition-all"
+          >
+            <Plus size={20} /> Create New Quiz
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -2100,6 +2145,71 @@ const QuizzesTab = () => {
 
           <button className="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20">
             {editingQuiz ? 'Update Quiz' : 'Create Quiz'}
+          </button>
+        </form>
+      </Modal>
+
+      <Modal 
+        isOpen={isBulkModalOpen} 
+        onClose={() => setIsBulkModalOpen(false)} 
+        title="Bulk Upload Quizzes"
+      >
+        <form onSubmit={handleBulkUpload} className="space-y-6">
+          <div className="p-8 border-2 border-dashed border-slate-200 rounded-3xl text-center space-y-4">
+            <div className="w-16 h-16 bg-brand-blue/10 rounded-2xl flex items-center justify-center text-brand-blue mx-auto">
+              <Upload size={32} />
+            </div>
+            <div>
+              <p className="text-slate-900 font-bold">Upload JSON File</p>
+              <p className="text-sm text-slate-500">Select a .json file containing an array of quizzes</p>
+            </div>
+            <input 
+              type="file" 
+              accept=".json"
+              onChange={(e) => setBulkFile(e.target.files?.[0] || null)}
+              className="hidden"
+              id="bulk-quiz-upload"
+            />
+            <label 
+              htmlFor="bulk-quiz-upload"
+              className="inline-block bg-slate-100 text-slate-700 px-6 py-2 rounded-xl font-bold cursor-pointer hover:bg-slate-200 transition-colors"
+            >
+              {bulkFile ? bulkFile.name : 'Choose File'}
+            </label>
+          </div>
+
+          <div className="bg-slate-50 p-6 rounded-2xl space-y-3">
+            <h5 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Expected JSON Format:</h5>
+            <pre className="text-[10px] text-slate-600 font-mono overflow-x-auto p-3 bg-white rounded-lg border border-slate-200">
+{`[
+  {
+    "title": "Quiz Title",
+    "course_id": "course-uuid",
+    "questions": [
+      {
+        "question": "What is...?",
+        "options": ["A", "B", "C", "D"],
+        "correct_option": 0
+      }
+    ]
+  }
+]`}
+            </pre>
+          </div>
+
+          <button 
+            disabled={!bulkFile || bulkUploading}
+            className="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {bulkUploading ? (
+              <>
+                <Loader2 size={20} className="animate-spin" /> Uploading...
+              </>
+            ) : (
+              <>
+                <Upload size={20} /> Start Upload
+              </>
+            )}
           </button>
         </form>
       </Modal>

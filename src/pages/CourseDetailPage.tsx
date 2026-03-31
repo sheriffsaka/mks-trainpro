@@ -97,7 +97,16 @@ export const CourseDetailPage = () => {
         receiptUrl = await adminService.uploadFile(receiptFile, 'payment-proofs', user.id);
       }
 
-      const amountToPay = isPartPayment ? partPaymentAmount : totalPrice;
+      let amountToPay = isPartPayment ? partPaymentAmount : totalPrice;
+      
+      // If user is paying balance for an existing installment enrollment
+      if (existingEnrollment && existingEnrollment.installment_records?.[0]) {
+        const record = existingEnrollment.installment_records[0];
+        const balance = record.total_amount - record.paid_amount;
+        if (!isPartPayment) {
+          amountToPay = balance;
+        }
+      }
 
       if (existingEnrollment) {
         // 1. Create payment record for existing enrollment

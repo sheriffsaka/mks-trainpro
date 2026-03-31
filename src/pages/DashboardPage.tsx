@@ -53,6 +53,7 @@ export const DashboardPage = () => {
   });
   const [progressDetails, setProgressDetails] = useState<{[key: string]: ProgressData}>({});
   const [quizzesMap, setQuizzesMap] = useState<{[key: string]: any[]}>({});
+  const [viewingReceipt, setViewingReceipt] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -141,6 +142,37 @@ export const DashboardPage = () => {
 
   const handleDownloadInvoice = (invoiceId: string) => {
     alert(`Downloading Invoice ${invoiceId} as PDF...`);
+  };
+
+  const handleViewReceipt = async (receiptUrl: string) => {
+    if (!receiptUrl) return;
+    
+    // If it's already a full URL, try to open it
+    if (receiptUrl.startsWith('http')) {
+      // Extract bucket and path if it's a supabase URL
+      if (receiptUrl.includes('.supabase.co/storage/v1/object/public/')) {
+        try {
+          const urlParts = receiptUrl.split('/storage/v1/object/public/');
+          if (urlParts.length > 1) {
+            const pathParts = urlParts[1].split('/');
+            const bucket = pathParts[0];
+            const filePath = pathParts.slice(1).join('/');
+            
+            setViewingReceipt(true);
+            const signedUrl = await adminService.getSignedUrl(bucket, filePath);
+            setViewingReceipt(false);
+            
+            if (signedUrl) {
+              window.open(signedUrl, '_blank');
+              return;
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing receipt URL:', err);
+        }
+      }
+      window.open(receiptUrl, '_blank');
+    }
   };
 
   if (loading) return (
@@ -690,14 +722,14 @@ export const DashboardPage = () => {
                                 </td>
                                 <td className="px-6 py-4">
                                   {payment.receipt_url ? (
-                                    <a 
-                                      href={payment.receipt_url} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1"
+                                    <button 
+                                      onClick={() => handleViewReceipt(payment.receipt_url)}
+                                      disabled={viewingReceipt}
+                                      className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1 disabled:opacity-50"
                                     >
-                                      <Eye size={14} /> View
-                                    </a>
+                                      {viewingReceipt ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />} 
+                                      View
+                                    </button>
                                   ) : (
                                     <span className="text-slate-400 text-xs italic">N/A</span>
                                   )}
