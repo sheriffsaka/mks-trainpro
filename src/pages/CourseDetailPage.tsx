@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
 import { Clock, BookOpen, Award, CheckCircle2, Shield, Zap, ArrowRight, Loader2, MapPin, Video, Monitor, X, Copy, AlertCircle, Download, Building2, CreditCard } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
@@ -20,6 +20,7 @@ export const CourseDetailPage = () => {
   const [settings, setSettings] = useState<any>({});
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [existingEnrollment, setExistingEnrollment] = useState<any>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,6 +36,18 @@ export const CourseDetailPage = () => {
         
         if (courseRes.data) {
           setCourse(courseRes.data);
+          
+          // Check for existing enrollment
+          if (user) {
+            const { data: enrollment } = await supabase
+              .from('enrollments')
+              .select('*, payments(*), installment_records(*)')
+              .eq('course_id', courseRes.data.id)
+              .eq('user_id', user.id)
+              .maybeSingle();
+            
+            setExistingEnrollment(enrollment);
+          }
         } else {
           const mock = MOCK_COURSES.find(c => c.slug === slug);
           setCourse(mock || null);
@@ -48,7 +61,7 @@ export const CourseDetailPage = () => {
       }
     };
     fetchData();
-  }, [slug]);
+  }, [slug, user]);
 
   const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'paypal'>('bank_transfer');
 
@@ -86,60 +99,82 @@ export const CourseDetailPage = () => {
 
       const amountToPay = isPartPayment ? partPaymentAmount : totalPrice;
 
-      // 1. Create enrollment
-      const { data: enrollment, error: enrollmentError } = await supabase
-        .from('enrollments')
-        .insert({
-          user_id: user.id,
-          course_id: course.id,
-          package_type: selectedPackage,
-          status: 'pending'
-        })
-        .select()
-        .single();
+      if (existingEnrollment) {
+        // 1. Create payment record for existing enrollment
+        const { error: paymentError } = await supabase
+          .from('payments')
+          .insert({
+            enrollment_id: existingEnrollment.id,
+            user_id: user.id,
+            amount: amountToPay,
+            payment_method: paymentMethod,
+            payment_status: 'pending',
+            is_installment: isPartPayment,
+            receipt_url: receiptUrl
+          });
 
-      if (enrollmentError) {
-        console.error('Enrollment Error:', enrollmentError);
-        throw new Error(`Failed to create enrollment: ${enrollmentError.message}`);
-      }
+        if (paymentError) {
+          console.error('Payment Error:', paymentError);
+          throw new Error(`Failed to create payment record: ${paymentError.message}`);
+        }
 
-      // 2. Create payment record
-      const { error: paymentError } = await supabase
-        .from('payments')
-        .insert({
-          enrollment_id: enrollment.id,
-          user_id: user.id,
-          amount: amountToPay,
-          payment_method: paymentMethod,
-          payment_status: 'pending',
-          is_installment: isPartPayment,
-          receipt_url: receiptUrl
-        });
+        alert('Payment proof submitted! We will verify your payment and update your account shortly.');
+      } else {
+        // 1. Create enrollment
+        const { data: enrollment, error: enrollmentError } = await supabase
+          .from('enrollments')
+          .insert({
+            user_id: user.id,
+            course_id: course.id,
+            package_type: selectedPackage,
+            status: 'pending'
+          })
+          .select()
+          .single();
 
-      if (paymentError) {
-        console.error('Payment Error:', paymentError);
-        throw new Error(`Failed to create payment record: ${paymentError.message}`);
-      }
+        if (enrollmentError) {
+          console.error('Enrollment Error:', enrollmentError);
+          throw new Error(`Failed to create enrollment: ${enrollmentError.message}`);
+        }
 
-      // 3. If part payment, create installment record
-      if (isPartPayment) {
-        const { error: installmentError } = await supabase
-          .from('installment_records')
+        // 2. Create payment record
+        const { error: paymentError } = await supabase
+          .from('payments')
           .insert({
             enrollment_id: enrollment.id,
-            total_amount: totalPrice,
-            paid_amount: partPaymentAmount,
-            next_payment_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days later
-            status: 'active'
+            user_id: user.id,
+            amount: amountToPay,
+            payment_method: paymentMethod,
+            payment_status: 'pending',
+            is_installment: isPartPayment,
+            receipt_url: receiptUrl
           });
-        
-        if (installmentError) {
-          console.error('Installment Error:', installmentError);
-          // We don't throw here to avoid failing the whole process if only installment record fails
+
+        if (paymentError) {
+          console.error('Payment Error:', paymentError);
+          throw new Error(`Failed to create payment record: ${paymentError.message}`);
         }
+
+        // 3. If part payment, create installment record
+        if (isPartPayment) {
+          const { error: installmentError } = await supabase
+            .from('installment_records')
+            .insert({
+              enrollment_id: enrollment.id,
+              total_amount: totalPrice,
+              paid_amount: partPaymentAmount,
+              next_payment_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days later
+              status: 'active'
+            });
+          
+          if (installmentError) {
+            console.error('Installment Error:', installmentError);
+          }
+        }
+
+        alert('Enrollment request submitted! We will verify your payment and activate your course shortly.');
       }
 
-      alert('Enrollment request submitted! We will verify your payment and activate your course shortly.');
       setShowCheckout(false);
       navigate('/dashboard');
     } catch (err: any) {
@@ -332,19 +367,60 @@ export const CourseDetailPage = () => {
               </div>
 
               <div className="space-y-4">
-                <button 
-                  onClick={() => handleEnrollClick(false)}
-                  className="w-full bg-brand-red py-4 rounded-2xl font-bold hover:bg-brand-red-hover transition-all flex items-center justify-center gap-2"
-                >
-                  Pay Full Amount (£{totalPrice})
-                  <ArrowRight size={20} />
-                </button>
-                <button 
-                  onClick={() => handleEnrollClick(true)}
-                  className="w-full bg-white/10 border border-white/20 py-4 rounded-2xl font-bold hover:bg-white/20 transition-all"
-                >
-                  Pay in 2 Installments (£{partPaymentAmount.toFixed(2)} each)
-                </button>
+                {existingEnrollment ? (
+                  <div className="bg-white/10 p-6 rounded-2xl border border-white/20 text-center">
+                    {existingEnrollment.status === 'active' ? (
+                      <>
+                        <CheckCircle2 className="mx-auto mb-4 text-emerald-400" size={32} />
+                        <h4 className="font-bold mb-2 text-white">Already Enrolled</h4>
+                        <p className="text-sm text-slate-400 mb-6">You have full access to this course.</p>
+                        
+                        {existingEnrollment.installment_records?.[0] && 
+                         existingEnrollment.installment_records[0].paid_amount < existingEnrollment.installment_records[0].total_amount && (
+                          <div className="mb-6 p-4 bg-brand-red/20 rounded-xl border border-brand-red/30">
+                            <p className="text-[10px] font-bold text-brand-red uppercase mb-1">Balance Due</p>
+                            <p className="text-xl font-bold text-white mb-4">£{(existingEnrollment.installment_records[0].total_amount - existingEnrollment.installment_records[0].paid_amount).toFixed(2)}</p>
+                            <button 
+                              onClick={() => handleEnrollClick(true)}
+                              className="w-full bg-brand-red text-white py-3 rounded-xl font-bold hover:bg-brand-red-hover transition-all"
+                            >
+                              Pay Balance
+                            </button>
+                          </div>
+                        )}
+
+                        <Link to={`/courses/${slug}/player`} className="block w-full bg-white text-brand-blue py-4 rounded-2xl font-bold hover:bg-slate-100 transition-all">
+                          Go to Course Player
+                        </Link>
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="mx-auto mb-4 text-amber-400" size={32} />
+                        <h4 className="font-bold mb-2 text-white">Enrollment Pending</h4>
+                        <p className="text-sm text-slate-400 mb-6">We are currently verifying your payment proof.</p>
+                        <button disabled className="w-full bg-white/20 text-white/50 py-4 rounded-2xl font-bold cursor-not-allowed">
+                          Verification in Progress
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <button 
+                      onClick={() => handleEnrollClick(false)}
+                      className="w-full bg-brand-red py-4 rounded-2xl font-bold hover:bg-brand-red-hover transition-all flex items-center justify-center gap-2"
+                    >
+                      Pay Full Amount (£{totalPrice})
+                      <ArrowRight size={20} />
+                    </button>
+                    <button 
+                      onClick={() => handleEnrollClick(true)}
+                      className="w-full bg-white/10 border border-white/20 py-4 rounded-2xl font-bold hover:bg-white/20 transition-all"
+                    >
+                      Pay in 2 Installments (£{partPaymentAmount.toFixed(2)} each)
+                    </button>
+                  </>
+                )}
               </div>
               
               <p className="mt-6 text-center text-xs text-slate-400">

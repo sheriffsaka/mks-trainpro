@@ -24,7 +24,8 @@ import {
   Monitor,
   MapPin,
   Video,
-  Calendar
+  Calendar,
+  Eye
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -643,7 +644,10 @@ export const DashboardPage = () => {
                           ).toFixed(2)}
                         </h3>
                       </div>
-                      <Link to="/courses" className="bg-brand-blue text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all">
+                      <Link 
+                        to={enrollments.find(e => e.status === 'pending') ? `/courses/${enrollments.find(e => e.status === 'pending')?.courses?.slug}` : "/courses"} 
+                        className="bg-brand-blue text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all"
+                      >
                         Make a Payment
                       </Link>
                     </div>
@@ -658,6 +662,7 @@ export const DashboardPage = () => {
                               <th className="px-6 py-4">Date</th>
                               <th className="px-6 py-4">Amount</th>
                               <th className="px-6 py-4">Status</th>
+                              <th className="px-6 py-4">Receipt</th>
                               <th className="px-6 py-4"></th>
                             </tr>
                           </thead>
@@ -667,7 +672,14 @@ export const DashboardPage = () => {
                                 <td className="px-6 py-4 font-bold">INV-{payment.id.slice(0, 8).toUpperCase()}</td>
                                 <td className="px-6 py-4">{payment.enrollments?.courses?.title || 'Course Payment'}</td>
                                 <td className="px-6 py-4">{new Date(payment.created_at).toLocaleDateString()}</td>
-                                <td className="px-6 py-4 font-bold text-slate-900">£{Number(payment.amount).toFixed(2)}</td>
+                                <td className="px-6 py-4">
+                                  <div className="flex flex-col">
+                                    <span className="font-bold text-slate-900">£{Number(payment.amount).toFixed(2)}</span>
+                                    {payment.is_installment && (
+                                      <span className="text-[8px] font-bold text-brand-blue uppercase tracking-tighter">Installment</span>
+                                    )}
+                                  </div>
+                                </td>
                                 <td className="px-6 py-4">
                                   <span className={`px-2 py-1 rounded-lg font-bold text-[10px] uppercase ${
                                     payment.payment_status === 'succeeded' ? 'bg-emerald-100 text-emerald-700' : 
@@ -675,6 +687,20 @@ export const DashboardPage = () => {
                                   }`}>
                                     {payment.payment_status}
                                   </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  {payment.receipt_url ? (
+                                    <a 
+                                      href={payment.receipt_url} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1"
+                                    >
+                                      <Eye size={14} /> View
+                                    </a>
+                                  ) : (
+                                    <span className="text-slate-400 text-xs italic">N/A</span>
+                                  )}
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                   <button 
