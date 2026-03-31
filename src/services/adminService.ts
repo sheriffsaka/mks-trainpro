@@ -770,13 +770,30 @@ export const adminService = {
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = userId ? `${userId}/${fileName}` : `${fileName}`;
 
+      // Check if bucket exists first (optional but helpful)
+      const { data: bucketData, error: bucketError } = await supabase.storage.getBucket(bucket);
+      
+      if (bucketError && (bucketError as any).status === 404) {
+        // Try to create the bucket if it doesn't exist
+        // Note: This might fail if the anon key doesn't have permissions
+        const { error: createError } = await supabase.storage.createBucket(bucket, {
+          public: true, // Make it public so getPublicUrl works
+          fileSizeLimit: 5242880, // 5MB
+        });
+        
+        if (createError) {
+          console.error('Failed to create bucket:', createError);
+          throw new Error(`Storage bucket "${bucket}" not found. Please create it manually in your Supabase dashboard under Storage with "Public" access enabled.`);
+        }
+      }
+
       const { error: uploadError } = await supabase.storage
         .from(bucket)
         .upload(filePath, file);
 
       if (uploadError) {
         if (uploadError.message.includes('bucket not found') || (uploadError as any).status === 404) {
-          throw new Error(`Storage bucket "${bucket}" not found. Please create it in your Supabase dashboard under Storage.`);
+          throw new Error(`Storage bucket "${bucket}" not found. Please create it in your Supabase dashboard under Storage and ensure it is set to "Public".`);
         }
         throw uploadError;
       }

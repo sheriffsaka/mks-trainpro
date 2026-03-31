@@ -102,9 +102,51 @@ const DiagnosticTab = () => {
   const [testResult, setTestResult] = useState<any>(null);
   const [testing, setTesting] = useState(false);
 
+  const [initializingStorage, setInitializingStorage] = useState(false);
+  const [storageResult, setStorageResult] = useState<any>(null);
+
   useEffect(() => {
     fetchData();
   }, []);
+
+  const setupStorage = async () => {
+    try {
+      setInitializingStorage(true);
+      setStorageResult(null);
+      const buckets = ['training-assets', 'payment-proofs'];
+      const results: any = {};
+      
+      for (const b of buckets) {
+        // Try to create bucket
+        const { error: createError } = await supabase.storage.createBucket(b, {
+          public: true,
+          fileSizeLimit: 5242880,
+        });
+        
+        if (createError && createError.message.toLowerCase().includes('already exists')) {
+          // Update bucket to be public
+          const { error: updateError } = await supabase.storage.updateBucket(b, {
+            public: true
+          });
+          if (updateError) {
+            results[b] = { status: 'info', message: 'Bucket already exists but could not be updated to public. Please check manually.' };
+          } else {
+            results[b] = { status: 'success', message: 'Bucket already existed and was updated to public' };
+          }
+        } else if (createError) {
+          results[b] = { status: 'error', message: createError.message };
+        } else {
+          results[b] = { status: 'success', message: 'Bucket created successfully' };
+        }
+      }
+      
+      setStorageResult(results);
+    } catch (err: any) {
+      setStorageResult({ error: err.message || String(err) });
+    } finally {
+      setInitializingStorage(false);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -252,6 +294,31 @@ const DiagnosticTab = () => {
             </ul>
           </div>
         </div>
+      </div>
+
+      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-bold text-slate-900">Storage Setup</h3>
+          <button 
+            onClick={setupStorage}
+            disabled={initializingStorage}
+            className="px-4 py-2 bg-brand-blue text-white rounded-xl text-xs font-bold hover:bg-brand-blue-hover transition-all disabled:opacity-50 flex items-center gap-2"
+          >
+            {initializingStorage ? <Loader2 className="animate-spin" size={14} /> : <Database size={14} />}
+            {initializingStorage ? 'Initializing...' : 'Initialize Storage Buckets'}
+          </button>
+        </div>
+        <p className="text-sm text-slate-500">
+          Click the button above to ensure the required storage buckets (<code className="bg-slate-100 px-1 rounded">training-assets</code> and <code className="bg-slate-100 px-1 rounded">payment-proofs</code>) are created in your Supabase instance.
+        </p>
+        
+        {storageResult && (
+          <div className="bg-slate-900 rounded-2xl p-6 overflow-hidden">
+            <pre className="text-xs text-emerald-400 font-mono overflow-x-auto">
+              {JSON.stringify(storageResult, null, 2)}
+            </pre>
+          </div>
+        )}
       </div>
 
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">

@@ -653,8 +653,8 @@ export const DashboardPage = () => {
                     </div>
                     <div className="space-y-4">
                       <h4 className="font-bold text-slate-900 mb-4">Recent Invoices</h4>
-                      <div className="border border-slate-100 rounded-2xl overflow-hidden">
-                        <table className="w-full text-left">
+                      <div className="border border-slate-100 rounded-2xl overflow-x-auto">
+                        <table className="w-full text-left min-w-[800px]">
                           <thead className="bg-slate-50 text-slate-400 text-[10px] uppercase tracking-widest">
                             <tr>
                               <th className="px-6 py-4">Invoice #</th>
@@ -713,7 +713,7 @@ export const DashboardPage = () => {
                               </tr>
                             )) : (
                               <tr>
-                                <td colSpan={6} className="px-6 py-10 text-center text-slate-500">
+                                <td colSpan={7} className="px-6 py-10 text-center text-slate-500">
                                   No invoices found.
                                 </td>
                               </tr>
