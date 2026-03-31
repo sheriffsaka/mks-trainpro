@@ -7,7 +7,7 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('training-assets', 'training-assets', true)
 ON CONFLICT (id) DO NOTHING;
 
--- 2. Set up RLS Policies for Storage
+-- 2. Set up RLS Policies for Storage Objects
 -- Enable RLS on storage.objects if not already enabled
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 

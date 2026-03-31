@@ -114,30 +114,33 @@ const DiagnosticTab = () => {
     try {
       setInitializingStorage(true);
       setStorageResult(null);
-      const buckets = ['training-assets', 'payment-proofs'];
+      const buckets = [
+        { id: 'training-assets', public: true },
+        { id: 'payment-proofs', public: false }
+      ];
       const results: any = {};
       
       for (const b of buckets) {
         // Try to create bucket
-        const { error: createError } = await supabase.storage.createBucket(b, {
-          public: true,
+        const { error: createError } = await supabase.storage.createBucket(b.id, {
+          public: b.public,
           fileSizeLimit: 5242880,
         });
         
         if (createError && createError.message.toLowerCase().includes('already exists')) {
-          // Update bucket to be public
-          const { error: updateError } = await supabase.storage.updateBucket(b, {
-            public: true
+          // Update bucket to match intended public status
+          const { error: updateError } = await supabase.storage.updateBucket(b.id, {
+            public: b.public
           });
           if (updateError) {
-            results[b] = { status: 'info', message: 'Bucket already exists but could not be updated to public. Please check manually.' };
+            results[b.id] = { status: 'info', message: `Bucket already exists but could not be updated to ${b.public ? 'public' : 'private'}. Please check manually.` };
           } else {
-            results[b] = { status: 'success', message: 'Bucket already existed and was updated to public' };
+            results[b.id] = { status: 'success', message: `Bucket already existed and was updated to ${b.public ? 'public' : 'private'}` };
           }
         } else if (createError) {
-          results[b] = { status: 'error', message: createError.message };
+          results[b.id] = { status: 'error', message: createError.message };
         } else {
-          results[b] = { status: 'success', message: 'Bucket created successfully' };
+          results[b.id] = { status: 'success', message: 'Bucket created successfully' };
         }
       }
       
@@ -312,6 +315,10 @@ const DiagnosticTab = () => {
         <p className="text-sm text-slate-500">
           Click the button above to ensure the required storage buckets (<code className="bg-slate-100 px-1 rounded">training-assets</code> and <code className="bg-slate-100 px-1 rounded">payment-proofs</code>) are created in your Supabase instance.
         </p>
+        <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-xs text-amber-800">
+          <p className="font-bold mb-1 flex items-center gap-1"><AlertCircle size={14} /> Note on Permissions</p>
+          <p>If the button fails with a "Row-level security policy" error, it means your Supabase project restricts bucket management via the API. In this case, please run the <code className="bg-amber-100 px-1 rounded">supabase_storage_setup.sql</code> script in your Supabase SQL Editor or create the buckets manually in the Storage dashboard.</p>
+        </div>
         
         {storageResult && (
           <div className="bg-slate-900 rounded-2xl p-6 overflow-hidden">

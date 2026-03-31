@@ -777,6 +777,7 @@ export const adminService = {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = userId ? `${userId}/${fileName}` : `${fileName}`;
+      const isPublic = bucket === 'training-assets';
 
       // Check if bucket exists first (optional but helpful)
       const { data: bucketData, error: bucketError } = await supabase.storage.getBucket(bucket);
@@ -785,18 +786,18 @@ export const adminService = {
         // Try to create the bucket if it doesn't exist
         // Note: This might fail if the anon key doesn't have permissions
         const { error: createError } = await supabase.storage.createBucket(bucket, {
-          public: true, // Make it public so getPublicUrl works
+          public: isPublic, // Only training-assets should be public
           fileSizeLimit: 5242880, // 5MB
         });
         
         if (createError) {
           console.error('Failed to create bucket:', createError);
-          throw new Error(`Storage bucket "${bucket}" not found. Please create it manually in your Supabase dashboard under Storage with "Public" access enabled.`);
+          throw new Error(`Storage bucket "${bucket}" not found. Please create it manually in your Supabase dashboard under Storage with ${isPublic ? '"Public"' : '"Private"'} access enabled.`);
         }
-      } else if (bucketData && !bucketData.public) {
-        // Update bucket to be public if it exists but is private
+      } else if (bucketData && bucketData.public !== isPublic) {
+        // Update bucket to match intended public status if it exists but has wrong setting
         await supabase.storage.updateBucket(bucket, {
-          public: true
+          public: isPublic
         });
       }
 

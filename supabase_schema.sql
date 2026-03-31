@@ -573,6 +573,10 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('training-assets', 'training-assets', true)
 ON CONFLICT (id) DO NOTHING;
 
+-- 21. Set up RLS Policies for Storage Objects
+-- Enable RLS on storage.objects if not already enabled
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
 -- Policies for 'training-assets' (Publicly readable)
 DROP POLICY IF EXISTS "Public Access to training-assets" ON storage.objects;
 CREATE POLICY "Public Access to training-assets" ON storage.objects
