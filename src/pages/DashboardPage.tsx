@@ -151,8 +151,20 @@ export const DashboardPage = () => {
   const handleViewReceipt = async (receiptUrl: string) => {
     if (!receiptUrl) return;
     
-    // If it's already a full URL, try to open it
-    if (receiptUrl.startsWith('http')) {
+    setViewingReceipt(true);
+    try {
+      // If it's a path (not a full URL), assume 'payment-proofs' bucket
+      if (!receiptUrl.startsWith('http')) {
+        const signedUrl = await adminService.getSignedUrl('payment-proofs', receiptUrl);
+        if (signedUrl) {
+          window.open(signedUrl, '_blank');
+        } else {
+          alert('Could not generate a viewable link for this proof. Please contact support.');
+        }
+        return;
+      }
+      
+      // If it's a full URL, try to open it
       // Extract bucket and path if it's a supabase URL
       if (receiptUrl.includes('.supabase.co/storage/v1/object/public/')) {
         try {
@@ -162,10 +174,7 @@ export const DashboardPage = () => {
             const bucket = pathParts[0];
             const filePath = pathParts.slice(1).join('/');
             
-            setViewingReceipt(true);
             const signedUrl = await adminService.getSignedUrl(bucket, filePath);
-            setViewingReceipt(false);
-            
             if (signedUrl) {
               window.open(signedUrl, '_blank');
               return;
@@ -176,6 +185,11 @@ export const DashboardPage = () => {
         }
       }
       window.open(receiptUrl, '_blank');
+    } catch (err) {
+      console.error('Error viewing receipt:', err);
+      alert('Failed to open receipt. Please try again.');
+    } finally {
+      setViewingReceipt(false);
     }
   };
 
@@ -698,7 +712,6 @@ export const DashboardPage = () => {
                               <th className="px-6 py-4">Date</th>
                               <th className="px-6 py-4">Amount</th>
                               <th className="px-6 py-4">Status</th>
-                              <th className="px-6 py-4">Payment Proof</th>
                               <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
                           </thead>
@@ -724,28 +737,14 @@ export const DashboardPage = () => {
                                     {payment.payment_status}
                                   </span>
                                 </td>
-                                <td className="px-6 py-4">
-                                  {payment.receipt_url ? (
-                                    <button 
-                                      onClick={() => handleViewReceipt(payment.receipt_url)}
-                                      disabled={viewingReceipt}
-                                      className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1 disabled:opacity-50"
-                                    >
-                                      {viewingReceipt ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />} 
-                                      View Proof
-                                    </button>
-                                  ) : (
-                                    <span className="text-slate-400 text-xs italic">N/A</span>
-                                  )}
-                                </td>
                                 <td className="px-6 py-4 text-right">
                                   <button 
                                     onClick={() => handleDownloadInvoice(payment)}
                                     className="bg-brand-blue/5 text-brand-blue px-4 py-2 rounded-xl text-xs font-bold hover:bg-brand-blue hover:text-white transition-all flex items-center gap-2 ml-auto"
-                                    title="View Generated Receipt"
+                                    title="View Generated Invoice"
                                   >
                                     <FileText size={14} />
-                                    View Receipt
+                                    View Invoice
                                   </button>
                                 </td>
                               </tr>

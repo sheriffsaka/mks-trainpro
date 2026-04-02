@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
-import { Clock, BookOpen, Award, CheckCircle2, Shield, Zap, ArrowRight, Loader2, MapPin, Video, Monitor, X, Copy, AlertCircle, Download, Building2, CreditCard } from 'lucide-react';
+import { Clock, BookOpen, Award, CheckCircle2, Shield, Zap, ArrowRight, Loader2, MapPin, Video, Monitor, X, Copy, AlertCircle, Download, Building2, CreditCard, FileText } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { adminService } from '../services/adminService';
 import { motion, AnimatePresence } from 'motion/react';
@@ -21,6 +21,8 @@ export const CourseDetailPage = () => {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [existingEnrollment, setExistingEnrollment] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,14 +41,22 @@ export const CourseDetailPage = () => {
           
           // Check for existing enrollment
           if (user) {
-            const { data: enrollment } = await supabase
-              .from('enrollments')
-              .select('*, payments(*), installment_records(*)')
-              .eq('course_id', courseRes.data.id)
-              .eq('user_id', user.id)
-              .maybeSingle();
+            const [enrollmentRes, profileRes] = await Promise.all([
+              supabase
+                .from('enrollments')
+                .select('*, payments(*), installment_records(*)')
+                .eq('course_id', courseRes.data.id)
+                .eq('user_id', user.id)
+                .maybeSingle(),
+              supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single()
+            ]);
             
-            setExistingEnrollment(enrollment);
+            setExistingEnrollment(enrollmentRes.data);
+            setProfile(profileRes.data);
           }
         } else {
           const mock = MOCK_COURSES.find(c => c.slug === slug);
@@ -562,6 +572,16 @@ export const CourseDetailPage = () => {
                       </p>
                     </div>
 
+                    <div className="flex justify-center">
+                      <button 
+                        onClick={() => setShowInvoiceModal(true)}
+                        className="flex items-center gap-2 text-brand-blue font-bold hover:underline py-2"
+                      >
+                        <FileText size={18} />
+                        View Pro-forma Invoice
+                      </button>
+                    </div>
+
                     <div className="space-y-4">
                       <label className="block text-sm font-bold text-slate-700 ml-1">Upload Payment Proof (Receipt)</label>
                       <div className="relative group">
@@ -633,6 +653,115 @@ export const CourseDetailPage = () => {
                   className="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {loading || uploading ? <Loader2 className="animate-spin" size={20} /> : 'Submit Enrollment Request'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Invoice Modal */}
+      <AnimatePresence>
+        {showInvoiceModal && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowInvoiceModal(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-8 border-b border-slate-100 flex justify-between items-center shrink-0">
+                <h3 className="text-2xl font-bold text-slate-900">Pro-forma Invoice</h3>
+                <button onClick={() => setShowInvoiceModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="p-12 overflow-y-auto" id="invoice-content">
+                <div className="flex justify-between items-start mb-12">
+                  <div>
+                    <h2 className="text-3xl font-black text-brand-blue mb-2">MKS CONSULTS</h2>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Professional Training & Consulting</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Invoice Date</p>
+                    <p className="text-xl font-bold text-slate-900">{new Date().toLocaleDateString()}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-12 mb-12">
+                  <div>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-3">Billed To</p>
+                    <p className="font-bold text-slate-900 text-lg">{profile?.full_name || user?.email}</p>
+                    <p className="text-slate-500">{profile?.email || user?.email}</p>
+                    {profile?.address && <p className="text-slate-500 mt-1">{profile.address}</p>}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-3">Payment Method</p>
+                    <p className="font-bold text-slate-900 uppercase">Bank Transfer</p>
+                    <p className="text-slate-500 mt-2">Reference: <span className="font-bold text-slate-900">{profile?.full_name || 'Your Name'}</span></p>
+                  </div>
+                </div>
+
+                <div className="border-t border-b border-slate-100 py-6 mb-12">
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Description</p>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Amount</p>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-bold text-slate-900">{course.title}</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {isPartPayment ? 'Installment Payment (1 of 2)' : 'Full Course Enrollment'}
+                      </p>
+                    </div>
+                    <p className="text-xl font-bold text-slate-900">£{(isPartPayment ? partPaymentAmount : totalPrice).toFixed(2)}</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end mb-12">
+                  <div className="w-64 space-y-3">
+                    <div className="flex justify-between items-center text-slate-500">
+                      <span>Subtotal</span>
+                      <span>£{(isPartPayment ? partPaymentAmount : totalPrice).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-500">
+                      <span>Tax (0%)</span>
+                      <span>£0.00</span>
+                    </div>
+                    <div className="h-px bg-slate-100 my-2" />
+                    <div className="flex justify-between items-center text-xl font-bold text-slate-900">
+                      <span>Total Due</span>
+                      <span className="text-brand-blue">£{(isPartPayment ? partPaymentAmount : totalPrice).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-6 rounded-3xl text-center">
+                  <p className="text-sm text-slate-500">This is a pro-forma invoice for your enrollment in {course.title}. Access will be granted upon payment verification.</p>
+                  <p className="text-[10px] text-slate-400 mt-4 uppercase tracking-widest font-bold">MKS Consults Ltd | Professional Training</p>
+                </div>
+              </div>
+
+              <div className="p-8 bg-slate-50 border-t border-slate-100 flex justify-between items-center shrink-0">
+                <button 
+                  onClick={() => setShowInvoiceModal(false)}
+                  className="px-6 py-3 text-slate-600 font-bold hover:bg-slate-200 rounded-xl transition-all"
+                >
+                  Close
+                </button>
+                <button 
+                  onClick={() => window.print()}
+                  className="bg-brand-blue text-white px-8 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all flex items-center gap-2 shadow-lg shadow-brand-blue/20"
+                >
+                  <Download size={18} />
+                  Download / Print
                 </button>
               </div>
             </motion.div>

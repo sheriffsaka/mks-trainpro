@@ -808,11 +808,15 @@ export const adminService = {
         throw uploadError;
       }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(filePath);
+      if (isPublic) {
+        const { data: { publicUrl } } = supabase.storage
+          .from(bucket)
+          .getPublicUrl(filePath);
+        return publicUrl;
+      }
 
-      return publicUrl;
+      // For private buckets, return the path so we can generate signed URLs later
+      return filePath;
     } catch (error: any) {
       console.error('Upload error:', error);
       throw error;

@@ -1397,6 +1397,7 @@ const UsersTab = () => {
 const EnrollmentsTab = () => {
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewingProof, setViewingProof] = useState<string | null>(null);
 
   useEffect(() => {
     fetchEnrollments();
@@ -1424,6 +1425,42 @@ const EnrollmentsTab = () => {
       console.error('Error fetching enrollments:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleViewProof = async (receiptUrl: string) => {
+    if (!receiptUrl) return;
+    
+    setViewingProof(receiptUrl);
+    try {
+      let bucket = 'payment-proofs';
+      let filePath = receiptUrl;
+
+      if (receiptUrl.startsWith('http')) {
+        if (receiptUrl.includes('.supabase.co/storage/v1/object/public/')) {
+          const urlParts = receiptUrl.split('/storage/v1/object/public/');
+          if (urlParts.length > 1) {
+            const pathParts = urlParts[1].split('/');
+            bucket = pathParts[0];
+            filePath = pathParts.slice(1).join('/');
+          }
+        } else {
+          window.open(receiptUrl, '_blank');
+          return;
+        }
+      }
+      
+      const signedUrl = await adminService.getSignedUrl(bucket, filePath);
+      if (signedUrl) {
+        window.open(signedUrl, '_blank');
+      } else {
+        alert('Could not generate a viewable link for this proof. Please ensure the "payment-proofs" bucket exists in Supabase Storage.');
+      }
+    } catch (err) {
+      console.error('Error viewing proof:', err);
+      alert('Failed to open proof.');
+    } finally {
+      setViewingProof(null);
     }
   };
 
@@ -1498,14 +1535,18 @@ const EnrollmentsTab = () => {
                 </td>
                 <td className="px-8 py-5">
                   {e.payments?.[0]?.receipt_url ? (
-                    <a 
-                      href={e.payments[0].receipt_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1"
+                    <button 
+                      onClick={() => handleViewProof(e.payments[0].receipt_url)}
+                      disabled={!!viewingProof}
+                      className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1 disabled:opacity-50"
                     >
-                      <Eye size={14} /> View Proof
-                    </a>
+                      {viewingProof === e.payments[0].receipt_url ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Eye size={14} />
+                      )}
+                      View Proof
+                    </button>
                   ) : (
                     <span className="text-slate-400 text-xs italic">No proof</span>
                   )}
@@ -1550,6 +1591,7 @@ const EnrollmentsTab = () => {
 const PaymentsTab = () => {
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewingProof, setViewingProof] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPayments();
@@ -1577,6 +1619,42 @@ const PaymentsTab = () => {
       console.error('Error fetching payments:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleViewProof = async (receiptUrl: string) => {
+    if (!receiptUrl) return;
+    
+    setViewingProof(receiptUrl);
+    try {
+      let bucket = 'payment-proofs';
+      let filePath = receiptUrl;
+
+      if (receiptUrl.startsWith('http')) {
+        if (receiptUrl.includes('.supabase.co/storage/v1/object/public/')) {
+          const urlParts = receiptUrl.split('/storage/v1/object/public/');
+          if (urlParts.length > 1) {
+            const pathParts = urlParts[1].split('/');
+            bucket = pathParts[0];
+            filePath = pathParts.slice(1).join('/');
+          }
+        } else {
+          window.open(receiptUrl, '_blank');
+          return;
+        }
+      }
+      
+      const signedUrl = await adminService.getSignedUrl(bucket, filePath);
+      if (signedUrl) {
+        window.open(signedUrl, '_blank');
+      } else {
+        alert('Could not generate a viewable link for this proof.');
+      }
+    } catch (err) {
+      console.error('Error viewing proof:', err);
+      alert('Failed to open proof.');
+    } finally {
+      setViewingProof(null);
     }
   };
 
@@ -1667,14 +1745,18 @@ const PaymentsTab = () => {
                 </td>
                 <td className="px-8 py-5">
                   {p.receipt_url ? (
-                    <a 
-                      href={p.receipt_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1"
+                    <button 
+                      onClick={() => handleViewProof(p.receipt_url)}
+                      disabled={!!viewingProof}
+                      className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1 disabled:opacity-50"
                     >
-                      <Eye size={14} /> View Proof
-                    </a>
+                      {viewingProof === p.receipt_url ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Eye size={14} />
+                      )}
+                      View Proof
+                    </button>
                   ) : (
                     <span className="text-slate-400 text-xs italic">No proof</span>
                   )}
