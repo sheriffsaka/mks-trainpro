@@ -38,7 +38,6 @@ export const Navbar = () => {
             <Link to="/courses" className="text-slate-600 hover:text-brand-blue font-medium transition-colors">Courses</Link>
             <Link to="/corporate" className="text-slate-600 hover:text-brand-blue font-medium transition-colors">Corporate</Link>
             <Link to="/accreditations" className="text-slate-600 hover:text-brand-blue font-medium transition-colors">Accreditations</Link>
-            <Link to="/clients" className="text-slate-600 hover:text-brand-blue font-medium transition-colors">Clients</Link>
             <Link to="/about" className="text-slate-600 hover:text-brand-blue font-medium transition-colors">About</Link>
             
             {user ? (
@@ -88,7 +87,6 @@ export const Navbar = () => {
           <Link to="/courses" className="block text-slate-600 font-medium">Courses</Link>
           <Link to="/corporate" className="block text-slate-600 font-medium">Corporate</Link>
           <Link to="/accreditations" className="block text-slate-600 font-medium">Accreditations</Link>
-          <Link to="/clients" className="block text-slate-600 font-medium">Clients</Link>
           <Link to="/about" className="block text-slate-600 font-medium">About</Link>
           {user ? (
             <>

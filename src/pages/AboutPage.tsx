@@ -118,32 +118,6 @@ export const AboutPage = () => {
         </div>
       </section>
 
-      {/* Team Section */}
-      <section className="py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-slate-900 mb-4">Meet Our Leadership</h2>
-            <p className="text-slate-500">Expert professionals dedicated to your success.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-12">
-            {[
-              { name: 'Sarah Johnson', role: 'Head of Healthcare Training', img: 'https://i.pravatar.cc/300?u=sarah' },
-              { name: 'David Miller', role: 'SIA Compliance Director', img: 'https://i.pravatar.cc/300?u=david' },
-              { name: 'Emma Williams', role: 'Student Success Manager', img: 'https://i.pravatar.cc/300?u=emma' }
-            ].map((member, i) => (
-              <div key={i} className="text-center group">
-                <div className="aspect-square rounded-[3rem] overflow-hidden mb-6 relative">
-                  <img src={member.img} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt={member.name} />
-                  <div className="absolute inset-0 bg-brand-blue/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-1">{member.name}</h3>
-                <p className="text-brand-red font-semibold text-sm uppercase tracking-wider">{member.role}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* CTA */}
       <section className="py-24 bg-slate-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

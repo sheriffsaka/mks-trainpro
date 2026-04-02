@@ -102,6 +102,38 @@ export const adminService = {
     if (error) throw error;
   },
 
+  // Notifications
+  async getNotifications(userId: string) {
+    if (!isSupabaseConfigured) return [];
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+  async markNotificationAsRead(id: string) {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', id);
+    if (error) throw error;
+  },
+  async createNotification(notification: {
+    user_id: string;
+    title: string;
+    message: string;
+    type?: 'info' | 'warning' | 'success' | 'error';
+  }) {
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert([notification])
+      .select();
+    if (error) throw error;
+    return data[0];
+  },
+
   // FAQs
   async getFAQs() {
     if (!isSupabaseConfigured) return MOCK_FAQS;

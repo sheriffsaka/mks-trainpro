@@ -563,7 +563,26 @@ ALTER PUBLICATION supabase_realtime ADD TABLE assessments;
 ALTER PUBLICATION supabase_realtime ADD TABLE assignments;
 ALTER PUBLICATION supabase_realtime ADD TABLE course_materials;
 
--- 20. Storage Setup
+-- 21. Notifications
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  type TEXT DEFAULT 'info' CHECK (type IN ('info', 'warning', 'success', 'error')),
+  is_read BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own notifications" ON notifications;
+CREATE POLICY "Users can view own notifications" ON notifications FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update own notifications" ON notifications;
+CREATE POLICY "Users can update own notifications" ON notifications FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Admins can manage all notifications" ON notifications;
+CREATE POLICY "Admins can manage all notifications" ON notifications FOR ALL USING (is_admin());
+
+-- 22. Storage Setup
 -- Create Storage Buckets
 INSERT INTO storage.buckets (id, name, public) 
 VALUES ('payment-proofs', 'payment-proofs', false)

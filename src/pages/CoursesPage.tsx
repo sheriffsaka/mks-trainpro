@@ -140,6 +140,15 @@ export const CoursesPage = () => {
                           <Award size={14} />
                           <span>Accredited</span>
                         </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest ${
+                            course.mode === 'virtual' ? 'bg-brand-blue/10 text-brand-blue' :
+                            course.mode === 'physical' ? 'bg-brand-red/10 text-brand-red' :
+                            'bg-emerald-100 text-emerald-700'
+                          }`}>
+                            {course.mode || 'VOD'}
+                          </div>
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-between pt-6 border-t border-slate-50">

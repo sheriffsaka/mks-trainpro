@@ -251,9 +251,6 @@ const Home = () => {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 text-center">
-          <Link to="/clients" className="inline-flex items-center gap-2 text-brand-blue font-bold hover:gap-3 transition-all group">
-            View all client success stories <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-          </Link>
         </div>
       </motion.section>
 
@@ -541,7 +538,6 @@ export default function App() {
                   <li><Link to="/courses" className="hover:text-brand-red transition-colors">All Courses</Link></li>
                   <li><Link to="/corporate" className="hover:text-brand-red transition-colors">Corporate Training</Link></li>
                   <li><Link to="/accreditations" className="hover:text-brand-red transition-colors">Accreditations</Link></li>
-                  <li><Link to="/clients" className="hover:text-brand-red transition-colors">Our Clients</Link></li>
                   <li><Link to="/about" className="hover:text-brand-red transition-colors">About Us</Link></li>
                   <li><Link to="/contact" className="hover:text-emerald-500 transition-colors">Contact</Link></li>
                 </ul>

@@ -193,6 +193,45 @@ export const DashboardPage = () => {
     }
   };
 
+  const balances = React.useMemo(() => {
+    const map: {[key: string]: number} = {};
+    payments.forEach(p => {
+      if (p.payment_status === 'succeeded') {
+        map[p.enrollment_id] = (map[p.enrollment_id] || 0) + Number(p.amount);
+      }
+    });
+    return map;
+  }, [payments]);
+
+  const [notifications, setNotifications] = React.useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  React.useEffect(() => {
+    if (user) {
+      fetchNotifications();
+    }
+  }, [user]);
+
+  const fetchNotifications = async () => {
+    try {
+      const data = await adminService.getNotifications(user!.id);
+      setNotifications(data || []);
+      setUnreadCount(data?.filter((n: any) => !n.is_read).length || 0);
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
+  };
+
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      await adminService.markNotificationAsRead(id);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+  };
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="flex flex-col items-center gap-4">
@@ -241,9 +280,16 @@ export const DashboardPage = () => {
               </div>
             </div>
             <div className="flex gap-3">
-              <button className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-100 transition-all relative">
+              <button 
+                onClick={() => setActiveTab('notifications')}
+                className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-100 transition-all relative"
+              >
                 <Bell size={20} />
-                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-brand-red rounded-full border-2 border-white" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-2.5 right-2.5 w-4 h-4 bg-brand-red text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                    {unreadCount}
+                  </span>
+                )}
               </button>
               <Link to="/courses" className="bg-brand-blue text-white px-6 py-3 rounded-2xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20">
                 Enroll in New Course
@@ -252,13 +298,14 @@ export const DashboardPage = () => {
           </div>
 
           {/* Sub-navigation as Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mt-12">
             {[
               { id: 'courses', label: 'My Courses', icon: <BookOpen size={20} /> },
               { id: 'schedules', label: 'Class Schedule', icon: <Calendar size={20} /> },
               { id: 'quizzes', label: 'Quizzes', icon: <FileQuestion size={20} /> },
               { id: 'certificates', label: 'Certificates', icon: <Award size={20} /> },
               { id: 'billing', label: 'Billing & Invoices', icon: <CreditCard size={20} /> },
+              { id: 'notifications', label: 'Notifications', icon: <Bell size={20} /> },
               { id: 'profile', label: 'Profile Settings', icon: <Settings size={20} /> }
             ].map((tab) => (
               <button
@@ -397,6 +444,33 @@ export const DashboardPage = () => {
                                     <p className="text-sm font-bold text-slate-900">{progressDetails[enrollment.course_id]?.assignmentsCompleted.toFixed(0) || 0}%</p>
                                   </div>
                                 </div>
+
+                                {/* Balance & Payment Section */}
+                                {(() => {
+                                  const coursePrice = enrollment.package_type === 'platinum' 
+                                    ? Number(enrollment.courses?.price_platinum || 0) 
+                                    : Number(enrollment.courses?.price_standard || 0);
+                                  const paidAmount = balances[enrollment.id] || 0;
+                                  const balance = coursePrice - paidAmount;
+                                  
+                                  if (balance > 0) {
+                                    return (
+                                      <div className="mt-6 p-4 bg-amber-50 rounded-2xl border border-amber-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                                        <div>
+                                          <p className="text-[10px] text-amber-600 uppercase font-black tracking-widest mb-1">Outstanding Balance</p>
+                                          <p className="text-xl font-black text-slate-900">£{balance.toFixed(2)}</p>
+                                        </div>
+                                        <Link 
+                                          to={`/courses/${enrollment.courses?.slug}`}
+                                          className="bg-brand-blue text-white px-6 py-2 rounded-xl font-bold text-xs hover:bg-brand-blue-hover transition-all shadow-md shadow-brand-blue/10 flex items-center gap-2"
+                                        >
+                                          <CreditCard size={14} /> Make Payment
+                                        </Link>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
                               </div>
                             </div>
                             <div className="shrink-0">
@@ -778,7 +852,84 @@ export const DashboardPage = () => {
                 </motion.div>
               )}
 
-              {activeTab === 'profile' && (
+              {activeTab === 'notifications' && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-6"
+              >
+                <div className="flex justify-between items-center mb-8">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900">Notifications</h2>
+                    <p className="text-slate-500">Stay updated with your course activities.</p>
+                  </div>
+                  {unreadCount > 0 && (
+                    <button 
+                      onClick={() => {
+                        notifications.filter(n => !n.is_read).forEach(n => handleMarkAsRead(n.id));
+                      }}
+                      className="text-brand-blue font-bold text-sm hover:underline"
+                    >
+                      Mark all as read
+                    </button>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden">
+                  {notifications.length > 0 ? (
+                    <div className="divide-y divide-slate-50">
+                      {notifications.map((notification) => (
+                        <div 
+                          key={notification.id}
+                          className={`p-6 transition-colors flex gap-4 ${notification.is_read ? 'bg-white' : 'bg-brand-blue/5'}`}
+                        >
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                            notification.type === 'success' ? 'bg-emerald-100 text-emerald-600' :
+                            notification.type === 'warning' ? 'bg-amber-100 text-amber-600' :
+                            notification.type === 'error' ? 'bg-brand-red/10 text-brand-red' :
+                            'bg-brand-blue/10 text-brand-blue'
+                          }`}>
+                            {notification.type === 'success' ? <CheckCircle2 size={24} /> :
+                             notification.type === 'warning' ? <AlertCircle size={24} /> :
+                             notification.type === 'error' ? <AlertCircle size={24} /> :
+                             <Bell size={24} />}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start mb-1">
+                              <h3 className={`font-bold ${notification.is_read ? 'text-slate-900' : 'text-brand-blue'}`}>
+                                {notification.title}
+                              </h3>
+                              <span className="text-xs text-slate-400">
+                                {new Date(notification.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <p className="text-slate-600 text-sm mb-3">{notification.message}</p>
+                            {!notification.is_read && (
+                              <button 
+                                onClick={() => handleMarkAsRead(notification.id)}
+                                className="text-[10px] font-black uppercase tracking-widest text-brand-blue hover:text-brand-blue-hover"
+                              >
+                                Mark as read
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-20 text-center">
+                      <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
+                        <Bell size={32} className="text-slate-300" />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-900 mb-2">No notifications yet</h3>
+                      <p className="text-slate-500 max-w-xs mx-auto">We'll notify you when there's something important to know.</p>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'profile' && (
                 <motion.div
                   key="profile"
                   initial={{ opacity: 0, x: -20 }}
@@ -930,7 +1081,10 @@ export const DashboardPage = () => {
                       <Download size={18} />
                       Download All Invoices
                     </button>
-                    <button className="w-full bg-white/10 border border-white/20 py-4 rounded-2xl font-bold hover:bg-white/20 transition-all flex items-center justify-center gap-2">
+                    <button 
+                      onClick={() => setActiveTab('billing')}
+                      className="w-full bg-white/10 border border-white/20 py-4 rounded-2xl font-bold hover:bg-white/20 transition-all flex items-center justify-center gap-2"
+                    >
                       <History size={18} />
                       Payment History
                     </button>
@@ -1003,9 +1157,17 @@ export const DashboardPage = () => {
               
               <div className="p-12 overflow-y-auto" id="receipt-content">
                 <div className="flex justify-between items-start mb-12">
-                  <div>
-                    <h2 className="text-3xl font-black text-brand-blue mb-2">MKS CONSULTS</h2>
-                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Professional Training & Consulting</p>
+                  <div className="flex items-center gap-4">
+                    <img 
+                      src="https://res.cloudinary.com/di7okmjsx/image/upload/v1773824665/mkslogo1_svink2.png" 
+                      alt="MKS Logo" 
+                      className="h-16 w-auto object-contain"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div>
+                      <h2 className="text-3xl font-black text-brand-blue mb-1">MKS CONSULTS</h2>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Professional Training & Consulting</p>
+                    </div>
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">
