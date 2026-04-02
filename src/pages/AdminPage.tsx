@@ -1012,8 +1012,25 @@ const CoursesTab = () => {
         await adminService.updateCourse(editingCourse.id, courseData);
         alert('Course updated successfully!');
       } else {
-        await adminService.createCourse(courseData);
+        const newCourse = await adminService.createCourse(courseData);
         alert('Course created successfully!');
+        
+        // Notify all students if published
+        if (courseData.is_published) {
+          try {
+            const students = await adminService.getStudents();
+            for (const student of students) {
+              await adminService.createNotification({
+                user_id: student.id,
+                title: 'New Course Available!',
+                message: `Check out our new course: ${courseData.title}. Enroll now to start learning!`,
+                type: 'info'
+              });
+            }
+          } catch (notifErr) {
+            console.error('Error sending notifications for new course:', notifErr);
+          }
+        }
       }
       setIsModalOpen(false);
       setEditingCourse(null);
@@ -1499,6 +1516,18 @@ const EnrollmentsTab = () => {
       
       if (paymentError) {
         console.error('Error updating payment status:', paymentError);
+      }
+      
+      // 3. Notify student
+      try {
+        await adminService.createNotification({
+          user_id: enrollment.user_id,
+          title: 'Enrollment Approved!',
+          message: `Your enrollment for ${enrollment.courses?.title || 'the course'} has been approved. You can now start learning!`,
+          type: 'success'
+        });
+      } catch (notifErr) {
+        console.error('Error sending notification:', notifErr);
       }
       
       alert('Enrollment approved successfully!');
@@ -2036,6 +2065,21 @@ const QuizzesTab = () => {
         await adminService.updateQuiz(editingQuiz.id, quizData);
       } else {
         await adminService.createQuiz(quizData);
+        
+        // Notify enrolled students
+        try {
+          const enrollments = await adminService.getEnrollmentsByCourse(quizData.course_id as string);
+          for (const enrollment of enrollments) {
+            await adminService.createNotification({
+              user_id: enrollment.user_id,
+              title: 'New Assessment Available!',
+              message: `A new quiz "${quizData.title}" has been added to your course: ${enrollment.courses?.title || 'the course'}.`,
+              type: 'info'
+            });
+          }
+        } catch (notifErr) {
+          console.error('Error sending notifications for quiz:', notifErr);
+        }
       }
       alert(`Quiz ${editingQuiz ? 'updated' : 'created'} successfully!`);
       setIsModalOpen(false);
@@ -2436,6 +2480,18 @@ const CertificatesTab = () => {
       
       if (error) throw error;
       
+      // Notify student
+      try {
+        await adminService.createNotification({
+          user_id: enrollment.user_id,
+          title: 'Certificate Issued!',
+          message: `Congratulations! Your certificate for ${enrollment.courses?.title || 'the course'} is now available.`,
+          type: 'success'
+        });
+      } catch (notifErr) {
+        console.error('Error sending notification:', notifErr);
+      }
+      
       alert('Certificate issued successfully!');
       fetchEnrollments();
     } catch (err: any) {
@@ -2596,6 +2652,24 @@ const AnnouncementsTab = () => {
         await adminService.updateAnnouncement(editingAnn.id, annData);
       } else {
         await adminService.createAnnouncement(annData);
+        
+        // Notify students
+        try {
+          const students = await adminService.getStudents();
+          for (const student of students) {
+            // If target_role is specified, only notify those users
+            if (!annData.target_role || annData.target_role === 'student') {
+              await adminService.createNotification({
+                user_id: student.id,
+                title: annData.title as string,
+                message: annData.content as string,
+                type: annData.type as any || 'info'
+              });
+            }
+          }
+        } catch (notifErr) {
+          console.error('Error sending notifications for announcement:', notifErr);
+        }
       }
       setIsModalOpen(false);
       setEditingAnn(null);

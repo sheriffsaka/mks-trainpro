@@ -212,6 +212,17 @@ export const adminService = {
     if (error) throw error;
   },
 
+  // Users
+  async getStudents() {
+    if (!isSupabaseConfigured) return [];
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'student');
+    if (error) throw error;
+    return data;
+  },
+
   // Class Schedules
   async getSchedules(courseId?: string) {
     if (!isSupabaseConfigured) return [];

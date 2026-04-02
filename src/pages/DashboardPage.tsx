@@ -456,9 +456,15 @@ export const DashboardPage = () => {
                                   if (balance > 0) {
                                     return (
                                       <div className="mt-6 p-4 bg-amber-50 rounded-2xl border border-amber-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-                                        <div>
-                                          <p className="text-[10px] text-amber-600 uppercase font-black tracking-widest mb-1">Outstanding Balance</p>
-                                          <p className="text-xl font-black text-slate-900">£{balance.toFixed(2)}</p>
+                                        <div className="flex gap-8">
+                                          <div>
+                                            <p className="text-[10px] text-emerald-600 uppercase font-black tracking-widest mb-1">Amount Paid</p>
+                                            <p className="text-xl font-black text-slate-900">£{paidAmount.toFixed(2)}</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-[10px] text-amber-600 uppercase font-black tracking-widest mb-1">Outstanding Balance</p>
+                                            <p className="text-xl font-black text-brand-red">£{balance.toFixed(2)}</p>
+                                          </div>
                                         </div>
                                         <Link 
                                           to={`/courses/${enrollment.courses?.slug}`}
@@ -469,7 +475,17 @@ export const DashboardPage = () => {
                                       </div>
                                     );
                                   }
-                                  return null;
+                                  return (
+                                    <div className="mt-6 p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex justify-between items-center">
+                                      <div>
+                                        <p className="text-[10px] text-emerald-600 uppercase font-black tracking-widest mb-1">Payment Status</p>
+                                        <p className="text-lg font-black text-slate-900">Fully Paid</p>
+                                      </div>
+                                      <div className="text-emerald-600 font-bold text-sm flex items-center gap-2">
+                                        <CheckCircle2 size={18} /> Total: £{paidAmount.toFixed(2)}
+                                      </div>
+                                    </div>
+                                  );
                                 })()}
                               </div>
                             </div>
@@ -768,12 +784,6 @@ export const DashboardPage = () => {
                           ).toFixed(2)}
                         </h3>
                       </div>
-                      <Link 
-                        to={enrollments.find(e => e.status === 'pending') ? `/courses/${enrollments.find(e => e.status === 'pending')?.courses?.slug}` : "/courses"} 
-                        className="bg-brand-blue text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all"
-                      >
-                        Make a Payment
-                      </Link>
                     </div>
                     <div className="space-y-4">
                       <h4 className="font-bold text-slate-900 mb-4">Recent Invoices</h4>
