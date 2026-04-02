@@ -231,11 +231,16 @@ export const adminService = {
   // Attendance
   async getAttendance(courseId: string, date?: string) {
     if (!isSupabaseConfigured) return [];
-    let query = supabase.from('attendance').select('*, profiles(*)').eq('course_id', courseId);
-    if (date) query = query.eq('session_date', date);
-    const { data, error } = await query;
-    if (error) throw error;
-    return data;
+    try {
+      let query = supabase.from('attendance').select('*').eq('course_id', courseId);
+      if (date) query = query.eq('session_date', date);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching attendance:', err);
+      return [];
+    }
   },
   async markAttendance(records: any[]) {
     const { data, error } = await supabase.from('attendance').upsert(records, { onConflict: 'user_id,course_id,session_date' }).select();
