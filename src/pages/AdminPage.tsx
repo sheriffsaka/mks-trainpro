@@ -383,19 +383,27 @@ const AttendanceTab = ({ courses }: { courses: any[] }) => {
   const fetchData = async () => {
     setLoading(true);
     try {
+      console.log('Fetching attendance data for course:', selectedCourse, 'date:', selectedDate);
       const [enrollments, attendanceData] = await Promise.all([
         adminService.getEnrollmentsByCourse(selectedCourse),
         adminService.getAttendance(selectedCourse, selectedDate)
       ]);
-      setStudents(enrollments.map((e: any) => e.profiles));
+      
+      console.log('Enrollments fetched:', enrollments?.length || 0);
+      
+      const studentList = (enrollments || [])
+        .map((e: any) => e.profiles)
+        .filter((p: any) => p !== null && p !== undefined);
+        
+      setStudents(studentList);
       
       const initialAttendance: Record<string, string> = {};
-      attendanceData.forEach((a: any) => {
+      (attendanceData || []).forEach((a: any) => {
         initialAttendance[a.user_id] = a.status;
       });
       setAttendance(initialAttendance);
     } catch (err) {
-      console.error(err);
+      console.error('Error in AttendanceTab fetchData:', err);
     } finally {
       setLoading(false);
     }
@@ -462,38 +470,46 @@ const AttendanceTab = ({ courses }: { courses: any[] }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {students.map((student) => (
-                  <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-8 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-brand-blue/10 rounded-full flex items-center justify-center text-brand-blue font-bold">
-                          {student.full_name?.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-900">{student.full_name}</p>
-                          <p className="text-xs text-slate-500">{student.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-4">
-                      <div className="flex gap-2">
-                        {['present', 'absent', 'late'].map(status => (
-                          <button
-                            key={status}
-                            onClick={() => setAttendance(prev => ({ ...prev, [student.id]: status }))}
-                            className={`px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
-                              attendance[student.id] === status 
-                                ? status === 'present' ? 'bg-emerald-500 text-white' : status === 'absent' ? 'bg-brand-red text-white' : 'bg-amber-500 text-white'
-                                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                            }`}
-                          >
-                            {status}
-                          </button>
-                        ))}
-                      </div>
+                {students.length === 0 ? (
+                  <tr>
+                    <td colSpan={2} className="px-8 py-12 text-center text-slate-500">
+                      No students enrolled in this course yet.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  students.map((student) => (
+                    <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-8 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-brand-blue/10 rounded-full flex items-center justify-center text-brand-blue font-bold">
+                            {student.full_name?.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900">{student.full_name}</p>
+                            <p className="text-xs text-slate-500">{student.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-8 py-4">
+                        <div className="flex gap-2">
+                          {['present', 'absent', 'late'].map(status => (
+                            <button
+                              key={status}
+                              onClick={() => setAttendance(prev => ({ ...prev, [student.id]: status }))}
+                              className={`px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
+                                attendance[student.id] === status 
+                                  ? status === 'present' ? 'bg-emerald-500 text-white' : status === 'absent' ? 'bg-brand-red text-white' : 'bg-amber-500 text-white'
+                                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                              }`}
+                            >
+                              {status}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

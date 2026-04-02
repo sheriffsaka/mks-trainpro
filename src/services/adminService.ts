@@ -561,7 +561,7 @@ export const adminService = {
     try {
       const { data, error } = await supabase
         .from('enrollments')
-        .select('*, profiles!user_id(*), courses!course_id(*)')
+        .select('*, profiles!enrollments_user_id_fkey(*), courses!enrollments_course_id_fkey(*)')
         .order('enrolled_at', { ascending: false })
         .limit(limit);
       if (error) throw error;
@@ -592,7 +592,7 @@ export const adminService = {
     try {
       const { data, error } = await supabase
         .from('enrollments')
-        .select('*, profiles!user_id(*), courses!course_id(*), certificates!enrollment_id(*)')
+        .select('*, profiles!enrollments_user_id_fkey(*), courses!enrollments_course_id_fkey(*), certificates!certificates_enrollment_id_fkey(*)')
         .in('status', ['active', 'completed'])
         .order('enrolled_at', { ascending: false });
       if (error) throw error;
@@ -608,7 +608,7 @@ export const adminService = {
     try {
       const { data, error } = await supabase
         .from('payments')
-        .select('*, profiles!user_id(*), enrollments!enrollment_id(*, courses!course_id(*))')
+        .select('*, profiles!payments_user_id_fkey(*), enrollments!payments_enrollment_id_fkey(*, courses!enrollments_course_id_fkey(*))')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -623,7 +623,7 @@ export const adminService = {
     try {
       const { data, error } = await supabase
         .from('enrollments')
-        .select('*, profiles!user_id(*)')
+        .select('*, profiles!enrollments_user_id_fkey(*)')
         .eq('course_id', courseId);
       if (error) throw error;
       return data || [];
@@ -663,7 +663,7 @@ export const adminService = {
     try {
       const { data, error } = await supabase
         .from('payments')
-        .select('*, enrollments!enrollment_id(*, courses!course_id(*))')
+        .select('*, enrollments!payments_enrollment_id_fkey(*, courses!enrollments_course_id_fkey(*))')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -678,7 +678,7 @@ export const adminService = {
     if (!isSupabaseConfigured) return [];
     const { data, error } = await supabase
       .from('installment_records')
-      .select('*, enrollments!enrollment_id(*, courses!course_id(*))')
+      .select('*, enrollments!installment_records_enrollment_id_fkey(*, courses!enrollments_course_id_fkey(*))')
       .eq('status', 'active')
       .in('enrollment_id', enrollmentIds);
     if (error) throw error;
@@ -690,7 +690,7 @@ export const adminService = {
     try {
       const { data, error } = await supabase
         .from('payments')
-        .select('*, profiles!user_id(*), enrollments!enrollment_id(*, courses!course_id(*))')
+        .select('*, profiles!payments_user_id_fkey(*), enrollments!payments_enrollment_id_fkey(*, courses!enrollments_course_id_fkey(*))')
         .order('created_at', { ascending: false })
         .limit(limit);
       if (error) throw error;
@@ -707,7 +707,7 @@ export const adminService = {
     try {
       const { data, error } = await supabase
         .from('installment_records')
-        .select('*, enrollments!enrollment_id(*, profiles!user_id(*), courses!course_id(*))')
+        .select('*, enrollments!installment_records_enrollment_id_fkey(*, profiles!enrollments_user_id_fkey(*), courses!enrollments_course_id_fkey(*))')
         .order('next_payment_date', { ascending: true });
       if (error) throw error;
       return data || [];

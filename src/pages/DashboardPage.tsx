@@ -993,7 +993,9 @@ export const DashboardPage = () => {
               className="relative bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="p-8 border-b border-slate-100 flex justify-between items-center shrink-0">
-                <h3 className="text-2xl font-bold text-slate-900">Payment Receipt</h3>
+                <h3 className="text-2xl font-bold text-slate-900">
+                  {selectedReceipt.payment_status === 'succeeded' ? 'Payment Receipt' : 'Payment Invoice'}
+                </h3>
                 <button onClick={() => setShowReceiptModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
                   <X size={24} />
                 </button>
@@ -1006,8 +1008,13 @@ export const DashboardPage = () => {
                     <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Professional Training & Consulting</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Receipt Number</p>
-                    <p className="text-xl font-bold text-slate-900">REC-{selectedReceipt.id.slice(0, 8).toUpperCase()}</p>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">
+                      {selectedReceipt.payment_status === 'succeeded' ? 'Receipt Number' : 'Invoice Number'}
+                    </p>
+                    <p className="text-xl font-bold text-slate-900">
+                      {selectedReceipt.payment_status === 'succeeded' ? 'REC-' : 'INV-'}
+                      {selectedReceipt.id.slice(0, 8).toUpperCase()}
+                    </p>
                   </div>
                 </div>
 
@@ -1022,7 +1029,9 @@ export const DashboardPage = () => {
                     <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-3">Payment Details</p>
                     <p className="text-slate-500">Date: <span className="font-bold text-slate-900">{new Date(selectedReceipt.created_at).toLocaleDateString()}</span></p>
                     <p className="text-slate-500">Method: <span className="font-bold text-slate-900 uppercase">{selectedReceipt.payment_method || 'Bank Transfer'}</span></p>
-                    <p className="text-slate-500">Status: <span className="font-bold text-emerald-600 uppercase">Succeeded</span></p>
+                    <p className="text-slate-500">Status: <span className={`font-bold uppercase ${selectedReceipt.payment_status === 'succeeded' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      {selectedReceipt.payment_status}
+                    </span></p>
                   </div>
                 </div>
 
@@ -1054,7 +1063,7 @@ export const DashboardPage = () => {
                     </div>
                     <div className="h-px bg-slate-100 my-2" />
                     <div className="flex justify-between items-center text-xl font-bold text-slate-900">
-                      <span>Total Paid</span>
+                      <span>{selectedReceipt.payment_status === 'succeeded' ? 'Total Paid' : 'Total Due'}</span>
                       <span className="text-brand-blue">£{selectedReceipt.amount}</span>
                     </div>
                   </div>
@@ -1062,7 +1071,9 @@ export const DashboardPage = () => {
 
                 <div className="bg-slate-50 p-6 rounded-3xl text-center">
                   <p className="text-sm text-slate-500">Thank you for choosing MKS Consults Ltd for your professional development.</p>
-                  <p className="text-[10px] text-slate-400 mt-4 uppercase tracking-widest font-bold">This is a computer-generated receipt.</p>
+                  <p className="text-[10px] text-slate-400 mt-4 uppercase tracking-widest font-bold">
+                    This is a computer-generated {selectedReceipt.payment_status === 'succeeded' ? 'receipt' : 'invoice'}.
+                  </p>
                 </div>
               </div>
 

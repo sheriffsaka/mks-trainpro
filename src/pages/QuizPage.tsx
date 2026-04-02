@@ -15,38 +15,62 @@ import {
 
 import { MOCK_QUIZZES } from '../data/mockData';
 import { adminService } from '../services/adminService';
+import { useAuthStore } from '../store/authStore';
 
 export const QuizPage = () => {
   const { slug, quizId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(1200); // 20 minutes
   const [loading, setLoading] = useState(true);
   const [quiz, setQuiz] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchQuiz = async () => {
+    const fetchQuizAndCheckEnrollment = async () => {
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+
       try {
-        const data = await adminService.getQuizzes();
-        const foundQuiz = data.find((q: any) => q.id === quizId);
-        if (foundQuiz) {
-          setQuiz(foundQuiz);
-        } else {
-          const mockQuiz = MOCK_QUIZZES.find(q => q.id === quizId) || MOCK_QUIZZES[0];
-          setQuiz(mockQuiz);
+        setLoading(true);
+        setError(null);
+
+        // Fetch quiz first to know which course it belongs to
+        const quizzes = await adminService.getQuizzes();
+        const foundQuiz = quizzes.find((q: any) => q.id === quizId);
+        
+        if (!foundQuiz) {
+          setError('Quiz not found');
+          setLoading(false);
+          return;
         }
-      } catch (error) {
-        console.error('Error fetching quiz:', error);
-        const mockQuiz = MOCK_QUIZZES.find(q => q.id === quizId) || MOCK_QUIZZES[0];
-        setQuiz(mockQuiz);
+
+        // Check enrollment
+        const enrollments = await adminService.getUserEnrollments(user.id);
+        const isEnrolled = enrollments.some((e: any) => e.course_id === foundQuiz.course_id && e.status === 'active');
+        
+        if (!isEnrolled) {
+          setError('You are not enrolled in this course or your enrollment is pending approval.');
+          setLoading(false);
+          return;
+        }
+
+        setQuiz(foundQuiz);
+      } catch (err: any) {
+        console.error('Error in QuizPage:', err);
+        setError('Failed to load quiz. Please try again.');
       } finally {
         setLoading(false);
       }
     };
-    fetchQuiz();
-  }, [quizId]);
+
+    fetchQuizAndCheckEnrollment();
+  }, [quizId, user, navigate]);
 
   useEffect(() => {
     if (isSubmitted || loading || !quiz) return;
@@ -104,12 +128,20 @@ export const QuizPage = () => {
     </div>
   );
 
-  if (!quiz) return (
+  if (!quiz || error) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="text-center">
+      <div className="text-center max-w-md px-4">
         <AlertCircle size={48} className="mx-auto text-brand-red mb-4" />
-        <h2 className="text-2xl font-bold text-slate-900">Quiz Not Found</h2>
-        <button onClick={() => navigate(-1)} className="mt-4 text-brand-blue font-bold">Go Back</button>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">{error || 'Quiz Not Found'}</h2>
+        <p className="text-slate-500 mb-6">
+          {error ? 'Please ensure you are enrolled in this course and your enrollment is active.' : 'The quiz you are looking for does not exist or has been removed.'}
+        </p>
+        <button 
+          onClick={() => navigate(-1)} 
+          className="bg-brand-blue text-white px-8 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all"
+        >
+          Go Back
+        </button>
       </div>
     </div>
   );
