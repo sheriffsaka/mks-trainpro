@@ -1469,7 +1469,7 @@ const EnrollmentsTab = () => {
               <th className="px-8 py-5 font-bold">Student</th>
               <th className="px-8 py-5 font-bold">Course</th>
               <th className="px-8 py-5 font-bold">Package</th>
-              <th className="px-8 py-5 font-bold">Receipt</th>
+              <th className="px-8 py-5 font-bold">Payment Proof</th>
               <th className="px-8 py-5 font-bold">Status</th>
               <th className="px-8 py-5 font-bold text-right">Actions</th>
             </tr>
@@ -1504,10 +1504,10 @@ const EnrollmentsTab = () => {
                       rel="noopener noreferrer"
                       className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1"
                     >
-                      <Eye size={14} /> View Receipt
+                      <Eye size={14} /> View Proof
                     </a>
                   ) : (
-                    <span className="text-slate-400 text-xs italic">No receipt</span>
+                    <span className="text-slate-400 text-xs italic">No proof</span>
                   )}
                 </td>
                 <td className="px-8 py-5">
@@ -1646,7 +1646,7 @@ const PaymentsTab = () => {
               <th className="px-8 py-5 font-bold">Course</th>
               <th className="px-8 py-5 font-bold">Amount</th>
               <th className="px-8 py-5 font-bold">Method</th>
-              <th className="px-8 py-5 font-bold">Receipt</th>
+              <th className="px-8 py-5 font-bold">Payment Proof</th>
               <th className="px-8 py-5 font-bold">Status</th>
               <th className="px-8 py-5 font-bold text-right">Date</th>
             </tr>
@@ -1673,10 +1673,10 @@ const PaymentsTab = () => {
                       rel="noopener noreferrer"
                       className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1"
                     >
-                      <Eye size={14} /> View Receipt
+                      <Eye size={14} /> View Proof
                     </a>
                   ) : (
-                    <span className="text-slate-400 text-xs italic">No receipt</span>
+                    <span className="text-slate-400 text-xs italic">No proof</span>
                   )}
                 </td>
                 <td className="px-8 py-5">

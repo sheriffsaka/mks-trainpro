@@ -25,7 +25,8 @@ import {
   MapPin,
   Video,
   Calendar,
-  Eye
+  Eye,
+  X
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -54,6 +55,8 @@ export const DashboardPage = () => {
   const [progressDetails, setProgressDetails] = useState<{[key: string]: ProgressData}>({});
   const [quizzesMap, setQuizzesMap] = useState<{[key: string]: any[]}>({});
   const [viewingReceipt, setViewingReceipt] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -140,8 +143,9 @@ export const DashboardPage = () => {
     alert(`Generating PDF Certificate for ${courseTitle}... This may take a moment for Standard members, but is instant for Platinum!`);
   };
 
-  const handleDownloadInvoice = (invoiceId: string) => {
-    alert(`Downloading Invoice ${invoiceId} as PDF...`);
+  const handleDownloadInvoice = (payment: any) => {
+    setSelectedReceipt(payment);
+    setShowReceiptModal(true);
   };
 
   const handleViewReceipt = async (receiptUrl: string) => {
@@ -694,8 +698,8 @@ export const DashboardPage = () => {
                               <th className="px-6 py-4">Date</th>
                               <th className="px-6 py-4">Amount</th>
                               <th className="px-6 py-4">Status</th>
-                              <th className="px-6 py-4">Receipt</th>
-                              <th className="px-6 py-4"></th>
+                              <th className="px-6 py-4">Payment Proof</th>
+                              <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-50">
@@ -728,7 +732,7 @@ export const DashboardPage = () => {
                                       className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1 disabled:opacity-50"
                                     >
                                       {viewingReceipt ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />} 
-                                      View
+                                      View Proof
                                     </button>
                                   ) : (
                                     <span className="text-slate-400 text-xs italic">N/A</span>
@@ -736,10 +740,12 @@ export const DashboardPage = () => {
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                   <button 
-                                    onClick={() => handleDownloadInvoice(`INV-${payment.id.slice(0, 8).toUpperCase()}`)}
-                                    className="text-brand-blue hover:text-brand-blue-hover"
+                                    onClick={() => handleDownloadInvoice(payment)}
+                                    className="bg-brand-blue/5 text-brand-blue px-4 py-2 rounded-xl text-xs font-bold hover:bg-brand-blue hover:text-white transition-all flex items-center gap-2 ml-auto"
+                                    title="View Generated Receipt"
                                   >
-                                    <Download size={18} />
+                                    <FileText size={14} />
+                                    View Receipt
                                   </button>
                                 </td>
                               </tr>
@@ -955,6 +961,118 @@ export const DashboardPage = () => {
           </aside>
         </div>
       </div>
+      {/* Receipt Modal */}
+      <AnimatePresence>
+        {showReceiptModal && selectedReceipt && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowReceiptModal(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-8 border-b border-slate-100 flex justify-between items-center shrink-0">
+                <h3 className="text-2xl font-bold text-slate-900">Payment Receipt</h3>
+                <button onClick={() => setShowReceiptModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="p-12 overflow-y-auto" id="receipt-content">
+                <div className="flex justify-between items-start mb-12">
+                  <div>
+                    <h2 className="text-3xl font-black text-brand-blue mb-2">MKS CONSULTS</h2>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Professional Training & Consulting</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Receipt Number</p>
+                    <p className="text-xl font-bold text-slate-900">REC-{selectedReceipt.id.slice(0, 8).toUpperCase()}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-12 mb-12">
+                  <div>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-3">Billed To</p>
+                    <p className="font-bold text-slate-900 text-lg">{profile?.full_name}</p>
+                    <p className="text-slate-500">{profile?.email}</p>
+                    {profile?.address && <p className="text-slate-500 mt-1">{profile.address}</p>}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-3">Payment Details</p>
+                    <p className="text-slate-500">Date: <span className="font-bold text-slate-900">{new Date(selectedReceipt.created_at).toLocaleDateString()}</span></p>
+                    <p className="text-slate-500">Method: <span className="font-bold text-slate-900 uppercase">{selectedReceipt.payment_method || 'Bank Transfer'}</span></p>
+                    <p className="text-slate-500">Status: <span className="font-bold text-emerald-600 uppercase">Succeeded</span></p>
+                  </div>
+                </div>
+
+                <div className="border-t border-b border-slate-100 py-6 mb-12">
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Description</p>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Amount</p>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-bold text-slate-900">{selectedReceipt.enrollments?.courses?.title || 'Course Enrollment'}</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {selectedReceipt.is_installment ? 'Installment Payment' : 'Full Course Payment'}
+                      </p>
+                    </div>
+                    <p className="text-xl font-bold text-slate-900">£{selectedReceipt.amount}</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end mb-12">
+                  <div className="w-64 space-y-3">
+                    <div className="flex justify-between items-center text-slate-500">
+                      <span>Subtotal</span>
+                      <span>£{selectedReceipt.amount}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-500">
+                      <span>Tax (0%)</span>
+                      <span>£0.00</span>
+                    </div>
+                    <div className="h-px bg-slate-100 my-2" />
+                    <div className="flex justify-between items-center text-xl font-bold text-slate-900">
+                      <span>Total Paid</span>
+                      <span className="text-brand-blue">£{selectedReceipt.amount}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-6 rounded-3xl text-center">
+                  <p className="text-sm text-slate-500">Thank you for choosing MKS Consults Ltd for your professional development.</p>
+                  <p className="text-[10px] text-slate-400 mt-4 uppercase tracking-widest font-bold">This is a computer-generated receipt.</p>
+                </div>
+              </div>
+
+              <div className="p-8 bg-slate-50 border-t border-slate-100 flex justify-between items-center shrink-0">
+                <button 
+                  onClick={() => setShowReceiptModal(false)}
+                  className="px-6 py-3 text-slate-600 font-bold hover:bg-slate-200 rounded-xl transition-all"
+                >
+                  Close
+                </button>
+                <button 
+                  onClick={() => {
+                    window.print();
+                  }}
+                  className="bg-brand-blue text-white px-8 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all flex items-center gap-2 shadow-lg shadow-brand-blue/20"
+                >
+                  <Download size={18} />
+                  Download / Print
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
