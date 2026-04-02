@@ -777,28 +777,24 @@ export const adminService = {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = userId ? `${userId}/${fileName}` : `${fileName}`;
-      const isPublic = bucket === 'training-assets';
+      const isPublic = bucket === 'training-assets' || bucket === 'site-assets';
 
-      // Check if bucket exists first (optional but helpful)
-      const { data: bucketData, error: bucketError } = await supabase.storage.getBucket(bucket);
-      
-      if (bucketError && (bucketError as any).status === 404) {
-        // Try to create the bucket if it doesn't exist
-        // Note: This might fail if the anon key doesn't have permissions
-        const { error: createError } = await supabase.storage.createBucket(bucket, {
-          public: isPublic, // Only training-assets should be public
-          fileSizeLimit: 5242880, // 5MB
-        });
+      // Try to ensure bucket exists, but don't fail if we can't manage buckets
+      try {
+        const { data: bucketData, error: bucketError } = await supabase.storage.getBucket(bucket);
         
-        if (createError) {
-          console.error('Failed to create bucket:', createError);
-          throw new Error(`Storage bucket "${bucket}" not found. Please create it manually in your Supabase dashboard under Storage with ${isPublic ? '"Public"' : '"Private"'} access enabled.`);
+        if (bucketError && (bucketError as any).status === 404) {
+          await supabase.storage.createBucket(bucket, {
+            public: isPublic,
+            fileSizeLimit: 5242880,
+          });
+        } else if (bucketData && bucketData.public !== isPublic) {
+          await supabase.storage.updateBucket(bucket, {
+            public: isPublic
+          });
         }
-      } else if (bucketData && bucketData.public !== isPublic) {
-        // Update bucket to match intended public status if it exists but has wrong setting
-        await supabase.storage.updateBucket(bucket, {
-          public: isPublic
-        });
+      } catch (managementError) {
+        console.warn('Bucket management error (likely RLS), attempting upload anyway:', managementError);
       }
 
       const { error: uploadError } = await supabase.storage

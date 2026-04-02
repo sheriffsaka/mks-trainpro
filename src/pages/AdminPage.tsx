@@ -116,7 +116,8 @@ const DiagnosticTab = () => {
       setStorageResult(null);
       const buckets = [
         { id: 'training-assets', public: true },
-        { id: 'payment-proofs', public: false }
+        { id: 'payment-proofs', public: false },
+        { id: 'site-assets', public: true }
       ];
       const results: any = {};
       
@@ -133,12 +134,24 @@ const DiagnosticTab = () => {
             public: b.public
           });
           if (updateError) {
-            results[b.id] = { status: 'info', message: `Bucket already exists but could not be updated to ${b.public ? 'public' : 'private'}. Please check manually.` };
+            const isRLS = updateError.message.toLowerCase().includes('row-level security');
+            results[b.id] = { 
+              status: isRLS ? 'warning' : 'info', 
+              message: isRLS 
+                ? `Bucket exists but RLS prevents updating it. This is normal if you haven't run the SQL setup script yet.` 
+                : `Bucket already exists but could not be updated to ${b.public ? 'public' : 'private'}.` 
+            };
           } else {
             results[b.id] = { status: 'success', message: `Bucket already existed and was updated to ${b.public ? 'public' : 'private'}` };
           }
         } else if (createError) {
-          results[b.id] = { status: 'error', message: createError.message };
+          const isRLS = createError.message.toLowerCase().includes('row-level security');
+          results[b.id] = { 
+            status: isRLS ? 'warning' : 'error', 
+            message: isRLS 
+              ? `RLS prevents bucket creation. Please run the SQL setup script in your Supabase dashboard.` 
+              : createError.message 
+          };
         } else {
           results[b.id] = { status: 'success', message: 'Bucket created successfully' };
         }
@@ -313,7 +326,7 @@ const DiagnosticTab = () => {
           </button>
         </div>
         <p className="text-sm text-slate-500">
-          Click the button above to ensure the required storage buckets (<code className="bg-slate-100 px-1 rounded">training-assets</code> and <code className="bg-slate-100 px-1 rounded">payment-proofs</code>) are created in your Supabase instance.
+          Click the button above to ensure the required storage buckets (<code className="bg-slate-100 px-1 rounded">training-assets</code>, <code className="bg-slate-100 px-1 rounded">payment-proofs</code>, and <code className="bg-slate-100 px-1 rounded">site-assets</code>) are created in your Supabase instance.
         </p>
         <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-xs text-amber-800">
           <p className="font-bold mb-1 flex items-center gap-1"><AlertCircle size={14} /> Note on Permissions</p>

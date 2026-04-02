@@ -573,9 +573,14 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('training-assets', 'training-assets', true)
 ON CONFLICT (id) DO NOTHING;
 
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('site-assets', 'site-assets', true)
+ON CONFLICT (id) DO NOTHING;
+
 -- 21. Set up RLS Policies for Storage Objects
--- Enable RLS on storage.objects if not already enabled
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- Grant permissions to authenticated users for storage
+GRANT ALL ON storage.objects TO authenticated;
+GRANT ALL ON storage.buckets TO authenticated;
 
 -- Policies for 'training-assets' (Publicly readable)
 DROP POLICY IF EXISTS "Public Access to training-assets" ON storage.objects;
@@ -586,6 +591,18 @@ DROP POLICY IF EXISTS "Admins can manage training-assets" ON storage.objects;
 CREATE POLICY "Admins can manage training-assets" ON storage.objects
 FOR ALL USING (
   bucket_id = 'training-assets' AND 
+  (SELECT (role = 'admin') FROM public.profiles WHERE id = auth.uid())
+);
+
+-- Policies for 'site-assets' (Publicly readable)
+DROP POLICY IF EXISTS "Public Access to site-assets" ON storage.objects;
+CREATE POLICY "Public Access to site-assets" ON storage.objects
+FOR SELECT USING (bucket_id = 'site-assets');
+
+DROP POLICY IF EXISTS "Admins can manage site-assets" ON storage.objects;
+CREATE POLICY "Admins can manage site-assets" ON storage.objects
+FOR ALL USING (
+  bucket_id = 'site-assets' AND 
   (SELECT (role = 'admin') FROM public.profiles WHERE id = auth.uid())
 );
 
@@ -608,7 +625,7 @@ DROP POLICY IF EXISTS "Users can view their own payment proofs" ON storage.objec
 CREATE POLICY "Users can view their own payment proofs" ON storage.objects
 FOR SELECT USING (
   bucket_id = 'payment-proofs' AND 
-  (storage.foldername(name))[1] = auth.uid()
+  (storage.foldername(name))[1] = auth.uid()::text
 );
 
 DROP POLICY IF EXISTS "Admins can manage all payment proofs" ON storage.objects;
