@@ -712,6 +712,7 @@ export const DashboardPage = () => {
                               <th className="px-6 py-4">Date</th>
                               <th className="px-6 py-4">Amount</th>
                               <th className="px-6 py-4">Status</th>
+                              <th className="px-6 py-4">Report</th>
                               <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
                           </thead>
@@ -737,14 +738,28 @@ export const DashboardPage = () => {
                                     {payment.payment_status}
                                   </span>
                                 </td>
+                                <td className="px-6 py-4">
+                                  {payment.receipt_url ? (
+                                    <button 
+                                      onClick={() => handleViewReceipt(payment.receipt_url)}
+                                      disabled={viewingReceipt}
+                                      className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1 disabled:opacity-50"
+                                    >
+                                      {viewingReceipt ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />} 
+                                      View Proof
+                                    </button>
+                                  ) : (
+                                    <span className="text-slate-400 text-xs italic">N/A</span>
+                                  )}
+                                </td>
                                 <td className="px-6 py-4 text-right">
                                   <button 
                                     onClick={() => handleDownloadInvoice(payment)}
                                     className="bg-brand-blue/5 text-brand-blue px-4 py-2 rounded-xl text-xs font-bold hover:bg-brand-blue hover:text-white transition-all flex items-center gap-2 ml-auto"
-                                    title="View Generated Invoice"
+                                    title={payment.payment_status === 'succeeded' ? "View Generated Receipt" : "View Generated Invoice"}
                                   >
                                     <FileText size={14} />
-                                    View Invoice
+                                    {payment.payment_status === 'succeeded' ? 'View Receipt' : 'View Invoice'}
                                   </button>
                                 </td>
                               </tr>
