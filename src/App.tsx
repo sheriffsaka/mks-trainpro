@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, useLocation, Link } from 'react
 import { motion, AnimatePresence } from 'motion/react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
-import { Chatbot } from './components/Chatbot';
 import { useAuthStore } from './store/authStore';
 import { supabase } from './services/supabaseClient';
 import { AuthPage } from './pages/AuthPage';
@@ -491,7 +490,6 @@ export default function App() {
           <Route path="/courses/:slug/quiz/:quizId" element={<QuizPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
         </Routes>
-        <Chatbot />
         
         <footer className="bg-slate-950 text-slate-400 py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
