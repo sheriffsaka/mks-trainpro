@@ -912,6 +912,8 @@ const CoursesTab = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<any>(null);
+  const [modalSubTab, setModalSubTab] = useState<'general' | 'curriculum'>('general');
+  const [courseModules, setCourseModules] = useState<any[]>([]);
 
   useEffect(() => {
     fetchCourses();
@@ -940,6 +942,8 @@ const CoursesTab = () => {
 
   const handleEdit = (course: any) => {
     setEditingCourse(course);
+    setCourseModules(course.modules || []);
+    setModalSubTab('general');
     setIsModalOpen(true);
   };
 
@@ -970,6 +974,7 @@ const CoursesTab = () => {
       duration: formData.get('duration'),
       mode: formData.get('mode'),
       is_published: formData.get('is_published') === 'on',
+      modules: courseModules,
     };
 
     if (!courseData.title || !courseData.category_id || isNaN(courseData.price_standard) || isNaN(courseData.price_platinum)) {
@@ -1042,6 +1047,38 @@ const CoursesTab = () => {
     }
   };
 
+  const addModule = () => {
+    setCourseModules([...courseModules, { title: 'New Module', lessons: [] }]);
+  };
+
+  const updateModuleTitle = (index: number, title: string) => {
+    const newModules = [...courseModules];
+    newModules[index].title = title;
+    setCourseModules(newModules);
+  };
+
+  const deleteModule = (index: number) => {
+    setCourseModules(courseModules.filter((_, i) => i !== index));
+  };
+
+  const addLesson = (moduleIndex: number) => {
+    const newModules = [...courseModules];
+    newModules[moduleIndex].lessons.push({ title: 'New Lesson', type: 'video', duration: '10:00', content: '' });
+    setCourseModules(newModules);
+  };
+
+  const updateLesson = (moduleIndex: number, lessonIndex: number, updates: any) => {
+    const newModules = [...courseModules];
+    newModules[moduleIndex].lessons[lessonIndex] = { ...newModules[moduleIndex].lessons[lessonIndex], ...updates };
+    setCourseModules(newModules);
+  };
+
+  const deleteLesson = (moduleIndex: number, lessonIndex: number) => {
+    const newModules = [...courseModules];
+    newModules[moduleIndex].lessons = newModules[moduleIndex].lessons.filter((_: any, i: number) => i !== lessonIndex);
+    setCourseModules(newModules);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -1054,7 +1091,12 @@ const CoursesTab = () => {
           />
         </div>
         <button 
-          onClick={() => { setEditingCourse(null); setIsModalOpen(true); }}
+          onClick={() => { 
+            setEditingCourse(null); 
+            setCourseModules([]);
+            setModalSubTab('general');
+            setIsModalOpen(true); 
+          }}
           className="bg-brand-blue text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20"
         >
           <Plus size={20} /> Add New Course
@@ -1140,7 +1182,20 @@ const CoursesTab = () => {
               <div className="p-8 border-b border-slate-100 flex justify-between items-center shrink-0">
                 <div>
                   <h3 className="text-2xl font-bold text-slate-900">{editingCourse ? 'Edit Course' : 'Create New Course'}</h3>
-                  <p className="text-sm text-slate-500">Fill in the details to {editingCourse ? 'update' : 'publish'} a training course.</p>
+                  <div className="flex gap-4 mt-2">
+                    <button 
+                      onClick={() => setModalSubTab('general')}
+                      className={`text-sm font-bold pb-1 border-b-2 transition-all ${modalSubTab === 'general' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                    >
+                      General Info
+                    </button>
+                    <button 
+                      onClick={() => setModalSubTab('curriculum')}
+                      className={`text-sm font-bold pb-1 border-b-2 transition-all ${modalSubTab === 'curriculum' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                    >
+                      Curriculum (Modules & Lessons)
+                    </button>
+                  </div>
                 </div>
                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
                   <X size={24} />
@@ -1148,180 +1203,280 @@ const CoursesTab = () => {
               </div>
               
               <div className="p-8 overflow-y-auto flex-1">
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Course Title</label>
-                      <input 
-                        name="title"
-                        type="text" 
-                        defaultValue={editingCourse?.title}
-                        placeholder="e.g. Level 3 Diploma in Adult Care"
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Category</label>
-                      <select 
-                        name="category_id" 
-                        defaultValue={editingCourse?.category_id}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
-                      >
-                        {categories.map(cat => (
-                          <option key={cat.id} value={cat.id}>{cat.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Course Mode</label>
-                      <select 
-                        name="mode" 
-                        defaultValue={editingCourse?.mode || 'vod'}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
-                      >
-                        <option value="virtual">Virtual (Live) Class</option>
-                        <option value="vod">Video on Demand (Self-paced)</option>
-                        <option value="physical">Physical Class</option>
-                      </select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+                {modalSubTab === 'general' ? (
+                  <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-6">
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Standard Price (£)</label>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Course Title</label>
                         <input 
-                          name="price_standard"
-                          type="number" 
-                          defaultValue={editingCourse?.price_standard}
+                          name="title"
+                          type="text" 
+                          defaultValue={editingCourse?.title}
+                          placeholder="e.g. Level 3 Diploma in Adult Care"
                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Platinum Price (£)</label>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Category</label>
+                        <select 
+                          name="category_id" 
+                          defaultValue={editingCourse?.category_id}
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+                        >
+                          {categories.map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Course Mode</label>
+                        <select 
+                          name="mode" 
+                          defaultValue={editingCourse?.mode || 'vod'}
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+                        >
+                          <option value="virtual">Virtual (Live) Class</option>
+                          <option value="vod">Video on Demand (Self-paced)</option>
+                          <option value="physical">Physical Class</option>
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Standard Price (£)</label>
+                          <input 
+                            name="price_standard"
+                            type="number" 
+                            defaultValue={editingCourse?.price_standard}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Platinum Price (£)</label>
+                          <input 
+                            name="price_platinum"
+                            type="number" 
+                            defaultValue={editingCourse?.price_platinum}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Course Image</label>
+                        <div className="flex gap-4">
+                          <input 
+                            name="image_url"
+                            type="text" 
+                            defaultValue={editingCourse?.image_url}
+                            placeholder="https://..."
+                            className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+                          />
+                          <div className="relative">
+                            <input 
+                              type="file" 
+                              name="image_file"
+                              accept="image/*"
+                              className="absolute inset-0 opacity-0 cursor-pointer"
+                            />
+                            <button type="button" className="bg-slate-100 p-3 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors">
+                              <ImageIcon size={20} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Intro Video (Optional)</label>
+                        <div className="flex gap-4">
+                          <input 
+                            name="video_url"
+                            type="text" 
+                            defaultValue={editingCourse?.video_url}
+                            placeholder="https://..."
+                            className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+                          />
+                          <div className="relative">
+                            <input 
+                              type="file" 
+                              name="video_file"
+                              accept="video/*"
+                              className="absolute inset-0 opacity-0 cursor-pointer"
+                            />
+                            <button type="button" className="bg-slate-100 p-3 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors">
+                              <Play size={20} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Course Document (Optional)</label>
+                        <div className="flex gap-4">
+                          <input 
+                            name="document_url"
+                            type="text" 
+                            defaultValue={editingCourse?.document_url}
+                            placeholder="https://..."
+                            className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+                          />
+                          <div className="relative">
+                            <input 
+                              type="file" 
+                              name="document_file"
+                              accept=".pdf,.doc,.docx"
+                              className="absolute inset-0 opacity-0 cursor-pointer"
+                            />
+                            <button type="button" className="bg-slate-100 p-3 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors">
+                              <FileText size={20} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-6">
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Short Description</label>
+                        <textarea 
+                          name="description"
+                          rows={3}
+                          defaultValue={editingCourse?.description}
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none resize-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Duration</label>
                         <input 
-                          name="price_platinum"
-                          type="number" 
-                          defaultValue={editingCourse?.price_platinum}
+                          name="duration"
+                          type="text" 
+                          defaultValue={editingCourse?.duration}
+                          placeholder="e.g. 12 Months or 6 Days"
                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
                         />
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Course Image</label>
-                      <div className="flex gap-4">
+                      <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
                         <input 
-                          name="image_url"
-                          type="text" 
-                          defaultValue={editingCourse?.image_url}
-                          placeholder="https://..."
-                          className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+                          name="is_published"
+                          type="checkbox" 
+                          defaultChecked={editingCourse?.is_published}
+                          className="w-5 h-5 text-brand-blue rounded border-slate-300 focus:ring-brand-blue"
                         />
-                        <div className="relative">
-                          <input 
-                            type="file" 
-                            name="image_file"
-                            accept="image/*"
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                          />
-                          <button type="button" className="bg-slate-100 p-3 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors">
-                            <ImageIcon size={20} />
-                          </button>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900">Publish Immediately</p>
+                          <p className="text-xs text-slate-500">Make this course visible to students right away.</p>
                         </div>
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Intro Video (Optional)</label>
-                      <div className="flex gap-4">
-                        <input 
-                          name="video_url"
-                          type="text" 
-                          defaultValue={editingCourse?.video_url}
-                          placeholder="https://..."
-                          className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
-                        />
-                        <div className="relative">
-                          <input 
-                            type="file" 
-                            name="video_file"
-                            accept="video/*"
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                          />
-                          <button type="button" className="bg-slate-100 p-3 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors">
-                            <Play size={20} />
-                          </button>
+                    
+                    <div className="md:col-span-2 flex justify-end gap-4 mt-8">
+                      <button 
+                        type="button"
+                        onClick={() => setIsModalOpen(false)}
+                        className="px-8 py-3 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button type="submit" className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20 flex items-center gap-2">
+                        <Save size={20} /> {editingCourse ? 'Update Course' : 'Create Course'}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="space-y-8">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-lg font-bold text-slate-900">Course Modules</h4>
+                      <button 
+                        onClick={addModule}
+                        className="text-brand-blue font-bold flex items-center gap-2 hover:bg-brand-blue/5 px-4 py-2 rounded-xl transition-all"
+                      >
+                        <Plus size={18} /> Add Module
+                      </button>
+                    </div>
+
+                    <div className="space-y-6">
+                      {courseModules.map((module, mIdx) => (
+                        <div key={mIdx} className="bg-slate-50 p-6 rounded-3xl border border-slate-200 space-y-4">
+                          <div className="flex justify-between items-center">
+                            <div className="flex-1 mr-4">
+                              <input 
+                                type="text"
+                                value={module.title}
+                                onChange={(e) => updateModuleTitle(mIdx, e.target.value)}
+                                className="w-full bg-transparent text-lg font-bold text-slate-900 border-b border-transparent focus:border-brand-blue outline-none py-1"
+                                placeholder="Module Title"
+                              />
+                            </div>
+                            <button 
+                              onClick={() => deleteModule(mIdx)}
+                              className="p-2 text-slate-400 hover:text-brand-red transition-colors"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+
+                          <div className="space-y-3">
+                            {module.lessons.map((lesson: any, lIdx: number) => (
+                              <div key={lIdx} className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center gap-4 group">
+                                <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400">
+                                  {lesson.type === 'video' ? <Play size={14} /> : lesson.type === 'quiz' ? <FileQuestion size={14} /> : <FileText size={14} />}
+                                </div>
+                                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  <input 
+                                    type="text"
+                                    value={lesson.title}
+                                    onChange={(e) => updateLesson(mIdx, lIdx, { title: e.target.value })}
+                                    className="text-sm font-bold text-slate-900 outline-none border-b border-transparent focus:border-brand-blue py-1"
+                                    placeholder="Lesson Title"
+                                  />
+                                  <select 
+                                    value={lesson.type}
+                                    onChange={(e) => updateLesson(mIdx, lIdx, { type: e.target.value })}
+                                    className="text-xs text-slate-500 bg-transparent outline-none"
+                                  >
+                                    <option value="video">Video</option>
+                                    <option value="reading">Reading</option>
+                                    <option value="quiz">Quiz</option>
+                                  </select>
+                                  <input 
+                                    type="text"
+                                    value={lesson.duration}
+                                    onChange={(e) => updateLesson(mIdx, lIdx, { duration: e.target.value })}
+                                    className="text-xs text-slate-500 outline-none border-b border-transparent focus:border-brand-blue py-1"
+                                    placeholder="Duration (e.g. 10:00)"
+                                  />
+                                </div>
+                                <button 
+                                  onClick={() => deleteLesson(mIdx, lIdx)}
+                                  className="p-2 text-slate-300 hover:text-brand-red transition-colors opacity-0 group-hover:opacity-100"
+                                >
+                                  <X size={16} />
+                                </button>
+                              </div>
+                            ))}
+                            <button 
+                              onClick={() => addLesson(mIdx)}
+                              className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-sm font-bold hover:border-brand-blue hover:text-brand-blue transition-all flex items-center justify-center gap-2"
+                            >
+                              <Plus size={16} /> Add Lesson
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Course Document (Optional)</label>
-                      <div className="flex gap-4">
-                        <input 
-                          name="document_url"
-                          type="text" 
-                          defaultValue={editingCourse?.document_url}
-                          placeholder="https://..."
-                          className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
-                        />
-                        <div className="relative">
-                          <input 
-                            type="file" 
-                            name="document_file"
-                            accept=".pdf,.doc,.docx"
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                          />
-                          <button type="button" className="bg-slate-100 p-3 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors">
-                            <FileText size={20} />
-                          </button>
-                        </div>
-                      </div>
+
+                    <div className="flex justify-end gap-4 pt-8 border-t border-slate-100">
+                      <button 
+                        onClick={() => setModalSubTab('general')}
+                        className="px-8 py-3 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-all"
+                      >
+                        Back to General Info
+                      </button>
+                      <button 
+                        onClick={handleSubmit as any}
+                        className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20 flex items-center gap-2"
+                      >
+                        <Save size={20} /> Save All Changes
+                      </button>
                     </div>
                   </div>
-                  
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Short Description</label>
-                      <textarea 
-                        name="description"
-                        rows={3}
-                        defaultValue={editingCourse?.description}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none resize-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Duration</label>
-                      <input 
-                        name="duration"
-                        type="text" 
-                        defaultValue={editingCourse?.duration}
-                        placeholder="e.g. 12 Months or 6 Days"
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
-                      />
-                    </div>
-                    <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                      <input 
-                        name="is_published"
-                        type="checkbox" 
-                        defaultChecked={editingCourse?.is_published}
-                        className="w-5 h-5 text-brand-blue rounded border-slate-300 focus:ring-brand-blue"
-                      />
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">Publish Immediately</p>
-                        <p className="text-xs text-slate-500">Make this course visible to students right away.</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="md:col-span-2 flex justify-end gap-4 mt-8">
-                    <button 
-                      type="button"
-                      onClick={() => setIsModalOpen(false)}
-                      className="px-8 py-3 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-all"
-                    >
-                      Cancel
-                    </button>
-                    <button type="submit" className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20 flex items-center gap-2">
-                      <Save size={20} /> {editingCourse ? 'Update Course' : 'Create Course'}
-                    </button>
-                  </div>
-                </form>
+                )}
               </div>
             </motion.div>
           </div>

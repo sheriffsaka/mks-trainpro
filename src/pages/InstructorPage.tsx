@@ -73,6 +73,8 @@ export const InstructorPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'course' | 'schedule' | 'announcement' | 'material'>('course');
   const [editingItem, setEditingItem] = useState<any>(null);
+  const [modalSubTab, setModalSubTab] = useState<'general' | 'curriculum'>('general');
+  const [courseModules, setCourseModules] = useState<any[]>([]);
 
   // Attendance State
   const [selectedSession, setSelectedSession] = useState('Session 1');
@@ -250,7 +252,8 @@ export const InstructorPage = () => {
       duration: formData.get('duration'),
       mode: formData.get('mode'),
       is_published: formData.get('is_published') === 'on',
-      instructor_id: (await supabase.auth.getUser()).data.user?.id
+      instructor_id: (await supabase.auth.getUser()).data.user?.id,
+      modules: courseModules,
     };
 
     try {
@@ -349,6 +352,38 @@ export const InstructorPage = () => {
     } catch (err) {
       console.error('Error deleting material:', err);
     }
+  };
+
+  const addModule = () => {
+    setCourseModules([...courseModules, { title: 'New Module', lessons: [] }]);
+  };
+
+  const updateModuleTitle = (index: number, title: string) => {
+    const newModules = [...courseModules];
+    newModules[index].title = title;
+    setCourseModules(newModules);
+  };
+
+  const deleteModule = (index: number) => {
+    setCourseModules(courseModules.filter((_, i) => i !== index));
+  };
+
+  const addLesson = (moduleIndex: number) => {
+    const newModules = [...courseModules];
+    newModules[moduleIndex].lessons.push({ title: 'New Lesson', type: 'video', duration: '10:00', content: '' });
+    setCourseModules(newModules);
+  };
+
+  const updateLesson = (moduleIndex: number, lessonIndex: number, updates: any) => {
+    const newModules = [...courseModules];
+    newModules[moduleIndex].lessons[lessonIndex] = { ...newModules[moduleIndex].lessons[lessonIndex], ...updates };
+    setCourseModules(newModules);
+  };
+
+  const deleteLesson = (moduleIndex: number, lessonIndex: number) => {
+    const newModules = [...courseModules];
+    newModules[moduleIndex].lessons = newModules[moduleIndex].lessons.filter((_: any, i: number) => i !== lessonIndex);
+    setCourseModules(newModules);
   };
 
   return (
@@ -720,7 +755,13 @@ export const InstructorPage = () => {
               <div className="flex justify-between items-center">
                 <h3 className="text-xl font-bold text-slate-900">Manage Courses</h3>
                 <button 
-                  onClick={() => { setEditingItem(null); setModalType('course'); setIsModalOpen(true); }}
+                  onClick={() => { 
+                    setEditingItem(null); 
+                    setCourseModules([]);
+                    setModalSubTab('general');
+                    setModalType('course'); 
+                    setIsModalOpen(true); 
+                  }}
                   className="bg-brand-blue text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-blue-hover transition-all"
                 >
                   <Plus size={20} /> Add New Course
@@ -732,7 +773,16 @@ export const InstructorPage = () => {
                     <div className="aspect-video relative overflow-hidden">
                       <img src={course.image_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="" referrerPolicy="no-referrer" />
                       <div className="absolute top-4 right-4 flex gap-2">
-                        <button onClick={() => { setEditingItem(course); setModalType('course'); setIsModalOpen(true); }} className="p-2 bg-white/90 backdrop-blur-sm rounded-xl text-slate-600 hover:text-brand-blue transition-colors">
+                        <button 
+                  onClick={() => { 
+                    setEditingItem(course); 
+                    setCourseModules(course.modules || []);
+                    setModalSubTab('general');
+                    setModalType('course'); 
+                    setIsModalOpen(true); 
+                  }} 
+                  className="p-2 bg-white/90 backdrop-blur-sm rounded-xl text-slate-600 hover:text-brand-blue transition-colors"
+                >
                           <Edit size={16} />
                         </button>
                         <button onClick={async () => { if(confirm('Delete course?')) { await adminService.deleteCourse(course.id); fetchInitialData(); } }} className="p-2 bg-white/90 backdrop-blur-sm rounded-xl text-slate-600 hover:text-brand-red transition-colors">
@@ -935,56 +985,173 @@ export const InstructorPage = () => {
         )}
 
         {modalType === 'course' && (
-          <form onSubmit={handleCourseSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Course Title</label>
-                <input name="title" type="text" defaultValue={editingItem?.title} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Category</label>
-                <select name="category_id" defaultValue={editingItem?.category_id} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
-                  {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Standard Price (£)</label>
-                  <input name="price_standard" type="number" defaultValue={editingItem?.price_standard} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+          <div className="space-y-8">
+            <div className="flex gap-4 border-b border-slate-100 pb-4">
+              <button 
+                onClick={() => setModalSubTab('general')}
+                className={`text-sm font-bold pb-1 border-b-2 transition-all ${modalSubTab === 'general' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+              >
+                General Info
+              </button>
+              <button 
+                onClick={() => setModalSubTab('curriculum')}
+                className={`text-sm font-bold pb-1 border-b-2 transition-all ${modalSubTab === 'curriculum' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+              >
+                Curriculum
+              </button>
+            </div>
+
+            {modalSubTab === 'general' ? (
+              <form onSubmit={handleCourseSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Course Title</label>
+                    <input name="title" type="text" defaultValue={editingItem?.title} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Category</label>
+                    <select name="category_id" defaultValue={editingItem?.category_id} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+                      {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">Standard Price (£)</label>
+                      <input name="price_standard" type="number" defaultValue={editingItem?.price_standard} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">Platinum Price (£)</label>
+                      <input name="price_platinum" type="number" defaultValue={editingItem?.price_platinum} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Platinum Price (£)</label>
-                  <input name="price_platinum" type="number" defaultValue={editingItem?.price_platinum} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Image URL</label>
+                    <input name="image_url" type="text" defaultValue={editingItem?.image_url} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Course Mode</label>
+                    <select name="mode" defaultValue={editingItem?.mode || 'vod'} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+                      <option value="virtual">Virtual</option>
+                      <option value="vod">VOD</option>
+                      <option value="physical">Physical</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                    <input name="is_published" type="checkbox" defaultChecked={editingItem?.is_published} className="w-5 h-5 text-brand-blue rounded border-slate-300" />
+                    <span className="text-sm font-bold text-slate-900">Publish Immediately</span>
+                  </div>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
+                  <textarea name="description" rows={4} defaultValue={editingItem?.description} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none resize-none" />
+                </div>
+                <div className="md:col-span-2 flex justify-end gap-4">
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-3 font-bold text-slate-600">Cancel</button>
+                  <button type="submit" className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold">Save Course</button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-8">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-lg font-bold text-slate-900">Course Modules</h4>
+                  <button 
+                    onClick={addModule}
+                    className="text-brand-blue font-bold flex items-center gap-2 hover:bg-brand-blue/5 px-4 py-2 rounded-xl transition-all"
+                  >
+                    <Plus size={18} /> Add Module
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  {courseModules.map((module, mIdx) => (
+                    <div key={mIdx} className="bg-slate-50 p-6 rounded-3xl border border-slate-200 space-y-4">
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1 mr-4">
+                          <input 
+                            type="text"
+                            value={module.title}
+                            onChange={(e) => updateModuleTitle(mIdx, e.target.value)}
+                            className="w-full bg-transparent text-lg font-bold text-slate-900 border-b border-transparent focus:border-brand-blue outline-none py-1"
+                            placeholder="Module Title"
+                          />
+                        </div>
+                        <button 
+                          onClick={() => deleteModule(mIdx)}
+                          className="p-2 text-slate-400 hover:text-brand-red transition-colors"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {module.lessons.map((lesson: any, lIdx: number) => (
+                          <div key={lIdx} className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center gap-4 group">
+                            <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400">
+                              {lesson.type === 'video' ? <Play size={14} /> : lesson.type === 'quiz' ? <FileQuestion size={14} /> : <FileText size={14} />}
+                            </div>
+                            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <input 
+                                type="text"
+                                value={lesson.title}
+                                onChange={(e) => updateLesson(mIdx, lIdx, { title: e.target.value })}
+                                className="text-sm font-bold text-slate-900 outline-none border-b border-transparent focus:border-brand-blue py-1"
+                                placeholder="Lesson Title"
+                              />
+                              <select 
+                                value={lesson.type}
+                                onChange={(e) => updateLesson(mIdx, lIdx, { type: e.target.value })}
+                                className="text-xs text-slate-500 bg-transparent outline-none"
+                              >
+                                <option value="video">Video</option>
+                                <option value="reading">Reading</option>
+                                <option value="quiz">Quiz</option>
+                              </select>
+                              <input 
+                                type="text"
+                                value={lesson.duration}
+                                onChange={(e) => updateLesson(mIdx, lIdx, { duration: e.target.value })}
+                                className="text-xs text-slate-500 outline-none border-b border-transparent focus:border-brand-blue py-1"
+                                placeholder="Duration (e.g. 10:00)"
+                              />
+                            </div>
+                            <button 
+                              onClick={() => deleteLesson(mIdx, lIdx)}
+                              className="p-2 text-slate-300 hover:text-brand-red transition-colors opacity-0 group-hover:opacity-100"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ))}
+                        <button 
+                          onClick={() => addLesson(mIdx)}
+                          className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-sm font-bold hover:border-brand-blue hover:text-brand-blue transition-all flex items-center justify-center gap-2"
+                        >
+                          <Plus size={16} /> Add Lesson
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-end gap-4 pt-8 border-t border-slate-100">
+                  <button 
+                    onClick={() => setModalSubTab('general')}
+                    className="px-8 py-3 font-bold text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
+                  >
+                    Back to General Info
+                  </button>
+                  <button 
+                    onClick={handleCourseSubmit as any}
+                    className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20 flex items-center gap-2"
+                  >
+                    <Save size={20} /> Save All Changes
+                  </button>
                 </div>
               </div>
-            </div>
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Image URL</label>
-                <input name="image_url" type="text" defaultValue={editingItem?.image_url} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Course Mode</label>
-                <select name="mode" defaultValue={editingItem?.mode || 'vod'} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none">
-                  <option value="virtual">Virtual</option>
-                  <option value="vod">VOD</option>
-                  <option value="physical">Physical</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                <input name="is_published" type="checkbox" defaultChecked={editingItem?.is_published} className="w-5 h-5 text-brand-blue rounded border-slate-300" />
-                <span className="text-sm font-bold text-slate-900">Publish Immediately</span>
-              </div>
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
-              <textarea name="description" rows={4} defaultValue={editingItem?.description} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none resize-none" />
-            </div>
-            <div className="md:col-span-2 flex justify-end gap-4">
-              <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-3 font-bold text-slate-600">Cancel</button>
-              <button type="submit" className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold">Save Course</button>
-            </div>
-          </form>
+            )}
+          </div>
         )}
 
         {modalType === 'schedule' && (
