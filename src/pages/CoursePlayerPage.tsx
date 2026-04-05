@@ -49,19 +49,24 @@ export const CoursePlayerPage = () => {
         // 2. Verify enrollment and payment status
         const { data: enrollmentData, error: enrollmentError } = await supabase
           .from('enrollments')
-          .select('*, payments(*)')
+          .select('id, status, user_id, course_id')
           .eq('course_id', courseData.id)
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
-        if (enrollmentError || !enrollmentData) {
-          alert('You are not enrolled in this course.');
+        if (enrollmentError) {
+          console.error('Enrollment verification error:', enrollmentError);
+          throw enrollmentError;
+        }
+
+        if (!enrollmentData) {
+          alert('You are not enrolled in this course. Please enroll first.');
           navigate('/dashboard');
           return;
         }
 
-        if (enrollmentData.status !== 'active') {
-          alert('Your enrollment is pending approval. Please wait for the administrator to verify your payment proof.');
+        if (enrollmentData.status !== 'active' && enrollmentData.status !== 'completed') {
+          alert(`Your enrollment status is "${enrollmentData.status}". Access is only granted to active enrollments. Please wait for administrator approval if you just made a payment.`);
           navigate('/dashboard');
           return;
         }
