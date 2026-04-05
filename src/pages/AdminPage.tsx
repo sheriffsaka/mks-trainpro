@@ -1189,32 +1189,35 @@ const CoursesTab = () => {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="relative bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
-              <div className="p-8 border-b border-slate-100 flex justify-between items-center shrink-0">
-                <div>
-                  <h3 className="text-2xl font-bold text-slate-900">{editingCourse ? 'Edit Course' : 'Create New Course'}</h3>
-                  <div className="flex gap-4 mt-2">
-                    <button 
-                      onClick={() => setModalSubTab('general')}
-                      className={`text-sm font-bold pb-1 border-b-2 transition-all ${modalSubTab === 'general' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-                    >
-                      General Info
-                    </button>
-                    <button 
-                      onClick={() => setModalSubTab('curriculum')}
-                      className={`text-sm font-bold pb-1 border-b-2 transition-all ${modalSubTab === 'curriculum' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-                    >
-                      Curriculum (Modules & Lessons)
-                    </button>
+              <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+                <div className="p-8 border-b border-slate-100 flex justify-between items-center shrink-0">
+                  <div>
+                    <h3 className="text-2xl font-bold text-slate-900">{editingCourse ? 'Edit Course' : 'Create New Course'}</h3>
+                    <div className="flex gap-4 mt-2">
+                      <button 
+                        type="button"
+                        onClick={() => setModalSubTab('general')}
+                        className={`text-sm font-bold pb-1 border-b-2 transition-all ${modalSubTab === 'general' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                      >
+                        General Info
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setModalSubTab('curriculum')}
+                        className={`text-sm font-bold pb-1 border-b-2 transition-all ${modalSubTab === 'curriculum' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                      >
+                        Curriculum (Modules & Lessons)
+                      </button>
+                    </div>
                   </div>
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                    <X size={24} />
+                  </button>
                 </div>
-                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                  <X size={24} />
-                </button>
-              </div>
-              
-              <div className="p-8 overflow-y-auto flex-1">
-                {modalSubTab === 'general' ? (
-                  <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                <div className="p-8 overflow-y-auto flex-1">
+                  <div className={modalSubTab === 'general' ? 'block' : 'hidden'}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-6">
                       <div>
                         <label className="block text-sm font-bold text-slate-700 mb-2">Course Title</label>
@@ -1375,21 +1378,23 @@ const CoursesTab = () => {
                       </div>
                     </div>
                     
-                    <div className="md:col-span-2 flex justify-end gap-4 mt-8">
-                      <button 
-                        type="button"
-                        onClick={() => setIsModalOpen(false)}
-                        className="px-8 py-3 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-all"
-                      >
-                        Cancel
-                      </button>
-                      <button type="submit" className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20 flex items-center gap-2">
-                        <Save size={20} /> {editingCourse ? 'Update Course' : 'Create Course'}
-                      </button>
+                      <div className="md:col-span-2 flex justify-end gap-4 mt-8">
+                        <button 
+                          type="button"
+                          onClick={() => setIsModalOpen(false)}
+                          className="px-8 py-3 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-all"
+                        >
+                          Cancel
+                        </button>
+                        <button type="submit" className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20 flex items-center gap-2">
+                          <Save size={20} /> {editingCourse ? 'Update Course' : 'Create Course'}
+                        </button>
+                      </div>
                     </div>
-                  </form>
-                ) : (
-                  <div className="space-y-8">
+                  </div>
+
+                  <div className={modalSubTab === 'curriculum' ? 'block' : 'hidden'}>
+                    <div className="space-y-8">
                     <div className="flex justify-between items-center">
                       <h4 className="text-lg font-bold text-slate-900">Course Modules</h4>
                       <button 
@@ -1508,21 +1513,23 @@ const CoursesTab = () => {
 
                     <div className="flex justify-end gap-4 pt-8 border-t border-slate-100">
                       <button 
+                        type="button"
                         onClick={() => setModalSubTab('general')}
                         className="px-8 py-3 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-all"
                       >
                         Back to General Info
                       </button>
                       <button 
-                        onClick={handleSubmit as any}
+                        type="submit"
                         className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20 flex items-center gap-2"
                       >
                         <Save size={20} /> Save All Changes
                       </button>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
+            </form>
             </motion.div>
           </div>
         )}

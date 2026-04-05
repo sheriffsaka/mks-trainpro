@@ -995,8 +995,8 @@ export const InstructorPage = () => {
         )}
 
         {modalType === 'course' && (
-          <div className="space-y-8">
-            <div className="flex gap-4 border-b border-slate-100 pb-4">
+          <form onSubmit={handleCourseSubmit} className="flex flex-col h-full">
+            <div className="flex gap-4 border-b border-slate-100 pb-4 mb-8 shrink-0">
               <button 
                 onClick={() => setModalSubTab('general')}
                 className={`text-sm font-bold pb-1 border-b-2 transition-all ${modalSubTab === 'general' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
@@ -1011,8 +1011,9 @@ export const InstructorPage = () => {
               </button>
             </div>
 
-            {modalSubTab === 'general' ? (
-              <form onSubmit={handleCourseSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="flex-1 overflow-y-auto">
+              <div className={modalSubTab === 'general' ? 'block' : 'hidden'}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-2">Course Title</label>
@@ -1057,13 +1058,15 @@ export const InstructorPage = () => {
                   <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
                   <textarea name="description" rows={4} defaultValue={editingItem?.description} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none resize-none" />
                 </div>
-                <div className="md:col-span-2 flex justify-end gap-4">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-3 font-bold text-slate-600">Cancel</button>
-                  <button type="submit" className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold">Save Course</button>
+                  <div className="md:col-span-2 flex justify-end gap-4">
+                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-3 font-bold text-slate-600">Cancel</button>
+                    <button type="submit" className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold">Save Course</button>
+                  </div>
                 </div>
-              </form>
-            ) : (
-              <div className="space-y-8">
+              </div>
+
+              <div className={modalSubTab === 'curriculum' ? 'block' : 'hidden'}>
+                <div className="space-y-8">
                 <div className="flex justify-between items-center">
                   <h4 className="text-lg font-bold text-slate-900">Course Modules</h4>
                   <button 
@@ -1180,23 +1183,25 @@ export const InstructorPage = () => {
                   ))}
                 </div>
 
-                <div className="flex justify-end gap-4 pt-8 border-t border-slate-100">
-                  <button 
-                    onClick={() => setModalSubTab('general')}
-                    className="px-8 py-3 font-bold text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
-                  >
-                    Back to General Info
-                  </button>
-                  <button 
-                    onClick={handleCourseSubmit as any}
-                    className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20 flex items-center gap-2"
-                  >
-                    <Save size={20} /> Save All Changes
-                  </button>
+                  <div className="flex justify-end gap-4 pt-8 border-t border-slate-100">
+                    <button 
+                      type="button"
+                      onClick={() => setModalSubTab('general')}
+                      className="px-8 py-3 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-all"
+                    >
+                      Back to General Info
+                    </button>
+                    <button 
+                      type="submit"
+                      className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20 flex items-center gap-2"
+                    >
+                      <Save size={20} /> Save All Changes
+                    </button>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          </form>
         )}
 
         {modalType === 'schedule' && (
