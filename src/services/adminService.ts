@@ -327,8 +327,8 @@ export const adminService = {
       
       let profile = null;
       if (currentUser.user) {
-        const { data } = await supabase.from('profiles').select('*').eq('id', currentUser.user.id).single();
-        profile = data;
+        const { data: profiles } = await supabase.from('profiles').select('*').eq('id', currentUser.user.id).limit(1);
+        profile = profiles && profiles.length > 0 ? profiles[0] : null;
       }
 
       return {
@@ -791,13 +791,13 @@ export const adminService = {
   async createCourseMaterial(material: any) {
     if (!isSupabaseConfigured) return { id: Math.random().toString(), ...material };
     try {
-      const { data, error } = await supabase
+      const { data: materials, error } = await supabase
         .from('course_materials')
         .insert([material])
         .select()
-        .single();
+        .limit(1);
       if (error) throw error;
-      return data;
+      return materials && materials.length > 0 ? materials[0] : null;
     } catch (err) {
       console.error('Error creating course material:', err);
       throw err;

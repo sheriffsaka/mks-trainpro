@@ -98,11 +98,13 @@ async function startServer() {
       const { courseId, packageType, isInstallment, userId, userEmail } = req.body;
       
       // Fetch course details from DB
-      const { data: course, error: courseError } = await supabase
+      const { data: courses, error: courseError } = await supabase
         .from('courses')
         .select('*')
         .eq('id', courseId)
-        .single();
+        .limit(1);
+
+      const course = courses && courses.length > 0 ? courses[0] : null;
 
       if (courseError || !course) {
         return res.status(404).json({ error: "Course not found" });

@@ -18,6 +18,7 @@ import {
 import { supabase } from '../services/supabaseClient';
 import { useAuthStore } from '../store/authStore';
 import { MOCK_COURSES } from '../data/mockData';
+import { isSystemAdmin } from '../constants/admin';
 
 export const CoursePlayerPage = () => {
   const { slug } = useParams();
@@ -30,7 +31,7 @@ export const CoursePlayerPage = () => {
   const [activeLesson, setActiveLesson] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const isAdmin = profile?.role === 'admin';
+  const isAdmin = profile?.role === 'admin' || isSystemAdmin(user?.email);
 
   useEffect(() => {
     if (!user) {
@@ -44,15 +45,15 @@ export const CoursePlayerPage = () => {
         setError(null);
 
         // 1. Fetch course details
-        const { data: courseData, error: courseError } = await supabase
+        const { data: courses, error: courseError } = await supabase
           .from('courses')
           .select('*')
           .eq('slug', slug)
-          .maybeSingle();
+          .limit(1);
         
         if (courseError) throw courseError;
         
-        let finalCourse = courseData;
+        let finalCourse = courses && courses.length > 0 ? courses[0] : null;
 
         // Fallback to mock if not found in DB
         if (!finalCourse) {
@@ -70,17 +71,19 @@ export const CoursePlayerPage = () => {
 
         // 2. Verify enrollment and payment status (skip for admins)
         if (!isAdmin && finalCourse.id) {
-          const { data: enrollmentData, error: enrollmentError } = await supabase
+          const { data: enrollments, error: enrollmentError } = await supabase
             .from('enrollments')
             .select('id, status, user_id, course_id')
             .eq('course_id', finalCourse.id)
             .eq('user_id', user.id)
-            .maybeSingle();
+            .limit(1);
 
           if (enrollmentError) {
             console.error('Enrollment verification error:', enrollmentError);
             throw enrollmentError;
           }
+
+          const enrollmentData = enrollments && enrollments.length > 0 ? enrollments[0] : null;
 
           if (!enrollmentData) {
             setError('You are not enrolled in this course. Please enroll first to gain access.');

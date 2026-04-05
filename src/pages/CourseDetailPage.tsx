@@ -4,6 +4,7 @@ import { supabase } from '../services/supabaseClient';
 import { Clock, BookOpen, Award, CheckCircle2, Shield, Zap, ArrowRight, Loader2, MapPin, Video, Monitor, X, Copy, AlertCircle, Download, Building2, CreditCard, FileText } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { adminService } from '../services/adminService';
+import { isSystemAdmin } from '../constants/admin';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { MOCK_COURSES } from '../data/mockData';
@@ -24,6 +25,8 @@ export const CourseDetailPage = () => {
   const [profile, setProfile] = useState<any>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
+  const isAdmin = profile?.role === 'admin' || isSystemAdmin(user?.email);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -32,12 +35,14 @@ export const CourseDetailPage = () => {
             .from('courses')
             .select('*, categories(*)')
             .eq('slug', slug)
-            .single(),
+            .limit(1),
           adminService.getSettings()
         ]);
         
-        if (courseRes.data) {
-          setCourse(courseRes.data);
+        const courseData = courseRes.data && courseRes.data.length > 0 ? courseRes.data[0] : null;
+        
+        if (courseData) {
+          setCourse(courseData);
           
           // Check for existing enrollment
           if (user) {
@@ -45,18 +50,21 @@ export const CourseDetailPage = () => {
               supabase
                 .from('enrollments')
                 .select('*, payments(*), installment_records(*)')
-                .eq('course_id', courseRes.data.id)
+                .eq('course_id', courseData.id)
                 .eq('user_id', user.id)
-                .maybeSingle(),
+                .limit(1),
               supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', user.id)
-                .single()
+                .limit(1)
             ]);
             
-            setExistingEnrollment(enrollmentRes.data);
-            setProfile(profileRes.data);
+            const enrollmentData = enrollmentRes.data && enrollmentRes.data.length > 0 ? enrollmentRes.data[0] : null;
+            const profileData = profileRes.data && profileRes.data.length > 0 ? profileRes.data[0] : null;
+
+            setExistingEnrollment(enrollmentData);
+            setProfile(profileData);
           }
         } else {
           const mock = MOCK_COURSES.find(c => c.slug === slug);
@@ -140,7 +148,7 @@ export const CourseDetailPage = () => {
         alert('Payment proof submitted! We will verify your payment and update your account shortly.');
       } else {
         // 1. Create enrollment
-        const { data: enrollment, error: enrollmentError } = await supabase
+        const { data: enrollments, error: enrollmentError } = await supabase
           .from('enrollments')
           .insert({
             user_id: user.id,
@@ -149,12 +157,15 @@ export const CourseDetailPage = () => {
             status: 'pending'
           })
           .select()
-          .single();
+          .limit(1);
 
         if (enrollmentError) {
           console.error('Enrollment Error:', enrollmentError);
           throw new Error(`Failed to create enrollment: ${enrollmentError.message}`);
         }
+
+        const enrollment = enrollments && enrollments.length > 0 ? enrollments[0] : null;
+        if (!enrollment) throw new Error('Failed to create enrollment record.');
 
         // 2. Create payment record
         const { error: paymentError } = await supabase
@@ -386,15 +397,17 @@ export const CourseDetailPage = () => {
               </div>
 
               <div className="space-y-4">
-                {existingEnrollment ? (
+                {(existingEnrollment || isAdmin) ? (
                   <div className="bg-white/10 p-6 rounded-2xl border border-white/20 text-center">
-                    {existingEnrollment.status === 'active' ? (
+                    {(existingEnrollment?.status === 'active' || isAdmin) ? (
                       <>
                         <CheckCircle2 className="mx-auto mb-4 text-emerald-400" size={32} />
-                        <h4 className="font-bold mb-2 text-white">Already Enrolled</h4>
-                        <p className="text-sm text-slate-400 mb-6">You have full access to this course.</p>
+                        <h4 className="font-bold mb-2 text-white">{isAdmin ? 'Admin Access' : 'Already Enrolled'}</h4>
+                        <p className="text-sm text-slate-400 mb-6">
+                          {isAdmin ? 'You have administrative access to this course.' : 'You have full access to this course.'}
+                        </p>
                         
-                        {existingEnrollment.installment_records?.[0] && 
+                        {existingEnrollment?.installment_records?.[0] && 
                          existingEnrollment.installment_records[0].paid_amount < existingEnrollment.installment_records[0].total_amount && (
                           <div className="mb-6 p-4 bg-brand-red/20 rounded-xl border border-brand-red/30">
                             <p className="text-[10px] font-bold text-brand-red uppercase mb-1">Balance Due</p>

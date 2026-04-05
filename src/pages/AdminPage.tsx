@@ -207,7 +207,8 @@ const DiagnosticTab = () => {
       const installments = await adminService.getInstallments();
       
       // 3. Profile check
-      const { data: profileData, error: profileError } = await supabase.from('profiles').select('*').eq('id', (await supabase.auth.getUser()).data.user?.id).single();
+      const { data: profiles, error: profileError } = await supabase.from('profiles').select('*').eq('id', (await supabase.auth.getUser()).data.user?.id).limit(1);
+      const profileData = profiles && profiles.length > 0 ? profiles[0] : null;
       
       setTestResult({
         auth: {

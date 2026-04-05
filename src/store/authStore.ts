@@ -27,24 +27,27 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (!isSupabaseConfigured) return;
     
     // First try to get the existing profile
-    const { data: existingProfile, error: fetchError } = await supabase
+    const { data: profiles, error: fetchError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single();
+      .limit(1);
+    
+    const existingProfile = profiles && profiles.length > 0 ? profiles[0] : null;
     
     if (existingProfile) {
       // If profile exists but email is missing, update it
       if (!existingProfile.email) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user && user.email) {
-          const { data: updatedProfile } = await supabase
+          const { data: updatedProfiles } = await supabase
             .from('profiles')
             .update({ email: user.email })
             .eq('id', userId)
             .select()
-            .single();
-          if (updatedProfile) set({ profile: updatedProfile });
+            .limit(1);
+          
+          if (updatedProfiles && updatedProfiles.length > 0) set({ profile: updatedProfiles[0] });
           else set({ profile: existingProfile });
         } else {
           set({ profile: existingProfile });
@@ -52,11 +55,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       } else {
         set({ profile: existingProfile });
       }
-    } else if (fetchError && fetchError.code === 'PGRST116') {
+    } else if (fetchError || !existingProfile) {
       // Profile not found, create it
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: newProfile } = await supabase
+        const { data: newProfiles } = await supabase
           .from('profiles')
           .insert({
             id: user.id,
@@ -65,9 +68,9 @@ export const useAuthStore = create<AuthState>((set) => ({
             role: 'student'
           })
           .select()
-          .single();
+          .limit(1);
         
-        if (newProfile) set({ profile: newProfile });
+        if (newProfiles && newProfiles.length > 0) set({ profile: newProfiles[0] });
       }
     }
   }
