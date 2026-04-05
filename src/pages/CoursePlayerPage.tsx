@@ -144,40 +144,53 @@ export const CoursePlayerPage = () => {
 
   if (!course) return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">Course not found</div>;
 
-  // Mock modules if not present
-  const modules = (course.modules && Array.isArray(course.modules) && course.modules.length > 0) ? course.modules : [
-    {
-      title: 'Course Introduction',
-      lessons: [
-        { 
-          title: 'Welcome & Overview', 
-          type: 'video', 
-          duration: 'Intro', 
-          completed: true,
-          content: course.overview || 'Welcome to this course. We are excited to have you here.'
-        },
-        { 
-          title: 'Course Description', 
-          type: 'reading', 
-          duration: '5 mins', 
-          completed: false,
-          content: course.description || 'This course covers everything you need to know about the subject.'
-        },
-      ]
-    },
-    {
-      title: 'Learning Materials',
-      lessons: [
-        { 
-          title: 'Resource Guide', 
-          type: 'reading', 
-          duration: '10 mins', 
-          completed: false,
-          content: 'Please check the downloadable resources for this course.'
-        }
-      ]
+  // Parse modules if they are a string (sometimes happens with JSONB in some environments)
+  let modules = [];
+  try {
+    if (course.modules) {
+      modules = typeof course.modules === 'string' ? JSON.parse(course.modules) : course.modules;
     }
-  ];
+  } catch (err) {
+    console.error('Error parsing course modules:', err);
+    modules = [];
+  }
+
+  // Fallback to mock if not present or empty
+  if (!Array.isArray(modules) || modules.length === 0) {
+    modules = [
+      {
+        title: 'Course Introduction',
+        lessons: [
+          { 
+            title: 'Welcome & Overview', 
+            type: 'video', 
+            duration: 'Intro', 
+            completed: true,
+            content: course.overview || 'Welcome to this course. We are excited to have you here.'
+          },
+          { 
+            title: 'Course Description', 
+            type: 'reading', 
+            duration: '5 mins', 
+            completed: false,
+            content: course.description || 'This course covers everything you need to know about the subject.'
+          },
+        ]
+      },
+      {
+        title: 'Learning Materials',
+        lessons: [
+          { 
+            title: 'Resource Guide', 
+            type: 'reading', 
+            duration: '10 mins', 
+            completed: false,
+            content: 'Please check the downloadable resources for this course.'
+          }
+        ]
+      }
+    ];
+  }
 
   const currentLesson = modules[activeModule]?.lessons?.[activeLesson];
 
@@ -317,33 +330,88 @@ export const CoursePlayerPage = () => {
           <div className="max-w-5xl mx-auto">
             {currentLesson.type === 'video' ? (
               <div className="aspect-video bg-slate-900 rounded-[2rem] overflow-hidden shadow-2xl border border-white/5 relative group">
-                {course.video_url ? (
-                  <video 
-                    src={course.video_url} 
-                    controls 
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <>
-                    <img 
-                      src={course.image_url || `https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80`} 
-                      className="w-full h-full object-cover opacity-40" 
-                      alt="Video Placeholder" 
+                {(() => {
+                  const videoUrl = currentLesson.content || course.video_url;
+                  if (!videoUrl) return (
+                    <>
+                      <img 
+                        src={course.image_url || `https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80`} 
+                        className="w-full h-full object-cover opacity-40" 
+                        alt="Video Placeholder" 
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <button className="w-24 h-24 bg-brand-red rounded-full flex items-center justify-center shadow-2xl shadow-brand-red/40 hover:scale-110 transition-transform">
+                          <Play size={40} fill="white" />
+                        </button>
+                      </div>
+                    </>
+                  );
+
+                  // Handle YouTube
+                  if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
+                    const videoId = videoUrl.includes('v=') ? videoUrl.split('v=')[1].split('&')[0] : videoUrl.split('/').pop();
+                    return (
+                      <iframe 
+                        src={`https://www.youtube.com/embed/${videoId}`}
+                        className="w-full h-full border-none"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    );
+                  }
+
+                  // Handle Vimeo
+                  if (videoUrl.includes('vimeo.com')) {
+                    const videoId = videoUrl.split('/').pop();
+                    return (
+                      <iframe 
+                        src={`https://player.vimeo.com/video/${videoId}`}
+                        className="w-full h-full border-none"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                      />
+                    );
+                  }
+
+                  // Default to direct video tag
+                  return (
+                    <video 
+                      src={videoUrl} 
+                      controls 
+                      className="w-full h-full object-contain"
                     />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <button className="w-24 h-24 bg-brand-red rounded-full flex items-center justify-center shadow-2xl shadow-brand-red/40 hover:scale-110 transition-transform">
-                        <Play size={40} fill="white" />
-                      </button>
-                    </div>
-                  </>
-                )}
+                  );
+                })()}
               </div>
             ) : currentLesson.type === 'reading' ? (
               <div className="bg-slate-900 p-12 rounded-[3rem] border border-white/5 max-w-4xl mx-auto">
                 <h2 className="text-3xl font-bold mb-8">{currentLesson.title}</h2>
                 <div className="prose prose-invert max-w-none space-y-6 text-slate-300 leading-relaxed">
                   {currentLesson.content ? (
-                    <p>{currentLesson.content}</p>
+                    currentLesson.content.startsWith('http') ? (
+                      <div className="space-y-6">
+                        <div className="aspect-[3/4] w-full bg-white/5 rounded-2xl overflow-hidden border border-white/10 relative">
+                          <iframe 
+                            src={currentLesson.content} 
+                            className="w-full h-full border-none"
+                            title={currentLesson.title}
+                          />
+                        </div>
+                        <div className="flex justify-center">
+                          <a 
+                            href={currentLesson.content} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 bg-white/10 text-white px-6 py-3 rounded-xl font-bold hover:bg-white/20 transition-all"
+                          >
+                            <FileText size={18} />
+                            View Full Document
+                          </a>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="whitespace-pre-wrap">{currentLesson.content}</p>
+                    )
                   ) : (
                     <>
                       <p>Welcome to this lesson on {course.title}. In this section, we will explore the core concepts and practical applications of the subject matter.</p>
