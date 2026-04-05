@@ -12,7 +12,8 @@ import {
   X,
   Award,
   ArrowLeft,
-  Loader2
+  Loader2,
+  Shield
 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { useAuthStore } from '../store/authStore';
@@ -21,12 +22,15 @@ import { MOCK_COURSES } from '../data/mockData';
 export const CoursePlayerPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, profile } = useAuthStore();
   const [course, setCourse] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeModule, setActiveModule] = useState(0);
   const [activeLesson, setActiveLesson] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const isAdmin = profile?.role === 'admin';
 
   useEffect(() => {
     if (!user) {
@@ -36,83 +40,137 @@ export const CoursePlayerPage = () => {
 
     const fetchCourse = async () => {
       try {
+        setLoading(true);
+        setError(null);
+
         // 1. Fetch course details
         const { data: courseData, error: courseError } = await supabase
           .from('courses')
           .select('*')
           .eq('slug', slug)
-          .single();
+          .maybeSingle();
         
         if (courseError) throw courseError;
-        setCourse(courseData);
+        
+        let finalCourse = courseData;
 
-        // 2. Verify enrollment and payment status
-        const { data: enrollmentData, error: enrollmentError } = await supabase
-          .from('enrollments')
-          .select('id, status, user_id, course_id')
-          .eq('course_id', courseData.id)
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (enrollmentError) {
-          console.error('Enrollment verification error:', enrollmentError);
-          throw enrollmentError;
+        // Fallback to mock if not found in DB
+        if (!finalCourse) {
+          const mock = MOCK_COURSES.find(c => c.slug === slug);
+          if (mock) {
+            finalCourse = mock;
+          } else {
+            setError('Course not found. Please check the URL or return to the dashboard.');
+            setLoading(false);
+            return;
+          }
         }
 
-        if (!enrollmentData) {
-          alert('You are not enrolled in this course. Please enroll first.');
-          navigate('/dashboard');
-          return;
+        setCourse(finalCourse);
+
+        // 2. Verify enrollment and payment status (skip for admins)
+        if (!isAdmin && finalCourse.id) {
+          const { data: enrollmentData, error: enrollmentError } = await supabase
+            .from('enrollments')
+            .select('id, status, user_id, course_id')
+            .eq('course_id', finalCourse.id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (enrollmentError) {
+            console.error('Enrollment verification error:', enrollmentError);
+            throw enrollmentError;
+          }
+
+          if (!enrollmentData) {
+            setError('You are not enrolled in this course. Please enroll first to gain access.');
+            setLoading(false);
+            return;
+          }
+
+          if (enrollmentData.status !== 'active' && enrollmentData.status !== 'completed') {
+            setError(`Your enrollment status is "${enrollmentData.status}". Access is only granted to active enrollments. Please wait for administrator approval if you recently made a payment.`);
+            setLoading(false);
+            return;
+          }
         }
 
-        if (enrollmentData.status !== 'active' && enrollmentData.status !== 'completed') {
-          alert(`Your enrollment status is "${enrollmentData.status}". Access is only granted to active enrollments. Please wait for administrator approval if you just made a payment.`);
-          navigate('/dashboard');
-          return;
-        }
-
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error fetching course or verifying enrollment:', err);
-        const mock = MOCK_COURSES.find(c => c.slug === slug);
-        if (mock) {
-          setCourse(mock);
-        } else {
-          navigate('/dashboard');
-        }
+        setError(err.message || 'An unexpected error occurred while loading the course.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchCourse();
-  }, [slug, user, navigate]);
+  }, [slug, user, profile, navigate, isAdmin]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-900"><Loader2 className="animate-spin text-brand-red" size={40} /></div>;
-  if (!course) return <div className="min-h-screen flex items-center justify-center">Course not found</div>;
+  
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 p-6">
+        <div className="max-w-md w-full bg-slate-900 p-8 rounded-[2.5rem] border border-white/5 text-center shadow-2xl">
+          <div className="bg-brand-red/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Shield className="text-brand-red" size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-4">Access Restricted</h2>
+          <p className="text-slate-400 mb-8 leading-relaxed">
+            {error}
+          </p>
+          <div className="space-y-3">
+            <button 
+              onClick={() => navigate('/dashboard')}
+              className="w-full bg-brand-red text-white py-4 rounded-2xl font-bold hover:bg-brand-red-hover transition-all flex items-center justify-center gap-2"
+            >
+              <ArrowLeft size={18} />
+              Back to Dashboard
+            </button>
+            {isAdmin && (
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest pt-4">
+                Admin Note: You are seeing this because of a system error or missing course data.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!course) return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">Course not found</div>;
 
   // Mock modules if not present
   const modules = course.modules || [
     {
-      title: 'Introduction to the Course',
+      title: 'Course Introduction',
       lessons: [
-        { title: 'Welcome & Course Overview', type: 'video', duration: '5:20', completed: true },
-        { title: 'Learning Objectives', type: 'reading', duration: '10 mins', completed: true },
+        { 
+          title: 'Welcome & Overview', 
+          type: 'video', 
+          duration: 'Intro', 
+          completed: true,
+          content: course.overview || 'Welcome to this course. We are excited to have you here.'
+        },
+        { 
+          title: 'Course Description', 
+          type: 'reading', 
+          duration: '5 mins', 
+          completed: false,
+          content: course.description || 'This course covers everything you need to know about the subject.'
+        },
       ]
     },
     {
-      title: 'Core Fundamentals',
+      title: 'Learning Materials',
       lessons: [
-        { title: 'Understanding Industry Standards', type: 'video', duration: '15:45', completed: false },
-        { title: 'Health and Safety Basics', type: 'video', duration: '12:30', completed: false },
-        { title: 'Module 1 Quiz', type: 'quiz', duration: '15 mins', completed: false },
-      ]
-    },
-    {
-      title: 'Advanced Techniques',
-      lessons: [
-        { title: 'Practical Application Part 1', type: 'video', duration: '22:10', completed: false },
-        { title: 'Practical Application Part 2', type: 'video', duration: '18:50', completed: false },
-        { title: 'Final Assessment', type: 'quiz', duration: '45 mins', completed: false },
+        { 
+          title: 'Resource Guide', 
+          type: 'reading', 
+          duration: '10 mins', 
+          completed: false,
+          content: 'Please check the downloadable resources for this course.'
+        }
       ]
     }
   ];
@@ -256,8 +314,14 @@ export const CoursePlayerPage = () => {
               <div className="bg-slate-900 p-12 rounded-[3rem] border border-white/5 max-w-4xl mx-auto">
                 <h2 className="text-3xl font-bold mb-8">{currentLesson.title}</h2>
                 <div className="prose prose-invert max-w-none space-y-6 text-slate-300 leading-relaxed">
-                  <p>Welcome to this lesson on {course.title}. In this section, we will explore the core concepts and practical applications of the subject matter.</p>
-                  <p>As you progress through the course, remember that consistent practice and review are key to mastering these skills. Use the resources provided, including the downloadable documents and quizzes, to reinforce your learning.</p>
+                  {currentLesson.content ? (
+                    <p>{currentLesson.content}</p>
+                  ) : (
+                    <>
+                      <p>Welcome to this lesson on {course.title}. In this section, we will explore the core concepts and practical applications of the subject matter.</p>
+                      <p>As you progress through the course, remember that consistent practice and review are key to mastering these skills. Use the resources provided, including the downloadable documents and quizzes, to reinforce your learning.</p>
+                    </>
+                  )}
                   
                   {course.document_url && (
                     <div className="mt-12 p-8 bg-white/5 rounded-3xl border border-white/10 flex items-center justify-between group hover:bg-white/10 transition-all">
