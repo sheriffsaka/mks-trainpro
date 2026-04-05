@@ -75,6 +75,7 @@ export const InstructorPage = () => {
   const [editingItem, setEditingItem] = useState<any>(null);
   const [modalSubTab, setModalSubTab] = useState<'general' | 'curriculum'>('general');
   const [courseModules, setCourseModules] = useState<any[]>([]);
+  const [courseMaterials, setCourseMaterials] = useState<any[]>([]);
 
   // Attendance State
   const [selectedSession, setSelectedSession] = useState('Session 1');
@@ -758,6 +759,7 @@ export const InstructorPage = () => {
                   onClick={() => { 
                     setEditingItem(null); 
                     setCourseModules([]);
+                    setCourseMaterials([]);
                     setModalSubTab('general');
                     setModalType('course'); 
                     setIsModalOpen(true); 
@@ -774,12 +776,20 @@ export const InstructorPage = () => {
                       <img src={course.image_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="" referrerPolicy="no-referrer" />
                       <div className="absolute top-4 right-4 flex gap-2">
                         <button 
-                  onClick={() => { 
+                  onClick={async () => { 
                     setEditingItem(course); 
                     setCourseModules(course.modules || []);
                     setModalSubTab('general');
                     setModalType('course'); 
                     setIsModalOpen(true); 
+                    
+                    // Fetch materials for this course
+                    try {
+                      const materials = await adminService.getCourseMaterials(course.id);
+                      setCourseMaterials(materials || []);
+                    } catch (err) {
+                      console.error('Error fetching course materials:', err);
+                    }
                   }} 
                   className="p-2 bg-white/90 backdrop-blur-sm rounded-xl text-slate-600 hover:text-brand-blue transition-colors"
                 >
@@ -1091,7 +1101,7 @@ export const InstructorPage = () => {
                             <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400">
                               {lesson.type === 'video' ? <Play size={14} /> : lesson.type === 'quiz' ? <FileQuestion size={14} /> : <FileText size={14} />}
                             </div>
-                            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
                               <input 
                                 type="text"
                                 value={lesson.title}
@@ -1108,6 +1118,28 @@ export const InstructorPage = () => {
                                 <option value="reading">Reading</option>
                                 <option value="quiz">Quiz</option>
                               </select>
+                              <select 
+                                value={lesson.content || ''}
+                                onChange={(e) => {
+                                  const material = courseMaterials.find(m => m.file_url === e.target.value);
+                                  if (material) {
+                                    updateLesson(mIdx, lIdx, { 
+                                      content: material.file_url,
+                                      title: lesson.title === 'New Lesson' ? material.title : lesson.title,
+                                      type: material.type === 'video' ? 'video' : 'reading'
+                                    });
+                                  } else {
+                                    updateLesson(mIdx, lIdx, { content: e.target.value });
+                                  }
+                                }}
+                                className="text-xs text-slate-500 bg-transparent outline-none"
+                              >
+                                <option value="">Select Material</option>
+                                {courseMaterials.map(m => (
+                                  <option key={m.id} value={m.file_url}>{m.title}</option>
+                                ))}
+                                <option value="custom">Custom URL...</option>
+                              </select>
                               <input 
                                 type="text"
                                 value={lesson.duration}
@@ -1116,6 +1148,19 @@ export const InstructorPage = () => {
                                 placeholder="Duration (e.g. 10:00)"
                               />
                             </div>
+                            {lesson.content && lesson.content !== 'custom' && (
+                              <div className="text-[10px] text-brand-blue font-bold truncate max-w-[100px]">
+                                {lesson.content}
+                              </div>
+                            )}
+                            {lesson.content === 'custom' && (
+                              <input 
+                                type="text"
+                                onChange={(e) => updateLesson(mIdx, lIdx, { content: e.target.value })}
+                                className="text-xs text-slate-500 outline-none border-b border-brand-blue py-1 w-32"
+                                placeholder="Enter URL"
+                              />
+                            )}
                             <button 
                               onClick={() => deleteLesson(mIdx, lIdx)}
                               className="p-2 text-slate-300 hover:text-brand-red transition-colors opacity-0 group-hover:opacity-100"
