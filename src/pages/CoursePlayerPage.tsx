@@ -349,10 +349,15 @@ export const CoursePlayerPage = () => {
 
                   // Handle YouTube
                   if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
-                    const videoId = videoUrl.includes('v=') ? videoUrl.split('v=')[1].split('&')[0] : videoUrl.split('/').pop();
+                    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+                    const match = videoUrl.match(regExp);
+                    const videoId = (match && match[2].length === 11) ? match[2] : null;
+                    
+                    if (!videoId) return <div className="flex items-center justify-center h-full text-slate-500">Invalid YouTube URL</div>;
+
                     return (
                       <iframe 
-                        src={`https://www.youtube.com/embed/${videoId}`}
+                        src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
                         className="w-full h-full border-none"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
@@ -362,10 +367,15 @@ export const CoursePlayerPage = () => {
 
                   // Handle Vimeo
                   if (videoUrl.includes('vimeo.com')) {
-                    const videoId = videoUrl.split('/').pop();
+                    const regExp = /vimeo\.com\/(?:video\/)?(\d+)/;
+                    const match = videoUrl.match(regExp);
+                    const videoId = match ? match[1] : null;
+
+                    if (!videoId) return <div className="flex items-center justify-center h-full text-slate-500">Invalid Vimeo URL</div>;
+
                     return (
                       <iframe 
-                        src={`https://player.vimeo.com/video/${videoId}`}
+                        src={`https://player.vimeo.com/video/${videoId}?badge=0&autopause=0&player_id=0&app_id=58479`}
                         className="w-full h-full border-none"
                         allow="autoplay; fullscreen; picture-in-picture"
                         allowFullScreen
