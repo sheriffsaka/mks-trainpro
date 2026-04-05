@@ -19,6 +19,7 @@ import { InstructorPage } from './pages/InstructorPage';
 import { CoursePlayerPage } from './pages/CoursePlayerPage';
 import { QuizPage } from './pages/QuizPage';
 import { AuthCallback } from './pages/AuthCallback';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { MOCK_COURSES, MOCK_FAQS } from './data/mockData';
 import { GraduationCap, ArrowRight, CheckCircle2, Award, BookOpen, Users, Plus, Minus, Star, Quote, Facebook, Twitter, Instagram, Linkedin, Mail, MapPin, Phone } from 'lucide-react';
 import { useSettings } from './hooks/useSettings';
@@ -472,24 +473,26 @@ export default function App() {
       <ScrollToTop />
       <div className="min-h-screen bg-white font-sans selection:bg-emerald-100 selection:text-emerald-900">
         <Navbar />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/courses" element={<CoursesPage />} />
-          <Route path="/courses/:slug" element={<CourseDetailPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/corporate" element={<CorporatePage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/accreditations" element={<AccreditationsPage />} />
-          <Route path="/clients" element={<ClientsPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          <Route path="/login" element={<AuthPage type="login" />} />
-          <Route path="/register" element={<AuthPage type="register" />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/instructor" element={<InstructorPage />} />
-          <Route path="/courses/:slug/player" element={<CoursePlayerPage />} />
-          <Route path="/courses/:slug/quiz/:quizId" element={<QuizPage />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/courses" element={<CoursesPage />} />
+            <Route path="/courses/:slug" element={<CourseDetailPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/corporate" element={<CorporatePage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/accreditations" element={<AccreditationsPage />} />
+            <Route path="/clients" element={<ClientsPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/login" element={<AuthPage type="login" />} />
+            <Route path="/register" element={<AuthPage type="register" />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/instructor" element={<InstructorPage />} />
+            <Route path="/courses/:slug/player" element={<CoursePlayerPage />} />
+            <Route path="/courses/:slug/quiz/:quizId" element={<QuizPage />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+          </Routes>
+        </ErrorBoundary>
         
         <footer className="bg-slate-950 text-slate-400 py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

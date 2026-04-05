@@ -105,20 +105,39 @@ export const adminService = {
   // Notifications
   async getNotifications(userId: string) {
     if (!isSupabaseConfigured) return [];
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) {
+        // Handle case where table might be missing in schema cache
+        if (error.code === 'PGRST205') {
+          console.warn('Notifications table not found in schema cache. Returning empty array.');
+          return [];
+        }
+        throw error;
+      }
+      return data;
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+      return [];
+    }
   },
   async markNotificationAsRead(id: string) {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('id', id);
-    if (error) throw error;
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', id);
+      if (error) {
+        if (error.code === 'PGRST205') return;
+        throw error;
+      }
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
   },
   async createNotification(notification: {
     user_id: string;
@@ -126,12 +145,23 @@ export const adminService = {
     message: string;
     type?: 'info' | 'warning' | 'success' | 'error';
   }) {
-    const { data, error } = await supabase
-      .from('notifications')
-      .insert([notification])
-      .select();
-    if (error) throw error;
-    return data[0];
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert([notification])
+        .select();
+      if (error) {
+        if (error.code === 'PGRST205') {
+          console.warn('Notifications table not found in schema cache. Skipping notification creation.');
+          return null;
+        }
+        throw error;
+      }
+      return data[0];
+    } catch (err) {
+      console.error('Error creating notification:', err);
+      return null;
+    }
   },
 
   // FAQs

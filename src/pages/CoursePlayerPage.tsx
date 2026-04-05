@@ -19,6 +19,7 @@ import { supabase } from '../services/supabaseClient';
 import { useAuthStore } from '../store/authStore';
 import { MOCK_COURSES } from '../data/mockData';
 import { isSystemAdmin } from '../constants/admin';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 export const CoursePlayerPage = () => {
   const { slug } = useParams();
@@ -144,7 +145,7 @@ export const CoursePlayerPage = () => {
   if (!course) return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">Course not found</div>;
 
   // Mock modules if not present
-  const modules = course.modules || [
+  const modules = (course.modules && Array.isArray(course.modules) && course.modules.length > 0) ? course.modules : [
     {
       title: 'Course Introduction',
       lessons: [
@@ -178,10 +179,34 @@ export const CoursePlayerPage = () => {
     }
   ];
 
-  const currentLesson = modules[activeModule].lessons[activeLesson];
+  const currentLesson = modules[activeModule]?.lessons?.[activeLesson];
+
+  if (!currentLesson) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 p-6">
+        <div className="max-w-md w-full bg-slate-900 p-8 rounded-[2.5rem] border border-white/5 text-center shadow-2xl">
+          <div className="bg-brand-red/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Shield className="text-brand-red" size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-4">Lesson Not Found</h2>
+          <p className="text-slate-400 mb-8 leading-relaxed">
+            The lesson you are trying to access is not available. Please try again later.
+          </p>
+          <button 
+            onClick={() => navigate('/dashboard')}
+            className="w-full bg-brand-red text-white py-4 rounded-2xl font-bold hover:bg-brand-red-hover transition-all flex items-center justify-center gap-2"
+          >
+            <ArrowLeft size={18} />
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-screen bg-slate-950 text-white overflow-hidden">
+    <ErrorBoundary>
+      <div className="flex h-screen bg-slate-950 text-white overflow-hidden">
       {/* Sidebar Navigation */}
       <AnimatePresence>
         {sidebarOpen && (
@@ -233,7 +258,7 @@ export const CoursePlayerPage = () => {
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden bg-black/20"
                       >
-                        {module.lessons.map((lesson: any, lIdx: number) => (
+                        {module.lessons && Array.isArray(module.lessons) && module.lessons.map((lesson: any, lIdx: number) => (
                           <button
                             key={lIdx}
                             onClick={() => setActiveLesson(lIdx)}
@@ -408,8 +433,11 @@ export const CoursePlayerPage = () => {
                 onClick={() => {
                   if (activeLesson > 0) setActiveLesson(activeLesson - 1);
                   else if (activeModule > 0) {
-                    setActiveModule(activeModule - 1);
-                    setActiveLesson(modules[activeModule - 1].lessons.length - 1);
+                    const prevModule = modules[activeModule - 1];
+                    if (prevModule && prevModule.lessons && prevModule.lessons.length > 0) {
+                      setActiveModule(activeModule - 1);
+                      setActiveLesson(prevModule.lessons.length - 1);
+                    }
                   }
                 }}
                 className="flex items-center gap-2 text-slate-400 hover:text-white font-bold transition-colors"
@@ -419,8 +447,9 @@ export const CoursePlayerPage = () => {
               </button>
               <button 
                 onClick={() => {
-                  if (activeLesson < modules[activeModule].lessons.length - 1) setActiveLesson(activeLesson + 1);
-                  else if (activeModule < modules.length - 1) {
+                  if (activeLesson < (modules[activeModule]?.lessons?.length || 0) - 1) {
+                    setActiveLesson(activeLesson + 1);
+                  } else if (activeModule < modules.length - 1) {
                     setActiveModule(activeModule + 1);
                     setActiveLesson(0);
                   }
@@ -434,7 +463,8 @@ export const CoursePlayerPage = () => {
           </div>
         </div>
       </main>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 };
 
