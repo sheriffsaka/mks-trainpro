@@ -372,25 +372,37 @@ export const InstructorPage = () => {
 
   const handleMaterialSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!user) {
+      alert('You must be logged in to add materials.');
+      return;
+    }
     const formData = new FormData(e.currentTarget);
     const materialData = {
       course_id: formData.get('course_id'),
       title: formData.get('title'),
       description: formData.get('description'),
       file_url: formData.get('file_url'),
-      type: formData.get('type')
+      type: formData.get('type'),
+      instructor_id: user.id
     };
 
     try {
       if (editingItem) {
         await adminService.updateCourseMaterial(editingItem.id, materialData);
+        alert('Material updated successfully!');
       } else {
-        await adminService.createCourseMaterial(materialData);
+        const result = await adminService.createCourseMaterial(materialData);
+        if (result) {
+          alert('Material added successfully!');
+        } else {
+          alert('Failed to add material. Please try again.');
+        }
       }
       setIsModalOpen(false);
       fetchMaterials();
     } catch (err) {
       console.error('Error saving material:', err);
+      alert('Error saving material. Please check your connection and try again.');
     }
   };
 
@@ -477,7 +489,7 @@ export const InstructorPage = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Course Selection for Student-related tabs */}
-        {(activeTab === 'attendance' || activeTab === 'assessments' || activeTab === 'assignments') && (
+        {(activeTab === 'attendance' || activeTab === 'assessments' || activeTab === 'assignments' || activeTab === 'materials') && (
           <div className="mb-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="bg-brand-blue/10 p-3 rounded-2xl text-brand-blue">

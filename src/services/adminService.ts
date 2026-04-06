@@ -227,6 +227,7 @@ export const adminService = {
     return data;
   },
   async createCourse(course: any) {
+    if (!isSupabaseConfigured) return { id: Math.random().toString(), ...course };
     const { data: { user } } = await supabase.auth.getUser();
     const courseWithInstructor = { ...course, instructor_id: course.instructor_id || user?.id };
     const { data, error } = await supabase
@@ -237,6 +238,7 @@ export const adminService = {
     return data[0];
   },
   async updateCourse(id: string, updates: any) {
+    if (!isSupabaseConfigured) return { id, ...updates };
     const { data, error } = await supabase
       .from('courses')
       .update(updates)
@@ -246,6 +248,7 @@ export const adminService = {
     return data[0];
   },
   async deleteCourse(id: string) {
+    if (!isSupabaseConfigured) return;
     const { error } = await supabase
       .from('courses')
       .delete()
