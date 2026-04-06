@@ -383,6 +383,33 @@ export const CoursePlayerPage = () => {
                     );
                   }
 
+                  // Handle Google Drive
+                  if (videoUrl.includes('drive.google.com')) {
+                    let embedUrl = videoUrl;
+                    if (videoUrl.includes('/view')) {
+                      embedUrl = videoUrl.replace('/view', '/preview');
+                    } else if (videoUrl.includes('id=')) {
+                      const idMatch = videoUrl.match(/id=([^&]+)/);
+                      if (idMatch) {
+                        embedUrl = `https://drive.google.com/file/d/${idMatch[1]}/preview`;
+                      }
+                    } else if (videoUrl.includes('/file/d/')) {
+                      const idMatch = videoUrl.match(/\/file\/d\/([^/]+)/);
+                      if (idMatch) {
+                        embedUrl = `https://drive.google.com/file/d/${idMatch[1]}/preview`;
+                      }
+                    }
+
+                    return (
+                      <iframe 
+                        src={embedUrl}
+                        className="w-full h-full border-none"
+                        allow="autoplay"
+                        allowFullScreen
+                      />
+                    );
+                  }
+
                   // Default to direct video tag
                   return (
                     <video 

@@ -44,7 +44,7 @@ import {
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { isSystemAdmin } from '../constants/admin';
 import { useAuthStore } from '../store/authStore';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { MOCK_COURSES, MOCK_CATEGORIES, MOCK_FAQS, MOCK_ANNOUNCEMENTS, MOCK_QUIZZES, MOCK_ENROLLMENTS } from '../data/mockData';
 
 import { adminService } from '../services/adminService';
@@ -1541,24 +1541,36 @@ const CoursesTab = () => {
 const UsersTab = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const data = await adminService.getAllUsers();
+      if (data) setUsers(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (data) setUsers(data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchUsers();
   }, []);
+
+  const handleRoleChange = async (userId: string, newRole: 'student' | 'instructor' | 'admin') => {
+    try {
+      setUpdatingUserId(userId);
+      await adminService.updateUserRole(userId, newRole);
+      await fetchUsers();
+    } catch (err) {
+      console.error('Error updating role:', err);
+      alert('Failed to update user role');
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -1607,11 +1619,20 @@ const UsersTab = () => {
                   </div>
                 </td>
                 <td className="px-8 py-5">
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                    user.role === 'admin' ? 'bg-brand-red/10 text-brand-red' : 'bg-brand-blue/10 text-brand-blue'
-                  }`}>
-                    {user.role}
-                  </span>
+                  <select 
+                    value={user.role}
+                    disabled={updatingUserId === user.id}
+                    onChange={(e) => handleRoleChange(user.id, e.target.value as any)}
+                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider outline-none border-none cursor-pointer ${
+                      user.role === 'admin' ? 'bg-brand-red/10 text-brand-red' : 
+                      user.role === 'instructor' ? 'bg-amber-100 text-amber-600' :
+                      'bg-brand-blue/10 text-brand-blue'
+                    }`}
+                  >
+                    <option value="student">Student</option>
+                    <option value="instructor">Instructor</option>
+                    <option value="admin">Admin</option>
+                  </select>
                 </td>
                 <td className="px-8 py-5 text-sm text-slate-500">
                   {new Date(user.created_at || Date.now()).toLocaleDateString()}
@@ -4248,13 +4269,16 @@ export const AdminPage = () => {
     { id: 'diagnostics', label: 'Diagnostics', icon: <Activity size={20} />, roles: ['admin', 'instructor'] }
   ].filter(tab => tab.roles.includes(profile?.role || (isAdmin ? 'admin' : 'instructor')));
 
-  if (!user || !isInstructor) {
+  if (!user || !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
           <AlertCircle size={48} className="mx-auto text-brand-red mb-4" />
           <h1 className="text-2xl font-bold text-slate-900">Access Denied</h1>
-          <p className="text-slate-600">You do not have permission to view this page.</p>
+          <p className="text-slate-600">You do not have permission to view this page. This page is for Administrators only.</p>
+          <Link to="/dashboard" className="mt-6 inline-block bg-brand-blue text-white px-6 py-3 rounded-2xl font-bold">
+            Back to Dashboard
+          </Link>
         </div>
       </div>
     );

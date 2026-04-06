@@ -51,6 +51,7 @@ export const MOCK_COURSES = [
     ],
     mode: 'virtual',
     is_published: true,
+    instructor_id: 'inst1',
     categories: MOCK_CATEGORIES[0]
   },
   {
@@ -92,6 +93,7 @@ export const MOCK_COURSES = [
     ],
     mode: 'physical',
     is_published: true,
+    instructor_id: 'inst1',
     categories: MOCK_CATEGORIES[0]
   },
   {
@@ -174,6 +176,7 @@ export const MOCK_COURSES = [
     ],
     mode: 'virtual',
     is_published: true,
+    instructor_id: 'inst1',
     categories: MOCK_CATEGORIES[1]
   }
 ];

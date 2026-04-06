@@ -209,11 +209,20 @@ export const adminService = {
     return data;
   },
   // Courses
-  async getCourses() {
-    if (!isSupabaseConfigured) return MOCK_COURSES;
-    const { data, error } = await supabase
+  async getCourses(instructorId?: string) {
+    if (!isSupabaseConfigured) {
+      if (instructorId) return MOCK_COURSES.filter(c => c.instructor_id === instructorId);
+      return MOCK_COURSES;
+    }
+    let query = supabase
       .from('courses')
       .select('*, categories(*)');
+    
+    if (instructorId) {
+      query = query.eq('instructor_id', instructorId);
+    }
+    
+    const { data, error } = await query;
     if (error) throw error;
     return data;
   },
@@ -249,6 +258,24 @@ export const adminService = {
       .from('profiles')
       .select('*')
       .eq('role', 'student');
+    if (error) throw error;
+    return data;
+  },
+  async updateUserRole(userId: string, role: 'student' | 'instructor' | 'admin') {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ role })
+      .eq('id', userId)
+      .select();
+    if (error) throw error;
+    return data[0];
+  },
+  async getAllUsers() {
+    if (!isSupabaseConfigured) return [];
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
     if (error) throw error;
     return data;
   },

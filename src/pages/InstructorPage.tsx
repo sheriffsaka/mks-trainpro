@@ -27,6 +27,7 @@ import {
   ExternalLink,
   Download
 } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { progressService, AttendanceRecord, AssessmentRecord, AssignmentRecord } from '../services/progressService';
 import { adminService } from '../services/adminService';
@@ -64,6 +65,7 @@ const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose:
 };
 
 export const InstructorPage = () => {
+  const { user, profile } = useAuthStore();
   const [activeTab, setActiveTab] = useState('attendance');
   const [courses, setCourses] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -71,11 +73,13 @@ export const InstructorPage = () => {
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<'course' | 'schedule' | 'announcement' | 'material'>('course');
+  const [modalType, setModalType] = useState<'course' | 'schedule' | 'announcement' | 'material' | 'bulk-quiz'>('course');
   const [editingItem, setEditingItem] = useState<any>(null);
   const [modalSubTab, setModalSubTab] = useState<'general' | 'curriculum'>('general');
   const [courseModules, setCourseModules] = useState<any[]>([]);
   const [courseMaterials, setCourseMaterials] = useState<any[]>([]);
+  const [bulkQuizText, setBulkQuizText] = useState('');
+  const [isBulkUploading, setIsBulkUploading] = useState(false);
 
   // Attendance State
   const [selectedSession, setSelectedSession] = useState('Session 1');
@@ -95,13 +99,15 @@ export const InstructorPage = () => {
   const [materials, setMaterials] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchInitialData();
-  }, []);
+    if (user) {
+      fetchInitialData();
+    }
+  }, [user]);
 
   const fetchInitialData = async () => {
     try {
       const [coursesData, categoriesData] = await Promise.all([
-        adminService.getCourses(),
+        adminService.getCourses(user?.id),
         adminService.getCategories()
       ]);
       setCourses(coursesData || []);
@@ -318,6 +324,49 @@ export const InstructorPage = () => {
       fetchAnnouncements();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleBulkQuizUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCourse) {
+      alert('Please select a course first');
+      return;
+    }
+    if (!bulkQuizText.trim()) return;
+
+    try {
+      setIsBulkUploading(true);
+      // Format: Question, Option A, Option B, Option C, Option D, Correct Option (A/B/C/D)
+      const lines = bulkQuizText.split('\n').filter(line => line.trim());
+      const quizzes = lines.map(line => {
+        const parts = line.split(',').map(s => s.trim());
+        if (parts.length < 6) return null;
+        
+        const [question, a, b, c, d, correct] = parts;
+        return {
+          course_id: selectedCourse,
+          title: question,
+          options: [a, b, c, d],
+          correct_option: ['A', 'B', 'C', 'D'].indexOf(correct.toUpperCase()),
+          points: 10
+        };
+      }).filter((q): q is any => q !== null && q.title && q.options.every(o => o) && q.correct_option !== -1);
+
+      if (quizzes.length === 0) {
+        alert('No valid quizzes found. Format: Question, Option A, Option B, Option C, Option D, Correct Option (A/B/C/D)');
+        return;
+      }
+
+      await adminService.bulkCreateQuizzes(quizzes);
+      alert(`Successfully uploaded ${quizzes.length} quizzes`);
+      setBulkQuizText('');
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Error uploading bulk quizzes:', err);
+      alert('Failed to upload quizzes');
+    } finally {
+      setIsBulkUploading(false);
     }
   };
 
@@ -755,19 +804,30 @@ export const InstructorPage = () => {
             <motion.div key="courses" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
               <div className="flex justify-between items-center">
                 <h3 className="text-xl font-bold text-slate-900">Manage Courses</h3>
-                <button 
-                  onClick={() => { 
-                    setEditingItem(null); 
-                    setCourseModules([]);
-                    setCourseMaterials([]);
-                    setModalSubTab('general');
-                    setModalType('course'); 
-                    setIsModalOpen(true); 
-                  }}
-                  className="bg-brand-blue text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-blue-hover transition-all"
-                >
-                  <Plus size={20} /> Add New Course
-                </button>
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => {
+                      setModalType('bulk-quiz');
+                      setIsModalOpen(true);
+                    }}
+                    className="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-bold text-slate-600 flex items-center gap-2 hover:bg-slate-50 transition-all"
+                  >
+                    <FileQuestion size={20} /> Bulk Quiz Upload
+                  </button>
+                  <button 
+                    onClick={() => { 
+                      setEditingItem(null); 
+                      setCourseModules([]);
+                      setCourseMaterials([]);
+                      setModalSubTab('general');
+                      setModalType('course'); 
+                      setIsModalOpen(true); 
+                    }}
+                    className="bg-brand-blue text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-blue-hover transition-all"
+                  >
+                    <Plus size={20} /> Add New Course
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {courses.map(course => (
@@ -1261,6 +1321,37 @@ export const InstructorPage = () => {
               <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-3 font-bold text-slate-600">Cancel</button>
               <button type="submit" className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold">Post Announcement</button>
             </div>
+          </form>
+        )}
+        {modalType === 'bulk-quiz' && (
+          <form onSubmit={handleBulkQuizUpload} className="space-y-6">
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl">
+              <p className="text-sm text-amber-800 font-medium flex items-center gap-2">
+                <AlertCircle size={16} /> Bulk Upload Format
+              </p>
+              <p className="text-xs text-amber-700 mt-1">
+                Each line should be: <code className="bg-white/50 px-1 rounded">Question, Option A, Option B, Option C, Option D, Correct (A/B/C/D)</code>
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Quiz Data (CSV Format)</label>
+              <textarea 
+                required
+                rows={10}
+                value={bulkQuizText}
+                onChange={(e) => setBulkQuizText(e.target.value)}
+                placeholder="What is SAP?, Systems Applications and Products, Software and Programs, System and Process, None, A"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm"
+              />
+            </div>
+            <button 
+              type="submit" 
+              disabled={isBulkUploading}
+              className="w-full bg-brand-blue text-white py-4 rounded-xl font-bold hover:bg-brand-blue/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {isBulkUploading ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
+              Upload Quizzes
+            </button>
           </form>
         )}
       </Modal>
