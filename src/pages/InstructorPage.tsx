@@ -133,7 +133,7 @@ export const InstructorPage = () => {
 
   const fetchMaterials = async () => {
     try {
-      const data = await adminService.getCourseMaterials(selectedCourse || undefined);
+      const data = await adminService.getCourseMaterials(selectedCourse || undefined, user?.id);
       setMaterials(data || []);
     } catch (err) {
       console.error('Error fetching materials:', err);
@@ -383,7 +383,7 @@ export const InstructorPage = () => {
 
     try {
       if (editingItem) {
-        await supabase.from('course_materials').update(materialData).eq('id', editingItem.id);
+        await adminService.updateCourseMaterial(editingItem.id, materialData);
       } else {
         await adminService.createCourseMaterial(materialData);
       }

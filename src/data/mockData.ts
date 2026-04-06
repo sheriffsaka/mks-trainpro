@@ -287,6 +287,7 @@ export const MOCK_COURSE_MATERIALS = [
     description: 'Basic introduction to SAP ERP systems.',
     file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     type: 'pdf',
+    instructor_id: 'i1',
     created_at: new Date().toISOString()
   }
 ];

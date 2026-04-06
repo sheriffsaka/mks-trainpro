@@ -227,9 +227,11 @@ export const adminService = {
     return data;
   },
   async createCourse(course: any) {
+    const { data: { user } } = await supabase.auth.getUser();
+    const courseWithInstructor = { ...course, instructor_id: course.instructor_id || user?.id };
     const { data, error } = await supabase
       .from('courses')
-      .insert([course])
+      .insert([courseWithInstructor])
       .select();
     if (error) throw error;
     return data[0];
@@ -266,6 +268,37 @@ export const adminService = {
       .from('profiles')
       .update({ role })
       .eq('id', userId)
+      .select();
+    if (error) throw error;
+    return data[0];
+  },
+  async toggleUserStatus(userId: string, isActive: boolean) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ is_active: isActive })
+      .eq('id', userId)
+      .select();
+    if (error) throw error;
+    return data[0];
+  },
+  async deleteUser(userId: string) {
+    const { error } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+    if (error) throw error;
+  },
+  async createUser(userData: any) {
+    // In a real app, this would use supabase.auth.admin.createUser
+    // For now, we'll just insert into profiles and assume auth is handled
+    const { data, error } = await supabase
+      .from('profiles')
+      .insert([{
+        id: crypto.randomUUID(),
+        ...userData,
+        created_at: new Date().toISOString(),
+        is_active: true
+      }])
       .select();
     if (error) throw error;
     return data[0];
@@ -827,14 +860,20 @@ export const adminService = {
   },
 
   // Course Materials
-  async getCourseMaterials(courseId?: string) {
+  async getCourseMaterials(courseId?: string, instructorId?: string) {
     if (!isSupabaseConfigured) {
-      return courseId ? MOCK_COURSE_MATERIALS.filter(m => m.course_id === courseId) : MOCK_COURSE_MATERIALS;
+      let data: any[] = [...MOCK_COURSE_MATERIALS];
+      if (courseId) data = data.filter(m => m.course_id === courseId);
+      if (instructorId) data = data.filter(m => m.instructor_id === instructorId);
+      return data;
     }
     try {
       let query = supabase.from('course_materials').select('*, courses:course_id(*)');
       if (courseId) {
         query = query.eq('course_id', courseId);
+      }
+      if (instructorId) {
+        query = query.eq('instructor_id', instructorId);
       }
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
@@ -848,15 +887,35 @@ export const adminService = {
   async createCourseMaterial(material: any) {
     if (!isSupabaseConfigured) return { id: Math.random().toString(), ...material };
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const materialWithInstructor = { ...material, instructor_id: material.instructor_id || user?.id };
+      
       const { data: materials, error } = await supabase
         .from('course_materials')
-        .insert([material])
+        .insert([materialWithInstructor])
         .select()
         .limit(1);
       if (error) throw error;
       return materials && materials.length > 0 ? materials[0] : null;
     } catch (err) {
       console.error('Error creating course material:', err);
+      throw err;
+    }
+  },
+
+  async updateCourseMaterial(id: string, updates: any) {
+    if (!isSupabaseConfigured) return { id, ...updates };
+    try {
+      const { data: materials, error } = await supabase
+        .from('course_materials')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .limit(1);
+      if (error) throw error;
+      return materials && materials.length > 0 ? materials[0] : null;
+    } catch (err) {
+      console.error('Error updating course material:', err);
       throw err;
     }
   },
@@ -1016,10 +1075,10 @@ export const adminService = {
     if (force || students.length < 3) {
       console.log('Creating dummy students...');
       const dummyStudents = [
-        { id: crypto.randomUUID(), full_name: 'John Doe', email: 'john@example.com', role: 'student' },
-        { id: crypto.randomUUID(), full_name: 'Jane Smith', email: 'jane@example.com', role: 'student' },
-        { id: crypto.randomUUID(), full_name: 'Alice Johnson', email: 'alice@example.com', role: 'student' },
-        { id: crypto.randomUUID(), full_name: 'Bob Brown', email: 'bob@example.com', role: 'student' }
+        { id: crypto.randomUUID(), full_name: 'John Doe', email: 'john@example.com', role: 'student', is_active: true },
+        { id: crypto.randomUUID(), full_name: 'Jane Smith', email: 'jane@example.com', role: 'student', is_active: true },
+        { id: crypto.randomUUID(), full_name: 'Alice Johnson', email: 'alice@example.com', role: 'student', is_active: true },
+        { id: crypto.randomUUID(), full_name: 'Bob Brown', email: 'bob@example.com', role: 'student', is_active: true }
       ];
       
       const { data: insertedStudents } = await supabase.from('profiles').upsert(dummyStudents, { onConflict: 'email' }).select();

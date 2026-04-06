@@ -39,7 +39,9 @@ import {
   GraduationCap,
   FileCheck,
   Activity,
-  Upload
+  Upload,
+  Power,
+  PowerOff
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { isSystemAdmin } from '../constants/admin';
@@ -1542,6 +1544,13 @@ const UsersTab = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [activeActionMenu, setActiveActionMenu] = useState<string | null>(null);
+  const [newUser, setNewUser] = useState({
+    full_name: '',
+    email: '',
+    role: 'student' as 'student' | 'instructor' | 'admin'
+  });
 
   const fetchUsers = async () => {
     try {
@@ -1572,6 +1581,51 @@ const UsersTab = () => {
     }
   };
 
+  const handleToggleStatus = async (user: any) => {
+    try {
+      setUpdatingUserId(user.id);
+      await adminService.toggleUserStatus(user.id, !user.is_active);
+      await fetchUsers();
+      setActiveActionMenu(null);
+    } catch (err) {
+      console.error('Error toggling status:', err);
+      alert('Failed to update user status');
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+    try {
+      setUpdatingUserId(userId);
+      await adminService.deleteUser(userId);
+      await fetchUsers();
+      setActiveActionMenu(null);
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      alert('Failed to delete user');
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      await adminService.createUser(newUser);
+      setIsAddModalOpen(false);
+      setNewUser({ full_name: '', email: '', role: 'student' });
+      await fetchUsers();
+    } catch (err) {
+      console.error('Error adding user:', err);
+      alert('Failed to add user');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -1584,8 +1638,11 @@ const UsersTab = () => {
           />
         </div>
         <div className="flex gap-3">
-          <button className="bg-white border border-slate-200 px-4 py-3 rounded-2xl font-bold text-slate-600 flex items-center gap-2 hover:bg-slate-50 transition-all">
-            <Filter size={18} /> Filter
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="bg-brand-blue text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20"
+          >
+            <UserPlus size={18} /> Add User
           </button>
           <button className="bg-white border border-slate-200 px-4 py-3 rounded-2xl font-bold text-slate-600 flex items-center gap-2 hover:bg-slate-50 transition-all">
             <Download size={18} /> Export CSV
@@ -1638,20 +1695,138 @@ const UsersTab = () => {
                   {new Date(user.created_at || Date.now()).toLocaleDateString()}
                 </td>
                 <td className="px-8 py-5">
-                  <span className="flex items-center gap-1.5 text-emerald-600 text-xs font-bold">
-                    <CheckCircle2 size={14} /> Active
-                  </span>
+                  {user.is_active !== false ? (
+                    <span className="flex items-center gap-1.5 text-emerald-600 text-xs font-bold">
+                      <CheckCircle2 size={14} /> Active
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-slate-400 text-xs font-bold">
+                      <AlertCircle size={14} /> Deactivated
+                    </span>
+                  )}
                 </td>
-                <td className="px-8 py-5 text-right">
-                  <button className="p-2 text-slate-400 hover:text-brand-blue hover:bg-brand-blue/5 rounded-lg transition-all">
+                <td className="px-8 py-5 text-right relative">
+                  <button 
+                    onClick={() => setActiveActionMenu(activeActionMenu === user.id ? null : user.id)}
+                    className="p-2 text-slate-400 hover:text-brand-blue hover:bg-brand-blue/5 rounded-lg transition-all"
+                  >
                     <MoreVertical size={18} />
                   </button>
+
+                  <AnimatePresence>
+                    {activeActionMenu === user.id && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-10" 
+                          onClick={() => setActiveActionMenu(null)}
+                        />
+                        <motion.div 
+                          initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                          className="absolute right-8 top-14 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-20"
+                        >
+                          <button 
+                            onClick={() => handleToggleStatus(user)}
+                            className="w-full px-4 py-2 text-left text-sm font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2"
+                          >
+                            {user.is_active !== false ? (
+                              <>
+                                <PowerOff size={16} className="text-amber-500" /> Deactivate Account
+                              </>
+                            ) : (
+                              <>
+                                <Power size={16} className="text-emerald-500" /> Activate Account
+                              </>
+                            )}
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="w-full px-4 py-2 text-left text-sm font-bold text-brand-red hover:bg-brand-red/5 flex items-center gap-2"
+                          >
+                            <Trash2 size={16} /> Delete User
+                          </button>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Add User Modal */}
+      <AnimatePresence>
+        {isAddModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAddModalOpen(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden"
+            >
+              <div className="p-8 border-b border-slate-100 flex justify-between items-center">
+                <h3 className="text-2xl font-bold text-slate-900">Add New User</h3>
+                <button onClick={() => setIsAddModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                  <X size={24} />
+                </button>
+              </div>
+              <form onSubmit={handleAddUser} className="p-8 space-y-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Full Name</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={newUser.full_name}
+                    onChange={(e) => setNewUser({...newUser, full_name: e.target.value})}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-brand-blue outline-none"
+                    placeholder="Enter full name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Email Address</label>
+                  <input 
+                    type="email" 
+                    required
+                    value={newUser.email}
+                    onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-brand-blue outline-none"
+                    placeholder="Enter email address"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">User Role</label>
+                  <select 
+                    value={newUser.role}
+                    onChange={(e) => setNewUser({...newUser, role: e.target.value as any})}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-brand-blue outline-none"
+                  >
+                    <option value="student">Student</option>
+                    <option value="instructor">Instructor</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                <button 
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20 flex items-center justify-center gap-2"
+                >
+                  {loading ? <Loader2 className="animate-spin" size={20} /> : <><UserPlus size={20} /> Create User</>}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
