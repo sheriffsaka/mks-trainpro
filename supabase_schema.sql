@@ -374,6 +374,7 @@ CREATE TABLE IF NOT EXISTS certificate_templates (
 CREATE TABLE IF NOT EXISTS course_materials (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
+  instructor_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
   file_url TEXT NOT NULL,

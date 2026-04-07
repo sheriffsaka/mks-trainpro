@@ -78,12 +78,23 @@ export const adminService = {
     return data;
   },
   async createAnnouncement(announcement: any) {
-    const { data, error } = await supabase
-      .from('announcements')
-      .insert([announcement])
-      .select();
-    if (error) throw error;
-    return data[0];
+    if (!isSupabaseConfigured) return { id: Math.random().toString(), ...announcement };
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      
+      const announcementWithUser = { ...announcement, created_by: announcement.created_by || user?.id };
+      const { data, error } = await supabase
+        .from('announcements')
+        .insert([announcementWithUser])
+        .select()
+        .limit(1);
+      if (error) throw error;
+      return data && data.length > 0 ? data[0] : null;
+    } catch (err) {
+      console.error('Error creating announcement:', err);
+      throw err;
+    }
   },
   async updateAnnouncement(id: string, updates: any) {
     const { data, error } = await supabase
@@ -326,11 +337,23 @@ export const adminService = {
     return data;
   },
   async createSchedule(schedule: any) {
-    const { data: { user } } = await supabase.auth.getUser();
-    const scheduleWithInstructor = { ...schedule, instructor_id: user?.id };
-    const { data, error } = await supabase.from('class_schedules').insert([scheduleWithInstructor]).select();
-    if (error) throw error;
-    return data[0];
+    if (!isSupabaseConfigured) return { id: Math.random().toString(), ...schedule };
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      
+      const scheduleWithInstructor = { ...schedule, instructor_id: schedule.instructor_id || user?.id };
+      const { data, error } = await supabase
+        .from('class_schedules')
+        .insert([scheduleWithInstructor])
+        .select()
+        .limit(1);
+      if (error) throw error;
+      return data && data.length > 0 ? data[0] : null;
+    } catch (err) {
+      console.error('Error creating class schedule:', err);
+      throw err;
+    }
   },
   async updateSchedule(id: string, updates: any) {
     const { data, error } = await supabase.from('class_schedules').update(updates).eq('id', id).select();
@@ -890,7 +913,9 @@ export const adminService = {
   async createCourseMaterial(material: any) {
     if (!isSupabaseConfigured) return { id: Math.random().toString(), ...material };
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      
       const materialWithInstructor = { ...material, instructor_id: material.instructor_id || user?.id };
       
       const { data: materials, error } = await supabase
