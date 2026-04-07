@@ -74,6 +74,16 @@ export const DashboardPage = () => {
       return;
     }
 
+    // Redirect based on role
+    if (profile?.role === 'admin') {
+      navigate('/admin');
+      return;
+    }
+    if (profile?.role === 'instructor') {
+      navigate('/instructor');
+      return;
+    }
+
     const fetchDashboardData = async () => {
       if (!user) return;
       try {

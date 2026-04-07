@@ -54,7 +54,7 @@ export const Navbar = () => {
                     Instructor
                   </Link>
                 )}
-                <Link to="/dashboard" className="flex items-center gap-2 text-slate-700 hover:text-brand-blue transition-colors">
+                <Link to={isAdmin ? "/admin" : isInstructor ? "/instructor" : "/dashboard"} className="flex items-center gap-2 text-slate-700 hover:text-brand-blue transition-colors">
                   <div className="w-8 h-8 bg-brand-blue/10 rounded-full flex items-center justify-center text-brand-blue font-bold text-xs">
                     {profile?.full_name?.charAt(0) || 'U'}
                   </div>
@@ -90,7 +90,7 @@ export const Navbar = () => {
           <Link to="/about" className="block text-slate-600 font-medium">About</Link>
           {user ? (
             <>
-              <Link to="/dashboard" className="block text-slate-600 font-medium">Dashboard</Link>
+              <Link to={isAdmin ? "/admin" : isInstructor ? "/instructor" : "/dashboard"} className="block text-slate-600 font-medium">Dashboard</Link>
               <button onClick={signOut} className="block text-brand-red font-medium">Sign Out</button>
             </>
           ) : (

@@ -25,12 +25,14 @@ import {
   Megaphone,
   Clock,
   ExternalLink,
-  Download
+  Download,
+  User as UserIcon
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { progressService, AttendanceRecord, AssessmentRecord, AssignmentRecord } from '../services/progressService';
 import { adminService } from '../services/adminService';
+import { ProfileTab } from '../components/ProfileTab';
 
 // Reusable Modal Component
 const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode }) => {
@@ -467,7 +469,8 @@ export const InstructorPage = () => {
               { id: 'materials', label: 'Course Materials', icon: <BookOpen size={18} /> },
               { id: 'courses', label: 'My Courses', icon: <BookOpen size={18} /> },
               { id: 'schedules', label: 'Class Schedules', icon: <Clock size={18} /> },
-              { id: 'announcements', label: 'Announcements', icon: <Megaphone size={18} /> }
+              { id: 'announcements', label: 'Announcements', icon: <Megaphone size={18} /> },
+              { id: 'profile', label: 'My Profile', icon: <UserIcon size={18} /> }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -975,6 +978,10 @@ export const InstructorPage = () => {
                 ))}
               </div>
             </motion.div>
+          )}
+
+          {activeTab === 'profile' && (
+            <ProfileTab />
           )}
         </AnimatePresence>
       </div>

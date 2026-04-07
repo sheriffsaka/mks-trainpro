@@ -51,6 +51,7 @@ import { MOCK_COURSES, MOCK_CATEGORIES, MOCK_FAQS, MOCK_ANNOUNCEMENTS, MOCK_QUIZ
 
 import { adminService } from '../services/adminService';
 import { progressService } from '../services/progressService';
+import { ProfileTab } from '../components/ProfileTab';
 
 // --- Components ---
 
@@ -98,276 +99,6 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
     </div>
   </Modal>
 );
-
-const DiagnosticTab = () => {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [testResult, setTestResult] = useState<any>(null);
-  const [testing, setTesting] = useState(false);
-
-  const [initializingStorage, setInitializingStorage] = useState(false);
-  const [storageResult, setStorageResult] = useState<any>(null);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const setupStorage = async () => {
-    try {
-      setInitializingStorage(true);
-      setStorageResult(null);
-      const buckets = [
-        { id: 'training-assets', public: true },
-        { id: 'payment-proofs', public: false },
-        { id: 'site-assets', public: true }
-      ];
-      const results: any = {};
-      
-      for (const b of buckets) {
-        // Try to create bucket
-        const { error: createError } = await supabase.storage.createBucket(b.id, {
-          public: b.public,
-          fileSizeLimit: 5242880,
-        });
-        
-        if (createError && createError.message.toLowerCase().includes('already exists')) {
-          // Update bucket to match intended public status
-          const { error: updateError } = await supabase.storage.updateBucket(b.id, {
-            public: b.public
-          });
-          if (updateError) {
-            const isRLS = updateError.message.toLowerCase().includes('row-level security');
-            results[b.id] = { 
-              status: isRLS ? 'warning' : 'info', 
-              message: isRLS 
-                ? `Bucket exists but RLS prevents updating it. This is normal if you haven't run the SQL setup script yet.` 
-                : `Bucket already exists but could not be updated to ${b.public ? 'public' : 'private'}.` 
-            };
-          } else {
-            results[b.id] = { status: 'success', message: `Bucket already existed and was updated to ${b.public ? 'public' : 'private'}` };
-          }
-        } else if (createError) {
-          const isRLS = createError.message.toLowerCase().includes('row-level security');
-          results[b.id] = { 
-            status: isRLS ? 'warning' : 'error', 
-            message: isRLS 
-              ? `RLS prevents bucket creation. Please run the SQL setup script in your Supabase dashboard.` 
-              : createError.message 
-          };
-        } else {
-          results[b.id] = { status: 'success', message: 'Bucket created successfully' };
-        }
-      }
-      
-      setStorageResult(results);
-    } catch (err: any) {
-      setStorageResult({ error: err.message || String(err) });
-    } finally {
-      setInitializingStorage(false);
-    }
-  };
-
-  const fetchData = async () => {
-    setLoading(true);
-    const result = await adminService.getDiagnosticData();
-    setData(result);
-    setLoading(false);
-  };
-
-  const runTestFetch = async () => {
-    try {
-      setTesting(true);
-      setTestResult(null);
-      
-      // 1. Simple fetch (no joins)
-      const { data: simpleEnrollments, error: simpleError } = await supabase.from('enrollments').select('*').limit(1);
-      
-      // 1b. Join test (single join)
-      const { data: joinTest, error: joinError } = await supabase.from('enrollments').select('*, courses!course_id(*)').limit(1);
-      
-      // 1c. Profile join test
-      const { data: profileJoinTest, error: profileJoinError } = await supabase.from('enrollments').select('*, profiles!enrollments_user_id_fkey(*)').limit(1);
-      
-      // 1d. Payments join test
-      const { data: paymentsJoinTest, error: paymentsJoinError } = await supabase.from('enrollments').select('*, payments!payments_enrollment_id_fkey(*)').limit(1);
-      
-      // 2. Full fetch (with joins)
-      let enrollmentsData: any = [];
-      let enrollmentsError: any = null;
-      try {
-        const { data, error } = await supabase
-          .from('enrollments')
-          .select('*, profiles!enrollments_user_id_fkey(*), courses!enrollments_course_id_fkey(*), payments!payments_enrollment_id_fkey(*)')
-          .order('enrolled_at', { ascending: false });
-        enrollmentsData = data;
-        enrollmentsError = error;
-      } catch (e: any) {
-        enrollmentsError = e;
-      }
-
-      const payments = await adminService.getAllPayments();
-      const installments = await adminService.getInstallments();
-      
-      // 3. Profile check
-      const { data: profiles, error: profileError } = await supabase.from('profiles').select('*').eq('id', (await supabase.auth.getUser()).data.user?.id).limit(1);
-      const profileData = profiles && profiles.length > 0 ? profiles[0] : null;
-      
-      setTestResult({
-        auth: {
-          email: (await supabase.auth.getUser()).data.user?.email,
-          id: (await supabase.auth.getUser()).data.user?.id,
-        },
-        profile: {
-          data: profileData,
-          error: profileError?.message
-        },
-        simpleFetch: {
-          enrollmentsCount: simpleEnrollments?.length || 0,
-          error: simpleError?.message
-        },
-        joinTest: {
-          success: !!joinTest && joinTest.length > 0,
-          hasCourseData: !!joinTest?.[0]?.courses,
-          error: joinError?.message
-        },
-        profileJoinTest: {
-          success: !!profileJoinTest && profileJoinTest.length > 0,
-          hasProfileData: !!profileJoinTest?.[0]?.profiles,
-          error: profileJoinError?.message
-        },
-        paymentsJoinTest: {
-          success: !!paymentsJoinTest && paymentsJoinTest.length > 0,
-          hasPaymentsData: !!paymentsJoinTest?.[0]?.payments,
-          error: paymentsJoinError?.message
-        },
-        fullFetch: {
-          enrollments: { 
-            count: enrollmentsData?.length || 0, 
-            sample: enrollmentsData?.slice(0, 1),
-            error: enrollmentsError?.message || enrollmentsError
-          },
-          payments: { count: payments?.length || 0, sample: payments?.slice(0, 1) },
-          installments: { count: installments?.length || 0, sample: installments?.slice(0, 1) }
-        }
-      });
-    } catch (err: any) {
-      setTestResult({ error: err.message || String(err) });
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-brand-blue" /></div>;
-
-  return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-900">System Diagnostics</h2>
-        <button onClick={fetchData} className="p-2 bg-slate-100 rounded-lg hover:bg-slate-200"><Activity size={20} /></button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {data?.counts && Object.entries(data.counts).map(([key, value]: any) => (
-          <div key={key} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-            <p className="text-slate-500 text-sm capitalize">{key}</p>
-            <h3 className="text-2xl font-bold text-slate-900">{value}</h3>
-          </div>
-        ))}
-      </div>
-
-      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">
-        <h3 className="text-lg font-bold text-slate-900">Current Session</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div className="p-4 bg-slate-50 rounded-2xl">
-            <p className="text-slate-500">Supabase Configured</p>
-            <p className="font-mono font-bold">{isSupabaseConfigured ? 'Yes' : 'No'}</p>
-          </div>
-          <div className="p-4 bg-slate-50 rounded-2xl">
-            <p className="text-slate-500">Auth User ID</p>
-            <p className="font-mono font-bold">{data?.currentUser?.id || 'N/A'}</p>
-          </div>
-          <div className="p-4 bg-slate-50 rounded-2xl">
-            <p className="text-slate-500">Auth Email</p>
-            <p className="font-bold">{data?.currentUser?.email || 'N/A'}</p>
-          </div>
-          <div className="p-4 bg-slate-50 rounded-2xl">
-            <p className="text-slate-500">Profile Role</p>
-            <p className="font-bold capitalize">{data?.currentUser?.profile?.role || 'No Profile Found'}</p>
-          </div>
-          <div className="p-4 bg-slate-50 rounded-2xl">
-            <p className="text-slate-500">Supabase Configured</p>
-            <p className="font-bold">{isSupabaseConfigured ? 'Yes' : 'No'}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100">
-        <div className="flex gap-3 text-amber-800">
-          <AlertCircle className="shrink-0" />
-          <div>
-            <h4 className="font-bold">Troubleshooting Data Visibility</h4>
-            <p className="text-sm mt-1">If you see data in Supabase but not here, check if:</p>
-            <ul className="text-sm list-disc list-inside mt-2 space-y-1">
-              <li>The current user's email matches the admin email in the security rules.</li>
-              <li>The enrollments point to valid course IDs and user IDs.</li>
-              <li>The RLS policies have been correctly applied in the Supabase SQL Editor.</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-bold text-slate-900">Storage Setup</h3>
-          <button 
-            onClick={setupStorage}
-            disabled={initializingStorage}
-            className="px-4 py-2 bg-brand-blue text-white rounded-xl text-xs font-bold hover:bg-brand-blue-hover transition-all disabled:opacity-50 flex items-center gap-2"
-          >
-            {initializingStorage ? <Loader2 className="animate-spin" size={14} /> : <Database size={14} />}
-            {initializingStorage ? 'Initializing...' : 'Initialize Storage Buckets'}
-          </button>
-        </div>
-        <p className="text-sm text-slate-500">
-          Click the button above to ensure the required storage buckets (<code className="bg-slate-100 px-1 rounded">training-assets</code>, <code className="bg-slate-100 px-1 rounded">payment-proofs</code>, and <code className="bg-slate-100 px-1 rounded">site-assets</code>) are created in your Supabase instance.
-        </p>
-        <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-xs text-amber-800">
-          <p className="font-bold mb-1 flex items-center gap-1"><AlertCircle size={14} /> Note on Permissions</p>
-          <p>If the button fails with a "Row-level security policy" error, it means your Supabase project restricts bucket management via the API. In this case, please run the <code className="bg-amber-100 px-1 rounded">supabase_storage_setup.sql</code> script in your Supabase SQL Editor or create the buckets manually in the Storage dashboard.</p>
-        </div>
-        
-        {storageResult && (
-          <div className="bg-slate-900 rounded-2xl p-6 overflow-hidden">
-            <pre className="text-xs text-emerald-400 font-mono overflow-x-auto">
-              {JSON.stringify(storageResult, null, 2)}
-            </pre>
-          </div>
-        )}
-      </div>
-
-      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-bold text-slate-900">Data Fetch Test</h3>
-          <button 
-            onClick={runTestFetch}
-            disabled={testing}
-            className="px-4 py-2 bg-brand-blue text-white rounded-xl text-xs font-bold hover:bg-brand-blue-hover transition-all disabled:opacity-50"
-          >
-            {testing ? 'Testing...' : 'Run Test Fetch'}
-          </button>
-        </div>
-        
-        {testResult && (
-          <div className="bg-slate-900 rounded-2xl p-6 overflow-hidden">
-            <pre className="text-xs text-emerald-400 font-mono overflow-x-auto">
-              {JSON.stringify(testResult, null, 2)}
-            </pre>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
 
 const AttendanceTab = ({ courses }: { courses: any[] }) => {
   const [selectedCourse, setSelectedCourse] = useState('');
@@ -4441,7 +4172,7 @@ export const AdminPage = () => {
     { id: 'announcements', label: 'Announcements', icon: <Megaphone size={20} />, roles: ['admin', 'instructor'] },
     { id: 'reports', label: 'Reports', icon: <BarChart3 size={20} />, roles: ['admin'] },
     { id: 'cms', label: 'CMS', icon: <Settings size={20} />, roles: ['admin'] },
-    { id: 'diagnostics', label: 'Diagnostics', icon: <Activity size={20} />, roles: ['admin', 'instructor'] }
+    { id: 'profile', label: 'My Profile', icon: <Shield size={20} />, roles: ['admin', 'instructor'] }
   ].filter(tab => tab.roles.includes(profile?.role || (isAdmin ? 'admin' : 'instructor')));
 
   if (!user || !isAdmin) {
@@ -4563,10 +4294,10 @@ export const AdminPage = () => {
             {activeTab === 'announcements' && <AnnouncementsTab />}
             {activeTab === 'reports' && <ReportsTab stats={stats} />}
             {activeTab === 'cms' && <CMSTab handleSeed={handleSeed} seeding={seeding} />}
-            {activeTab === 'diagnostics' && <DiagnosticTab />}
+            {activeTab === 'profile' && <ProfileTab />}
             
             {/* Placeholder for other tabs */}
-            {!['overview', 'courses', 'enrollments', 'users', 'payments', 'installments', 'progress', 'certificates', 'quizzes', 'announcements', 'reports', 'cms', 'attendance', 'schedules', 'assessments', 'assignments', 'certificate-templates', 'diagnostics'].includes(activeTab) && (
+            {!['overview', 'courses', 'enrollments', 'users', 'payments', 'installments', 'progress', 'certificates', 'quizzes', 'announcements', 'reports', 'cms', 'attendance', 'schedules', 'assessments', 'assignments', 'certificate-templates', 'profile'].includes(activeTab) && (
               <div className="bg-white rounded-[3rem] border border-slate-100 p-20 text-center shadow-sm">
                 <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-8">
                   {tabs.find(t => t.id === activeTab)?.icon}
