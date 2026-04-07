@@ -17,6 +17,7 @@ import {
   Plus,
   Edit,
   Trash2,
+  Upload,
   Image as ImageIcon,
   Video,
   Play,
@@ -75,13 +76,14 @@ export const InstructorPage = () => {
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<'course' | 'schedule' | 'announcement' | 'material' | 'bulk-quiz'>('course');
+  const [modalType, setModalType] = useState<'course' | 'schedule' | 'announcement' | 'material' | 'bulk-quiz' | 'quiz'>('course');
   const [editingItem, setEditingItem] = useState<any>(null);
   const [modalSubTab, setModalSubTab] = useState<'general' | 'curriculum'>('general');
   const [courseModules, setCourseModules] = useState<any[]>([]);
   const [courseMaterials, setCourseMaterials] = useState<any[]>([]);
   const [bulkQuizText, setBulkQuizText] = useState('');
   const [isBulkUploading, setIsBulkUploading] = useState(false);
+  const [quizQuestions, setQuizQuestions] = useState<any[]>([]);
 
   // Attendance State
   const [selectedSession, setSelectedSession] = useState('Session 1');
@@ -99,6 +101,7 @@ export const InstructorPage = () => {
   const [schedules, setSchedules] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
+  const [quizzes, setQuizzes] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -124,14 +127,25 @@ export const InstructorPage = () => {
     if (activeTab === 'announcements') fetchAnnouncements();
     if (activeTab === 'courses') fetchInitialData();
     if (activeTab === 'materials') fetchMaterials();
+    if (activeTab === 'quizzes') fetchQuizzes();
   }, [activeTab]);
 
   useEffect(() => {
-    if (selectedCourse && (activeTab === 'attendance' || activeTab === 'assessments' || activeTab === 'assignments' || activeTab === 'materials')) {
+    if (selectedCourse && (activeTab === 'attendance' || activeTab === 'assessments' || activeTab === 'assignments' || activeTab === 'materials' || activeTab === 'quizzes')) {
       fetchStudents();
       if (activeTab === 'materials') fetchMaterials();
+      if (activeTab === 'quizzes') fetchQuizzes();
     }
   }, [selectedCourse, activeTab]);
+
+  const fetchQuizzes = async () => {
+    try {
+      const data = await adminService.getQuizzesByCourse(selectedCourse);
+      setQuizzes(data || []);
+    } catch (err) {
+      console.error('Error fetching quizzes:', err);
+    }
+  };
 
   const fetchMaterials = async () => {
     try {
@@ -331,8 +345,16 @@ export const InstructorPage = () => {
 
   const handleBulkQuizUpload = async (e: React.FormEvent) => {
     e.preventDefault();
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const quizTitle = formData.get('quiz_title') as string;
+    const passingScore = parseInt(formData.get('passing_score') as string) || 70;
+
     if (!selectedCourse) {
       alert('Please select a course first');
+      return;
+    }
+    if (!quizTitle) {
+      alert('Please provide a quiz title');
       return;
     }
     if (!bulkQuizText.trim()) return;
@@ -341,35 +363,101 @@ export const InstructorPage = () => {
       setIsBulkUploading(true);
       // Format: Question, Option A, Option B, Option C, Option D, Correct Option (A/B/C/D)
       const lines = bulkQuizText.split('\n').filter(line => line.trim());
-      const quizzes = lines.map(line => {
+      const questions = lines.map(line => {
         const parts = line.split(',').map(s => s.trim());
         if (parts.length < 6) return null;
         
         const [question, a, b, c, d, correct] = parts;
         return {
-          course_id: selectedCourse,
-          title: question,
+          question,
           options: [a, b, c, d],
-          correct_option: ['A', 'B', 'C', 'D'].indexOf(correct.toUpperCase()),
-          points: 10
+          correct_option: ['A', 'B', 'C', 'D'].indexOf(correct.toUpperCase())
         };
-      }).filter((q): q is any => q !== null && q.title && q.options.every(o => o) && q.correct_option !== -1);
+      }).filter((q): q is any => q !== null && q.question && q.options.every(o => o) && q.correct_option !== -1);
 
-      if (quizzes.length === 0) {
-        alert('No valid quizzes found. Format: Question, Option A, Option B, Option C, Option D, Correct Option (A/B/C/D)');
+      if (questions.length === 0) {
+        alert('No valid questions found. Format: Question, Option A, Option B, Option C, Option D, Correct Option (A/B/C/D)');
         return;
       }
 
-      await adminService.bulkCreateQuizzes(quizzes);
-      alert(`Successfully uploaded ${quizzes.length} quizzes`);
+      const quizData = {
+        course_id: selectedCourse,
+        title: quizTitle,
+        description: `Bulk uploaded quiz with ${questions.length} questions.`,
+        questions: questions,
+        passing_score: passingScore
+      };
+
+      await adminService.createQuiz(quizData);
+      alert(`Successfully created quiz "${quizTitle}" with ${questions.length} questions`);
       setBulkQuizText('');
       setIsModalOpen(false);
+      fetchQuizzes();
     } catch (err) {
       console.error('Error uploading bulk quizzes:', err);
       alert('Failed to upload quizzes');
     } finally {
       setIsBulkUploading(false);
     }
+  };
+
+  const handleQuizSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    
+    if (!selectedCourse) {
+      alert('Please select a course first');
+      return;
+    }
+
+    if (quizQuestions.length === 0) {
+      alert('Please add at least one question');
+      return;
+    }
+
+    const quizData = {
+      course_id: selectedCourse,
+      title: formData.get('title'),
+      description: formData.get('description'),
+      passing_score: parseInt(formData.get('passing_score') as string) || 70,
+      questions: quizQuestions,
+    };
+
+    try {
+      if (editingItem) {
+        await adminService.updateQuiz(editingItem.id, quizData);
+      } else {
+        await adminService.createQuiz(quizData);
+      }
+      alert(`Quiz ${editingItem ? 'updated' : 'created'} successfully!`);
+      setIsModalOpen(false);
+      setEditingItem(null);
+      setQuizQuestions([]);
+      fetchQuizzes();
+    } catch (error: any) {
+      console.error('Error saving quiz:', error);
+      alert(`Failed to save quiz: ${error.message || 'Unknown error'}`);
+    }
+  };
+
+  const addQuizQuestion = () => {
+    setQuizQuestions([...quizQuestions, { question: '', options: ['', '', '', ''], correct_option: 0 }]);
+  };
+
+  const updateQuizQuestion = (index: number, field: string, value: any) => {
+    const newQuestions = [...quizQuestions];
+    newQuestions[index] = { ...newQuestions[index], [field]: value };
+    setQuizQuestions(newQuestions);
+  };
+
+  const updateQuizOption = (qIndex: number, oIndex: number, value: string) => {
+    const newQuestions = [...quizQuestions];
+    newQuestions[qIndex].options[oIndex] = value;
+    setQuizQuestions(newQuestions);
+  };
+
+  const removeQuizQuestion = (index: number) => {
+    setQuizQuestions(quizQuestions.filter((_, i) => i !== index));
   };
 
   const handleMaterialSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -465,6 +553,7 @@ export const InstructorPage = () => {
             {[
               { id: 'attendance', label: 'Attendance', icon: <Calendar size={18} /> },
               { id: 'assessments', label: 'Assessments', icon: <FileQuestion size={18} /> },
+              { id: 'quizzes', label: 'Quizzes', icon: <FileQuestion size={18} /> },
               { id: 'assignments', label: 'Assignments', icon: <FileText size={18} /> },
               { id: 'materials', label: 'Course Materials', icon: <BookOpen size={18} /> },
               { id: 'courses', label: 'My Courses', icon: <BookOpen size={18} /> },
@@ -492,7 +581,7 @@ export const InstructorPage = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Course Selection for Student-related tabs */}
-        {(activeTab === 'attendance' || activeTab === 'assessments' || activeTab === 'assignments' || activeTab === 'materials') && (
+        {(activeTab === 'attendance' || activeTab === 'assessments' || activeTab === 'assignments' || activeTab === 'materials' || activeTab === 'quizzes') && (
           <div className="mb-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="bg-brand-blue/10 p-3 rounded-2xl text-brand-blue">
@@ -980,6 +1069,97 @@ export const InstructorPage = () => {
             </motion.div>
           )}
 
+          {activeTab === 'quizzes' && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="space-y-8"
+            >
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-slate-900">Course Quizzes</h2>
+                <div className="flex gap-4">
+                  <button 
+                    onClick={() => { setModalType('bulk-quiz'); setIsModalOpen(true); }}
+                    className="bg-white text-slate-700 border border-slate-200 px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-slate-50 transition-all"
+                  >
+                    <Upload size={20} /> Bulk Upload
+                  </button>
+                  <button 
+                    onClick={() => { setEditingItem(null); setQuizQuestions([]); setModalType('quiz'); setIsModalOpen(true); }}
+                    className="bg-brand-blue text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-blue-hover transition-all"
+                  >
+                    <Plus size={20} /> New Quiz
+                  </button>
+                </div>
+              </div>
+
+              {!selectedCourse ? (
+                <div className="bg-white p-20 rounded-[3rem] border border-slate-100 text-center shadow-sm">
+                  <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Filter className="text-slate-400" size={32} />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">Select a Course</h3>
+                  <p className="text-slate-500">Please select a course from the dropdown above to manage its quizzes.</p>
+                </div>
+              ) : quizzes.length === 0 ? (
+                <div className="bg-white p-20 rounded-[3rem] border border-slate-100 text-center shadow-sm">
+                  <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <FileQuestion className="text-slate-400" size={32} />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">No Quizzes Yet</h3>
+                  <p className="text-slate-500">Create your first quiz or upload in bulk to get started.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {quizzes.map((quiz) => (
+                    <div key={quiz.id} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all group">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="bg-brand-blue/10 p-3 rounded-2xl text-brand-blue">
+                          <FileQuestion size={24} />
+                        </div>
+                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => { 
+                              setEditingItem(quiz); 
+                              setQuizQuestions(quiz.questions || []);
+                              setModalType('quiz'); 
+                              setIsModalOpen(true); 
+                            }} 
+                            className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-brand-blue transition-colors"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button 
+                            onClick={async () => { 
+                              if(confirm('Delete this quiz?')) { 
+                                await adminService.deleteQuiz(quiz.id); 
+                                fetchQuizzes(); 
+                              } 
+                            }} 
+                            className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-brand-red transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                      <h4 className="font-bold text-slate-900 mb-1">{quiz.title}</h4>
+                      <p className="text-sm text-slate-500 mb-4 line-clamp-2">{quiz.description || 'No description provided.'}</p>
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                          {quiz.questions?.length || 0} Questions
+                        </span>
+                        <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
+                          Pass: {quiz.passing_score}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
           {activeTab === 'profile' && (
             <ProfileTab />
           )}
@@ -1342,15 +1522,104 @@ export const InstructorPage = () => {
             </div>
           </form>
         )}
+
+        {modalType === 'quiz' && (
+          <form onSubmit={handleQuizSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Quiz Title</label>
+                <input name="title" type="text" defaultValue={editingItem?.title} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Passing Score (%)</label>
+                <input name="passing_score" type="number" defaultValue={editingItem?.passing_score || 70} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
+              <textarea name="description" rows={2} defaultValue={editingItem?.description} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none resize-none" />
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h4 className="font-bold text-slate-900">Questions ({quizQuestions.length})</h4>
+                <button type="button" onClick={addQuizQuestion} className="text-brand-blue text-sm font-bold flex items-center gap-1">
+                  <Plus size={16} /> Add Question
+                </button>
+              </div>
+              
+              <div className="max-h-[400px] overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+                {quizQuestions.map((q, qIdx) => (
+                  <div key={qIdx} className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4 relative">
+                    <button 
+                      type="button" 
+                      onClick={() => removeQuizQuestion(qIdx)}
+                      className="absolute top-4 right-4 text-slate-400 hover:text-brand-red transition-colors"
+                    >
+                      <X size={18} />
+                    </button>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Question {qIdx + 1}</label>
+                      <input 
+                        type="text" 
+                        value={q.question}
+                        onChange={(e) => updateQuizQuestion(qIdx, 'question', e.target.value)}
+                        placeholder="Enter your question here"
+                        className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl outline-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {q.options.map((opt: string, oIdx: number) => (
+                        <div key={oIdx} className="flex items-center gap-2">
+                          <input 
+                            type="radio" 
+                            name={`correct-${qIdx}`}
+                            checked={q.correct_option === oIdx}
+                            onChange={() => updateQuizQuestion(qIdx, 'correct_option', oIdx)}
+                          />
+                          <input 
+                            type="text" 
+                            value={opt}
+                            onChange={(e) => updateQuizOption(qIdx, oIdx, e.target.value)}
+                            placeholder={`Option ${String.fromCharCode(65 + oIdx)}`}
+                            className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-4">
+              <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-3 font-bold text-slate-600">Cancel</button>
+              <button type="submit" className="bg-brand-blue text-white px-10 py-3 rounded-xl font-bold">
+                {editingItem ? 'Update Quiz' : 'Create Quiz'}
+              </button>
+            </div>
+          </form>
+        )}
+
         {modalType === 'bulk-quiz' && (
           <form onSubmit={handleBulkQuizUpload} className="space-y-6">
             <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl">
               <p className="text-sm text-amber-800 font-medium flex items-center gap-2">
-                <AlertCircle size={16} /> Bulk Upload Format
+                <AlertCircle size={16} /> Bulk Upload Format (CSV)
               </p>
               <p className="text-xs text-amber-700 mt-1">
                 Each line should be: <code className="bg-white/50 px-1 rounded">Question, Option A, Option B, Option C, Option D, Correct (A/B/C/D)</code>
               </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Quiz Title</label>
+                <input name="quiz_title" type="text" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Passing Score (%)</label>
+                <input name="passing_score" type="number" defaultValue={70} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Quiz Data (CSV Format)</label>
@@ -1369,7 +1638,7 @@ export const InstructorPage = () => {
               className="w-full bg-brand-blue text-white py-4 rounded-xl font-bold hover:bg-brand-blue/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isBulkUploading ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-              Upload Quizzes
+              Create Quiz from CSV
             </button>
           </form>
         )}
