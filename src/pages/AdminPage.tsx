@@ -4075,6 +4075,7 @@ export const AdminPage = () => {
   const { user, profile } = useAuthStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  const [activeCategory, setActiveCategory] = useState('dashboard');
   const [courses, setCourses] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [recentEnrollments, setRecentEnrollments] = useState<any[]>([]);
@@ -4188,25 +4189,45 @@ export const AdminPage = () => {
   };
 
   const tabs = [
-    { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={20} />, roles: ['admin', 'instructor'] },
-    { id: 'courses', label: 'Courses', icon: <BookOpen size={20} />, roles: ['admin', 'instructor'] },
-    { id: 'enrollments', label: 'Enrollments', icon: <CheckCircle2 size={20} />, roles: ['admin', 'instructor'] },
-    { id: 'users', label: 'Users', icon: <Users size={20} />, roles: ['admin'] },
-    { id: 'payments', label: 'Payments', icon: <CreditCard size={20} />, roles: ['admin'] },
-    { id: 'installments', label: 'Installments', icon: <Clock size={20} />, roles: ['admin'] },
-    { id: 'attendance', label: 'Attendance', icon: <ClipboardList size={20} />, roles: ['admin', 'instructor'] },
-    { id: 'schedules', label: 'Schedules', icon: <Calendar size={20} />, roles: ['admin', 'instructor'] },
-    { id: 'assessments', label: 'Assessments', icon: <GraduationCap size={20} />, roles: ['admin', 'instructor'] },
-    { id: 'assignments', label: 'Assignments', icon: <FileCheck size={20} />, roles: ['admin', 'instructor'] },
-    { id: 'certificates', label: 'Certificates', icon: <Award size={20} />, roles: ['admin'] },
-    { id: 'certificate-templates', label: 'Cert. Templates', icon: <Award size={20} />, roles: ['admin'] },
-    { id: 'progress', label: 'Progress', icon: <BarChart3 size={20} />, roles: ['admin', 'instructor'] },
-    { id: 'quizzes', label: 'Quizzes', icon: <FileQuestion size={20} />, roles: ['admin', 'instructor'] },
-    { id: 'announcements', label: 'Announcements', icon: <Megaphone size={20} />, roles: ['admin', 'instructor'] },
-    { id: 'reports', label: 'Reports', icon: <BarChart3 size={20} />, roles: ['admin'] },
-    { id: 'cms', label: 'CMS', icon: <Settings size={20} />, roles: ['admin'] },
-    { id: 'profile', label: 'My Profile', icon: <Shield size={20} />, roles: ['admin', 'instructor'] }
+    { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={20} />, roles: ['admin', 'instructor'], category: 'dashboard' },
+    { id: 'progress', label: 'Progress', icon: <BarChart3 size={20} />, roles: ['admin', 'instructor'], category: 'dashboard' },
+    { id: 'reports', label: 'Reports', icon: <BarChart3 size={20} />, roles: ['admin'], category: 'dashboard' },
+    
+    { id: 'courses', label: 'Courses', icon: <BookOpen size={20} />, roles: ['admin', 'instructor'], category: 'learning' },
+    { id: 'quizzes', label: 'Quizzes', icon: <FileQuestion size={20} />, roles: ['admin', 'instructor'], category: 'learning' },
+    { id: 'assignments', label: 'Assignments', icon: <FileCheck size={20} />, roles: ['admin', 'instructor'], category: 'learning' },
+    { id: 'assessments', label: 'Assessments', icon: <GraduationCap size={20} />, roles: ['admin', 'instructor'], category: 'learning' },
+    { id: 'attendance', label: 'Attendance', icon: <ClipboardList size={20} />, roles: ['admin', 'instructor'], category: 'learning' },
+    { id: 'schedules', label: 'Schedules', icon: <Calendar size={20} />, roles: ['admin', 'instructor'], category: 'learning' },
+    
+    { id: 'users', label: 'Users', icon: <Users size={20} />, roles: ['admin'], category: 'students' },
+    { id: 'enrollments', label: 'Enrollments', icon: <CheckCircle2 size={20} />, roles: ['admin', 'instructor'], category: 'students' },
+    { id: 'certificates', label: 'Certificates', icon: <Award size={20} />, roles: ['admin'], category: 'students' },
+    { id: 'certificate-templates', label: 'Cert. Templates', icon: <Award size={20} />, roles: ['admin'], category: 'students' },
+    
+    { id: 'payments', label: 'Payments', icon: <CreditCard size={20} />, roles: ['admin'], category: 'finance' },
+    { id: 'installments', label: 'Installments', icon: <Clock size={20} />, roles: ['admin'], category: 'finance' },
+    
+    { id: 'announcements', label: 'Announcements', icon: <Megaphone size={20} />, roles: ['admin', 'instructor'], category: 'system' },
+    { id: 'cms', label: 'CMS', icon: <Settings size={20} />, roles: ['admin'], category: 'system' },
+    { id: 'profile', label: 'My Profile', icon: <Shield size={20} />, roles: ['admin', 'instructor'], category: 'system' }
   ].filter(tab => tab.roles.includes(profile?.role || (isAdmin ? 'admin' : 'instructor')));
+
+  const categories = [
+    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+    { id: 'learning', label: 'Learning', icon: <BookOpen size={20} /> },
+    { id: 'students', label: 'Students', icon: <Users size={20} /> },
+    { id: 'finance', label: 'Finance', icon: <CreditCard size={20} /> },
+    { id: 'system', label: 'System', icon: <Settings size={20} /> },
+  ].filter(cat => tabs.some(tab => tab.category === cat.id));
+
+  const categoryTabs = tabs.filter(tab => tab.category === activeCategory);
+
+  const handleCategoryClick = (catId: string) => {
+    setActiveCategory(catId);
+    const firstTab = tabs.find(t => t.category === catId);
+    if (firstTab) setActiveTab(firstTab.id);
+  };
 
   if (!user || !isAdmin) {
     return (
@@ -4224,46 +4245,98 @@ export const AdminPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Top Navigation Tabs */}
-      <div className="bg-white border-b border-slate-200 sticky top-16 z-30 overflow-x-auto no-scrollbar">
-        <div className="max-w-7xl mx-auto px-10">
-          <div className="flex items-center gap-2 py-4">
-            {tabs.map((tab) => (
+    <div className="min-h-screen bg-slate-50 flex">
+      {/* Sidebar for Categories */}
+      <aside className="w-64 bg-white border-r border-slate-200 hidden lg:flex flex-col sticky top-16 h-[calc(100vh-64px)]">
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 bg-brand-blue rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-blue/20">
+              <Settings size={20} />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">Admin Panel</h2>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Control Center</p>
+            </div>
+          </div>
+
+          <nav className="space-y-1.5">
+            {categories.map((cat) => (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all whitespace-nowrap shrink-0 ${
-                  activeTab === tab.id 
+                key={cat.id}
+                onClick={() => handleCategoryClick(cat.id)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all relative group ${
+                  activeCategory === cat.id 
                     ? 'bg-brand-blue text-white shadow-lg shadow-brand-blue/20' 
-                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                 }`}
               >
-                {tab.icon}
-                {tab.label}
+                {cat.icon}
+                {cat.label}
+                {activeCategory === cat.id && (
+                  <motion.div 
+                    layoutId="activeCategoryIndicator"
+                    className="absolute right-2 w-1.5 h-1.5 bg-white rounded-full"
+                  />
+                )}
               </button>
             ))}
+          </nav>
+        </div>
+        
+        <div className="mt-auto p-6 border-t border-slate-100">
+          <div className="bg-slate-50 p-4 rounded-2xl flex items-center gap-3">
+            <div className="w-10 h-10 bg-brand-blue rounded-xl flex items-center justify-center text-white font-bold shadow-md">
+              {profile?.full_name?.charAt(0) || user.email?.charAt(0)}
+            </div>
+            <div className="overflow-hidden">
+              <p className="text-sm font-bold text-slate-900 truncate">{profile?.full_name || 'Admin User'}</p>
+              <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
+            </div>
           </div>
         </div>
-      </div>
+      </aside>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto p-10">
-        <header className="flex justify-between items-end mb-12">
-          <div>
-            <div className="flex items-center gap-2 text-brand-blue font-bold text-xs uppercase tracking-widest mb-2">
-              <ChevronRight size={14} />
-              Admin Dashboard / {activeTab}
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top Sub-Tabs (Two Rows if many) */}
+        <div className="bg-white border-b border-slate-200 sticky top-16 z-30">
+          <div className="max-w-7xl mx-auto px-8 py-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {categoryTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                    activeTab === tab.id 
+                      ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' 
+                      : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
             </div>
-            <h1 className="text-4xl font-bold text-slate-900 capitalize">{activeTab}</h1>
           </div>
-          <div className="flex gap-3">
-            <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl flex items-center gap-3 text-slate-500">
-              <Clock size={18} />
-              <span className="text-sm font-bold">{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+        </div>
+
+        {/* Main Content Scrollable */}
+        <main className="flex-1 p-10">
+          <header className="flex justify-between items-end mb-12">
+            <div>
+              <div className="flex items-center gap-2 text-brand-blue font-bold text-xs uppercase tracking-widest mb-2">
+                <ChevronRight size={14} />
+                {activeCategory} / {activeTab}
+              </div>
+              <h1 className="text-4xl font-bold text-slate-900 capitalize">{activeTab.replace('-', ' ')}</h1>
             </div>
-          </div>
-        </header>
+            <div className="flex gap-3">
+              <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl flex items-center gap-3 text-slate-500">
+                <Clock size={18} />
+                <span className="text-sm font-bold">{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+              </div>
+            </div>
+          </header>
 
         <AnimatePresence mode="wait">
           <motion.div
@@ -4327,7 +4400,8 @@ export const AdminPage = () => {
           confirmText="Proceed with Seeding"
           confirmColor="bg-amber-600"
         />
-      </main>
+        </main>
+      </div>
     </div>
   );
 };
