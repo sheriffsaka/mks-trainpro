@@ -467,12 +467,23 @@ export const InstructorPage = () => {
       return;
     }
     const formData = new FormData(e.currentTarget);
+    const course_id = formData.get('course_id') as string;
+    const title = formData.get('title') as string;
+    const description = formData.get('description') as string;
+    const file_url = formData.get('file_url') as string;
+    const type = formData.get('type') as string;
+
+    if (!course_id || !title || !file_url || !type) {
+      alert('Please fill in all required fields.');
+      return;
+    }
+
     const materialData = {
-      course_id: formData.get('course_id'),
-      title: formData.get('title'),
-      description: formData.get('description'),
-      file_url: formData.get('file_url'),
-      type: formData.get('type'),
+      course_id,
+      title,
+      description,
+      file_url,
+      type,
       instructor_id: user.id
     };
 
