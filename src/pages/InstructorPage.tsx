@@ -942,19 +942,26 @@ export const InstructorPage = () => {
                   >
                     <FileQuestion size={20} /> Bulk Quiz Upload
                   </button>
-                  <button 
-                    onClick={() => { 
-                      setEditingItem(null); 
-                      setCourseModules([]);
-                      setCourseMaterials([]);
-                      setModalSubTab('general');
-                      setModalType('course'); 
-                      setIsModalOpen(true); 
-                    }}
-                    className="bg-brand-blue text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-blue-hover transition-all"
-                  >
-                    <Plus size={20} /> Add New Course
-                  </button>
+                    <button 
+                      onClick={async () => { 
+                        setEditingItem(null); 
+                        setCourseModules([]);
+                        setModalSubTab('general');
+                        setModalType('course'); 
+                        setIsModalOpen(true); 
+
+                        // Fetch all materials for this instructor to allow linking
+                        try {
+                          const materials = await adminService.getCourseMaterials(undefined, user?.id);
+                          setCourseMaterials(materials || []);
+                        } catch (err) {
+                          console.error('Error fetching materials:', err);
+                        }
+                      }}
+                      className="bg-brand-blue text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-brand-blue-hover transition-all"
+                    >
+                      <Plus size={20} /> Add New Course
+                    </button>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -971,13 +978,13 @@ export const InstructorPage = () => {
                     setModalType('course'); 
                     setIsModalOpen(true); 
                     
-                    // Fetch materials for this course
-                    try {
-                      const materials = await adminService.getCourseMaterials(course.id);
-                      setCourseMaterials(materials || []);
-                    } catch (err) {
-                      console.error('Error fetching course materials:', err);
-                    }
+                            // Fetch all materials for this instructor to allow linking
+                            try {
+                              const materials = await adminService.getCourseMaterials(undefined, user?.id);
+                              setCourseMaterials(materials || []);
+                            } catch (err) {
+                              console.error('Error fetching course materials:', err);
+                            }
                   }} 
                   className="p-2 bg-white/90 backdrop-blur-sm rounded-xl text-slate-600 hover:text-brand-blue transition-colors"
                 >
@@ -1281,12 +1288,14 @@ export const InstructorPage = () => {
           <form onSubmit={handleCourseSubmit} className="flex flex-col h-full">
             <div className="flex gap-4 border-b border-slate-100 pb-4 mb-8 shrink-0">
               <button 
+                type="button"
                 onClick={() => setModalSubTab('general')}
                 className={`text-sm font-bold pb-1 border-b-2 transition-all ${modalSubTab === 'general' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
               >
                 General Info
               </button>
               <button 
+                type="button"
                 onClick={() => setModalSubTab('curriculum')}
                 className={`text-sm font-bold pb-1 border-b-2 transition-all ${modalSubTab === 'curriculum' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
               >
@@ -1353,6 +1362,7 @@ export const InstructorPage = () => {
                 <div className="flex justify-between items-center">
                   <h4 className="text-lg font-bold text-slate-900">Course Modules</h4>
                   <button 
+                    type="button"
                     onClick={addModule}
                     className="text-brand-blue font-bold flex items-center gap-2 hover:bg-brand-blue/5 px-4 py-2 rounded-xl transition-all"
                   >
@@ -1374,6 +1384,7 @@ export const InstructorPage = () => {
                           />
                         </div>
                         <button 
+                          type="button"
                           onClick={() => deleteModule(mIdx)}
                           className="p-2 text-slate-400 hover:text-brand-red transition-colors"
                         >
@@ -1448,6 +1459,7 @@ export const InstructorPage = () => {
                               />
                             )}
                             <button 
+                              type="button"
                               onClick={() => deleteLesson(mIdx, lIdx)}
                               className="p-2 text-slate-300 hover:text-brand-red transition-colors opacity-0 group-hover:opacity-100"
                             >
@@ -1456,6 +1468,7 @@ export const InstructorPage = () => {
                           </div>
                         ))}
                         <button 
+                          type="button"
                           onClick={() => addLesson(mIdx)}
                           className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-sm font-bold hover:border-brand-blue hover:text-brand-blue transition-all flex items-center justify-center gap-2"
                         >
