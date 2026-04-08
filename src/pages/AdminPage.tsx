@@ -2522,27 +2522,47 @@ const QuizzesTab = () => {
   );
 };
 
-const CertificateTemplate = ({ studentName, courseTitle, date }: { studentName: string, courseTitle: string, date: string }) => (
-  <div className="w-full aspect-[1.414/1] bg-white border-[12px] border-brand-blue p-12 flex flex-col items-center justify-between text-center relative overflow-hidden">
-    <div className="absolute top-0 left-0 w-32 h-32 bg-brand-blue/10 rounded-br-full" />
-    <div className="absolute bottom-0 right-0 w-32 h-32 bg-brand-blue/10 rounded-tl-full" />
+const CertificateTemplate = ({ studentName, courseTitle, date, templateUrl }: { studentName: string, courseTitle: string, date: string, templateUrl?: string }) => (
+  <div 
+    className="w-full aspect-[1.414/1] bg-white border-[12px] border-brand-blue p-12 flex flex-col items-center justify-between text-center relative overflow-hidden"
+    style={templateUrl ? { 
+      backgroundImage: `url(${templateUrl})`, 
+      backgroundSize: 'cover', 
+      backgroundPosition: 'center',
+      border: 'none'
+    } : {}}
+  >
+    {!templateUrl && (
+      <>
+        <div className="absolute top-0 left-0 w-32 h-32 bg-brand-blue/10 rounded-br-full" />
+        <div className="absolute bottom-0 right-0 w-32 h-32 bg-brand-blue/10 rounded-tl-full" />
+      </>
+    )}
     
-    <div className="space-y-4">
-      <div className="w-20 h-20 bg-brand-blue rounded-2xl mx-auto flex items-center justify-center text-white shadow-xl shadow-brand-blue/20">
-        <Award size={40} />
+    <div className="space-y-4 relative z-10">
+      <div className="flex flex-col items-center gap-4">
+        <img 
+          src="https://res.cloudinary.com/di7okmjsx/image/upload/v1773824665/mkslogo1_svink2.png" 
+          alt="MKS Logo" 
+          className="h-16 w-auto object-contain mb-2"
+          referrerPolicy="no-referrer"
+        />
+        <div className="w-16 h-16 bg-brand-blue rounded-2xl flex items-center justify-center text-white shadow-xl shadow-brand-blue/20">
+          <Award size={32} />
+        </div>
       </div>
       <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Certificate of Completion</h2>
       <p className="text-slate-500 font-medium italic">This is to certify that</p>
     </div>
 
-    <div className="space-y-2">
+    <div className="space-y-2 relative z-10">
       <h1 className="text-5xl font-black text-brand-blue tracking-tight">{studentName}</h1>
       <div className="h-px bg-slate-200 w-64 mx-auto" />
       <p className="text-slate-500 font-medium">has successfully completed the course</p>
       <h3 className="text-2xl font-bold text-slate-900">{courseTitle}</h3>
     </div>
 
-    <div className="w-full flex justify-between items-end">
+    <div className="w-full flex justify-between items-end relative z-10">
       <div className="text-left space-y-1">
         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Date Issued</p>
         <p className="font-bold text-slate-900">{date}</p>
@@ -2565,10 +2585,22 @@ const CertificatesTab = () => {
   const [eligibilityMap, setEligibilityMap] = useState<{[key: string]: boolean}>({});
   const [generating, setGenerating] = useState<string | null>(null);
   const [previewCert, setPreviewCert] = useState<any>(null);
+  const [activeTemplate, setActiveTemplate] = useState<any>(null);
 
   useEffect(() => {
     fetchEnrollments();
+    fetchActiveTemplate();
   }, []);
+
+  const fetchActiveTemplate = async () => {
+    try {
+      const templates = await adminService.getCertificateTemplates();
+      const active = templates.find((t: any) => t.is_active);
+      setActiveTemplate(active);
+    } catch (err) {
+      console.error('Error fetching active template:', err);
+    }
+  };
 
   const fetchEnrollments = async () => {
     try {
@@ -2727,6 +2759,7 @@ const CertificatesTab = () => {
               studentName={previewCert.profiles?.full_name}
               courseTitle={previewCert.courses?.title}
               date={new Date(previewCert.certificates?.[0]?.created_at || new Date()).toLocaleDateString()}
+              templateUrl={activeTemplate?.image_url}
             />
             <div className="flex gap-4">
               <button 
@@ -4191,60 +4224,31 @@ export const AdminPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
-      <aside className="w-72 bg-white border-r border-slate-200 hidden lg:flex flex-col sticky top-16 h-[calc(100vh-64px)]">
-        <div className="p-8">
-          <div className="flex items-center gap-3 mb-10">
-            <div className="w-10 h-10 bg-brand-blue rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-blue/20">
-              <Settings size={20} />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">Admin Panel</h2>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Control Center</p>
-            </div>
-          </div>
-
-          <nav className="space-y-2">
+    <div className="min-h-screen bg-slate-50">
+      {/* Top Navigation Tabs */}
+      <div className="bg-white border-b border-slate-200 sticky top-16 z-30 overflow-x-auto no-scrollbar">
+        <div className="max-w-7xl mx-auto px-10">
+          <div className="flex items-center gap-2 py-4">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all relative group ${
+                className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all whitespace-nowrap shrink-0 ${
                   activeTab === tab.id 
-                    ? 'bg-brand-blue text-white shadow-xl shadow-brand-blue/20' 
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                    ? 'bg-brand-blue text-white shadow-lg shadow-brand-blue/20' 
+                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
                 {tab.icon}
                 {tab.label}
-                {activeTab === tab.id && (
-                  <motion.div 
-                    layoutId="activeTabIndicator"
-                    className="absolute right-2 w-1.5 h-1.5 bg-white rounded-full"
-                  />
-                )}
               </button>
             ))}
-          </nav>
-        </div>
-        
-        <div className="mt-auto p-8 border-t border-slate-100">
-          <div className="bg-slate-50 p-4 rounded-2xl flex items-center gap-3">
-            <div className="w-10 h-10 bg-brand-blue rounded-xl flex items-center justify-center text-white font-bold shadow-md">
-              {profile?.full_name?.charAt(0) || user.email?.charAt(0)}
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-bold text-slate-900 truncate">{profile?.full_name || 'Admin User'}</p>
-              <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
-              <p className="text-[10px] text-brand-red font-bold uppercase tracking-wider mt-1">{profile?.role || 'System Admin'}</p>
-            </div>
           </div>
         </div>
-      </aside>
+      </div>
 
       {/* Main Content */}
-      <main className="flex-1 p-10">
+      <main className="max-w-7xl mx-auto p-10">
         <header className="flex justify-between items-end mb-12">
           <div>
             <div className="flex items-center gap-2 text-brand-blue font-bold text-xs uppercase tracking-widest mb-2">
