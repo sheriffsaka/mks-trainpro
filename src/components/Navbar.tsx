@@ -10,7 +10,7 @@ export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
   const isAdmin = profile?.role === 'admin';
-  const isInstructor = profile?.role === 'instructor' || isAdmin;
+  const isInstructor = profile?.role === 'instructor';
 
   const siteName = settings.site_name || 'MKS CONSULTS LIMITED';
   const [first, ...rest] = siteName.split(' ');

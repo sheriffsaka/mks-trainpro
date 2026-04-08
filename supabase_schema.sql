@@ -360,6 +360,14 @@ CREATE TABLE IF NOT EXISTS class_schedules (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
+-- Ensure instructor_id exists in class_schedules
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='class_schedules' AND column_name='instructor_id') THEN
+        ALTER TABLE class_schedules ADD COLUMN instructor_id UUID REFERENCES profiles(id);
+    END IF;
+END$$;
+
 -- 19. Certificate Templates
 CREATE TABLE IF NOT EXISTS certificate_templates (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -381,6 +389,14 @@ CREATE TABLE IF NOT EXISTS course_materials (
   type TEXT NOT NULL, -- 'pdf', 'video', 'document', 'link'
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
+
+-- Ensure instructor_id exists in course_materials
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='course_materials' AND column_name='instructor_id') THEN
+        ALTER TABLE course_materials ADD COLUMN instructor_id UUID REFERENCES profiles(id) ON DELETE CASCADE;
+    END IF;
+END$$;
 
 -- Row Level Security (RLS) Policies
 
