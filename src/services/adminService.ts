@@ -925,12 +925,11 @@ export const adminService = {
         .limit(1);
       if (error) throw error;
       return materials && materials.length > 0 ? materials[0] : null;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating course material:', err);
-      throw err;
+      throw new Error(err.message || err.details || 'Failed to create course material');
     }
   },
-
   async updateCourseMaterial(id: string, updates: any) {
     if (!isSupabaseConfigured) return { id, ...updates };
     try {
@@ -942,9 +941,9 @@ export const adminService = {
         .limit(1);
       if (error) throw error;
       return materials && materials.length > 0 ? materials[0] : null;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating course material:', err);
-      throw err;
+      throw new Error(err.message || err.details || 'Failed to update course material');
     }
   },
 

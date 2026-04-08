@@ -473,8 +473,16 @@ export const InstructorPage = () => {
     const file_url = formData.get('file_url') as string;
     const type = formData.get('type') as string;
 
+    // UUID validation regex
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
     if (!course_id || !title || !file_url || !type) {
       alert('Please fill in all required fields.');
+      return;
+    }
+
+    if (!uuidRegex.test(course_id)) {
+      alert('Invalid Course selection. Please select a course from the list.');
       return;
     }
 
@@ -487,23 +495,28 @@ export const InstructorPage = () => {
       instructor_id: user.id
     };
 
+    console.log('Attempting to save material:', materialData);
+
     try {
       if (editingItem) {
+        console.log('Updating existing material:', editingItem.id);
         await adminService.updateCourseMaterial(editingItem.id, materialData);
         alert('Material updated successfully!');
       } else {
+        console.log('Creating new material');
         const result = await adminService.createCourseMaterial(materialData);
         if (result) {
           alert('Material added successfully!');
         } else {
-          alert('Failed to add material. Please try again.');
+          throw new Error('No data returned from server');
         }
       }
       setIsModalOpen(false);
       fetchMaterials();
-    } catch (err) {
-      console.error('Error saving material:', err);
-      alert('Error saving material. Please check your connection and try again.');
+    } catch (err: any) {
+      console.error('Detailed error saving material:', err);
+      const errorMessage = err?.message || err?.details || (typeof err === 'string' ? err : 'Unknown error');
+      alert(`Error saving material: ${errorMessage}. Please check your connection and try again.`);
     }
   };
 
