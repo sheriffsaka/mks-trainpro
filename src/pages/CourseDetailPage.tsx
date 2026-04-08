@@ -283,11 +283,81 @@ export const CourseDetailPage = () => {
               <section>
                 <h2 className="text-2xl font-bold text-slate-900 mb-6">Course Preview</h2>
                 <div className="aspect-video bg-slate-900 rounded-[2rem] overflow-hidden shadow-2xl border border-slate-200">
-                  <video 
-                    src={course.video_url} 
-                    controls 
-                    className="w-full h-full object-contain"
-                  />
+                  {(() => {
+                    const videoUrl = course.video_url;
+                    
+                    // Handle YouTube
+                    if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
+                      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+                      const match = videoUrl.match(regExp);
+                      const videoId = (match && match[2].length === 11) ? match[2] : null;
+                      
+                      if (videoId) {
+                        return (
+                          <iframe 
+                            src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
+                            className="w-full h-full border-none"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        );
+                      }
+                    }
+
+                    // Handle Vimeo
+                    if (videoUrl.includes('vimeo.com')) {
+                      const regExp = /vimeo\.com\/(?:video\/)?(\d+)/;
+                      const match = videoUrl.match(regExp);
+                      const videoId = match ? match[1] : null;
+
+                      if (videoId) {
+                        return (
+                          <iframe 
+                            src={`https://player.vimeo.com/video/${videoId}?badge=0&autopause=0&player_id=0&app_id=58479`}
+                            className="w-full h-full border-none"
+                            allow="autoplay; fullscreen; picture-in-picture"
+                            allowFullScreen
+                          />
+                        );
+                      }
+                    }
+
+                    // Handle Google Drive
+                    if (videoUrl.includes('drive.google.com')) {
+                      let embedUrl = videoUrl;
+                      if (videoUrl.includes('/view')) {
+                        embedUrl = videoUrl.replace('/view', '/preview');
+                      } else if (videoUrl.includes('id=')) {
+                        const idMatch = videoUrl.match(/id=([^&]+)/);
+                        if (idMatch) {
+                          embedUrl = `https://drive.google.com/file/d/${idMatch[1]}/preview`;
+                        }
+                      } else if (videoUrl.includes('/file/d/')) {
+                        const idMatch = videoUrl.match(/\/file\/d\/([^/]+)/);
+                        if (idMatch) {
+                          embedUrl = `https://drive.google.com/file/d/${idMatch[1]}/preview`;
+                        }
+                      }
+
+                      return (
+                        <iframe 
+                          src={embedUrl}
+                          className="w-full h-full border-none"
+                          allow="autoplay"
+                          allowFullScreen
+                        />
+                      );
+                    }
+
+                    // Default to direct video tag
+                    return (
+                      <video 
+                        src={videoUrl} 
+                        controls 
+                        className="w-full h-full object-contain"
+                      />
+                    );
+                  })()}
                 </div>
               </section>
             )}

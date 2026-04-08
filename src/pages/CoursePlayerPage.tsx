@@ -428,21 +428,59 @@ export const CoursePlayerPage = () => {
                     currentLesson.content.startsWith('http') ? (
                       <div className="space-y-6">
                         <div className="aspect-[3/4] w-full bg-white/5 rounded-2xl overflow-hidden border border-white/10 relative">
-                          <iframe 
-                            src={currentLesson.content} 
-                            className="w-full h-full border-none"
-                            title={currentLesson.title}
-                          />
+                          {(() => {
+                            let embedUrl = currentLesson.content;
+                            
+                            // Handle Google Drive / Docs / Sheets / Slides
+                            if (embedUrl.includes('drive.google.com') || embedUrl.includes('docs.google.com')) {
+                              // Convert view/edit links to preview links for cleaner, view-only interface
+                              if (embedUrl.includes('/view')) {
+                                embedUrl = embedUrl.replace('/view', '/preview');
+                              } else if (embedUrl.includes('/edit')) {
+                                embedUrl = embedUrl.replace('/edit', '/preview');
+                              } else if (embedUrl.includes('/pub')) {
+                                // Already a published link, usually clean
+                              } else if (embedUrl.includes('id=')) {
+                                const idMatch = embedUrl.match(/id=([^&]+)/);
+                                if (idMatch) {
+                                  embedUrl = `https://drive.google.com/file/d/${idMatch[1]}/preview`;
+                                }
+                              }
+                              
+                              // For Google Docs specifically, add rm=minimal to hide the menu bar and UI
+                              if (embedUrl.includes('docs.google.com/document')) {
+                                embedUrl += (embedUrl.includes('?') ? '&' : '?') + 'rm=minimal';
+                              }
+                            } else if (
+                              embedUrl.toLowerCase().endsWith('.pdf') || 
+                              embedUrl.toLowerCase().endsWith('.doc') || 
+                              embedUrl.toLowerCase().endsWith('.docx') ||
+                              embedUrl.toLowerCase().endsWith('.ppt') ||
+                              embedUrl.toLowerCase().endsWith('.pptx')
+                            ) {
+                              // Use Google Docs Viewer for direct document links to ensure they render in-browser
+                              embedUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(embedUrl)}&embedded=true`;
+                            }
+
+                            return (
+                              <iframe 
+                                src={embedUrl} 
+                                className="w-full h-full border-none"
+                                title={currentLesson.title}
+                                allow="autoplay"
+                              />
+                            );
+                          })()}
                         </div>
                         <div className="flex justify-center">
                           <a 
                             href={currentLesson.content} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 bg-white/10 text-white px-6 py-3 rounded-xl font-bold hover:bg-white/20 transition-all"
+                            className="inline-flex items-center gap-2 bg-white/10 text-white px-6 py-3 rounded-xl font-bold hover:bg-white/20 transition-all text-sm"
                           >
-                            <FileText size={18} />
-                            View Full Document
+                            <FileText size={16} />
+                            Open in New Window
                           </a>
                         </div>
                       </div>
