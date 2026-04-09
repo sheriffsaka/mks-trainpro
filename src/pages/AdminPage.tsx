@@ -44,6 +44,7 @@ import {
   PowerOff
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
+import { CertificateTemplate } from '../components/CertificateTemplate';
 import { isSystemAdmin } from '../constants/admin';
 import { useAuthStore } from '../store/authStore';
 import { Link, useNavigate } from 'react-router-dom';
@@ -2522,84 +2523,11 @@ const QuizzesTab = () => {
   );
 };
 
-const CertificateTemplate = ({ studentName, courseTitle, date, templateUrl, certificateId }: { studentName: string, courseTitle: string, date: string, templateUrl?: string, certificateId?: string }) => {
-  const displayId = certificateId || `MKS-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-  
-  return (
-    <div 
-      className="print-certificate w-full aspect-[1.414/1] bg-white border-[16px] border-brand-blue p-16 flex flex-col items-center justify-between text-center relative overflow-hidden shadow-xl"
-      style={templateUrl ? { 
-        backgroundImage: `url(${templateUrl})`, 
-        backgroundSize: 'cover', 
-        backgroundPosition: 'center',
-        border: 'none'
-      } : {}}
-    >
-      {!templateUrl && (
-        <>
-          <div className="absolute top-0 left-0 w-48 h-48 bg-brand-blue/5 rounded-br-full" />
-          <div className="absolute bottom-0 right-0 w-48 h-48 bg-brand-blue/5 rounded-tl-full" />
-          <div className="absolute top-0 right-0 w-24 h-24 border-t-8 border-r-8 border-brand-blue/20 m-8" />
-          <div className="absolute bottom-0 left-0 w-24 h-24 border-b-8 border-l-8 border-brand-blue/20 m-8" />
-        </>
-      )}
-      
-      <div className="space-y-6 relative z-10 w-full">
-        <div className="flex justify-center items-center gap-8 mb-4">
-          <img 
-            src="https://res.cloudinary.com/di7okmjsx/image/upload/v1773824665/mkslogo1_svink2.png" 
-            alt="MKS Logo" 
-            className="h-20 w-auto object-contain"
-            referrerPolicy="no-referrer"
-          />
-          <div className="w-px h-16 bg-slate-200" />
-          <div className="w-20 h-20 bg-brand-blue rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-brand-blue/30 rotate-3">
-            <Award size={44} />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-4xl font-black text-slate-900 tracking-[0.2em] uppercase">Certificate</h2>
-          <p className="text-brand-blue font-bold tracking-[0.5em] uppercase text-sm">of Completion</p>
-        </div>
-        <p className="text-slate-400 font-medium italic text-lg">This is to certify that</p>
-      </div>
-
-      <div className="space-y-4 relative z-10 w-full">
-        <h1 className="text-6xl font-black text-slate-900 tracking-tight border-b-4 border-brand-blue inline-block px-8 pb-2">{studentName}</h1>
-        <p className="text-slate-500 font-medium text-xl mt-6">has successfully completed the professional course</p>
-        <h3 className="text-3xl font-bold text-brand-blue uppercase tracking-wide">{courseTitle}</h3>
-      </div>
-
-      <div className="w-full flex justify-between items-end relative z-10 px-4">
-        <div className="text-left space-y-2">
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Date Issued</p>
-          <p className="text-lg font-bold text-slate-900">{date}</p>
-        </div>
-        <div className="text-center space-y-3 pb-2">
-          <img 
-            src="https://res.cloudinary.com/di7okmjsx/image/upload/v1773824665/mkslogo1_svink2.png" 
-            alt="Signature" 
-            className="h-12 w-auto object-contain mx-auto opacity-20 grayscale"
-            referrerPolicy="no-referrer"
-          />
-          <div className="w-48 h-px bg-slate-900 mx-auto" />
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Director of Studies</p>
-        </div>
-        <div className="text-right space-y-2">
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Certificate ID</p>
-          <p className="text-sm font-mono font-bold text-slate-900 bg-slate-50 px-3 py-1 rounded-lg border border-slate-100">{displayId}</p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const CertificatesTab = () => {
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [eligibilityMap, setEligibilityMap] = useState<{[key: string]: boolean}>({});
   const [generating, setGenerating] = useState<string | null>(null);
-  const [previewCert, setPreviewCert] = useState<any>(null);
   const [activeTemplate, setActiveTemplate] = useState<any>(null);
 
   useEffect(() => {
@@ -2650,7 +2578,7 @@ const CertificatesTab = () => {
       
       // In a real app, you'd generate a PDF here. 
       // For now, we'll just create a record in the certificates table.
-      const certificateUrl = `https://mksconsultsltd.com/verify/cert-${enrollment.id.substring(0, 8)}`;
+      const certificateUrl = `/verify/cert-${enrollment.id.substring(0, 8)}`;
       
       const { error } = await supabase
         .from('certificates')
@@ -2735,12 +2663,13 @@ const CertificatesTab = () => {
                 </td>
                 <td className="px-8 py-5 text-right">
                   {e.certificates && e.certificates.length > 0 ? (
-                    <button 
-                      onClick={() => setPreviewCert(e)}
+                    <Link 
+                      to={e.certificates[0].certificate_url}
+                      target="_blank"
                       className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1 justify-end ml-auto"
                     >
                       <Eye size={14} /> View
-                    </button>
+                    </Link>
                   ) : (
                     <button 
                       onClick={() => handleIssueCertificate(e)}
@@ -2762,38 +2691,6 @@ const CertificatesTab = () => {
           </tbody>
         </table>
       </div>
-
-      <Modal 
-        isOpen={!!previewCert} 
-        onClose={() => setPreviewCert(null)} 
-        title="Certificate Preview"
-      >
-        {previewCert && (
-          <div className="space-y-8">
-            <CertificateTemplate 
-              studentName={previewCert.profiles?.full_name}
-              courseTitle={previewCert.courses?.title}
-              date={new Date(previewCert.certificates?.[0]?.created_at || new Date()).toLocaleDateString()}
-              templateUrl={activeTemplate?.image_url}
-              certificateId={previewCert.certificates?.[0]?.id ? `MKS-${previewCert.certificates[0].id.substring(0, 8).toUpperCase()}` : undefined}
-            />
-            <div className="flex gap-4 print:hidden">
-              <button 
-                onClick={() => window.print()}
-                className="flex-1 px-6 py-3 bg-brand-blue text-white rounded-xl font-bold hover:bg-brand-blue-hover transition-all flex items-center justify-center gap-2"
-              >
-                <Download size={20} /> Print / Save as PDF
-              </button>
-              <button 
-                onClick={() => setPreviewCert(null)}
-                className="flex-1 px-6 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-all"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 };

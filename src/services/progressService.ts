@@ -173,7 +173,7 @@ export const progressService = {
         enrollment_id: enrollmentId,
         user_id: userId,
         issued_at: new Date().toISOString(),
-        certificate_url: `https://mksconsultsltd.com/certificates/${enrollmentId}.pdf`
+        certificate_url: `/verify/cert-${enrollmentId.substring(0, 8)}`
       }]);
     if (error) throw error;
     return data;

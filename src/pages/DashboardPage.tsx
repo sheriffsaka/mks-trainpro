@@ -715,14 +715,13 @@ export const DashboardPage = () => {
                           </div>
                           <h3 className="font-bold text-slate-900 mb-2">{cert.enrollments?.courses?.title || 'Course Certificate'}</h3>
                           <p className="text-xs text-slate-500 mb-6">Issued on {new Date(cert.issued_at).toLocaleDateString()}</p>
-                          <a 
-                            href={cert.certificate_url}
+                          <Link 
+                            to={cert.certificate_url.startsWith('http') ? `/verify/${cert.certificate_url.split('/').pop()}` : cert.certificate_url}
                             target="_blank"
-                            rel="noopener noreferrer"
                             className="w-full bg-brand-blue text-white py-3 rounded-xl font-bold hover:bg-brand-blue-hover transition-all flex items-center justify-center gap-2"
                           >
-                            <Download size={18} /> Download PDF
-                          </a>
+                            <Eye size={18} /> View Certificate
+                          </Link>
                         </div>
                       ))}
                     </div>

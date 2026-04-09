@@ -18,6 +18,7 @@ import { AdminPage } from './pages/AdminPage';
 import { InstructorPage } from './pages/InstructorPage';
 import { CoursePlayerPage } from './pages/CoursePlayerPage';
 import { QuizPage } from './pages/QuizPage';
+import { CertificatePage } from './pages/CertificatePage';
 import { AuthCallback } from './pages/AuthCallback';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MOCK_COURSES, MOCK_FAQS } from './data/mockData';
@@ -490,6 +491,7 @@ export default function App() {
             <Route path="/instructor" element={<InstructorPage />} />
             <Route path="/courses/:slug/player" element={<CoursePlayerPage />} />
             <Route path="/courses/:slug/quiz/:quizId" element={<QuizPage />} />
+            <Route path="/verify/:certificateId" element={<CertificatePage />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
           </Routes>
         </ErrorBoundary>
