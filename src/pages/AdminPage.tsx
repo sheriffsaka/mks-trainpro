@@ -58,19 +58,19 @@ import { ProfileTab } from '../components/ProfileTab';
 const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm print:hidden">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl"
+        className="bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl print:max-w-none print:rounded-none print:shadow-none"
       >
-        <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center">
+        <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center print:hidden">
           <h3 className="text-xl font-bold text-slate-900">{title}</h3>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
             <X size={20} />
           </button>
         </div>
-        <div className="p-8 max-h-[80vh] overflow-y-auto">
+        <div className="p-8 max-h-[80vh] overflow-y-auto print:p-0 print:max-h-none print:overflow-visible">
           {children}
         </div>
       </motion.div>
@@ -2522,62 +2522,77 @@ const QuizzesTab = () => {
   );
 };
 
-const CertificateTemplate = ({ studentName, courseTitle, date, templateUrl }: { studentName: string, courseTitle: string, date: string, templateUrl?: string }) => (
-  <div 
-    className="w-full aspect-[1.414/1] bg-white border-[12px] border-brand-blue p-12 flex flex-col items-center justify-between text-center relative overflow-hidden"
-    style={templateUrl ? { 
-      backgroundImage: `url(${templateUrl})`, 
-      backgroundSize: 'cover', 
-      backgroundPosition: 'center',
-      border: 'none'
-    } : {}}
-  >
-    {!templateUrl && (
-      <>
-        <div className="absolute top-0 left-0 w-32 h-32 bg-brand-blue/10 rounded-br-full" />
-        <div className="absolute bottom-0 right-0 w-32 h-32 bg-brand-blue/10 rounded-tl-full" />
-      </>
-    )}
-    
-    <div className="space-y-4 relative z-10">
-      <div className="flex flex-col items-center gap-4">
-        <img 
-          src="https://res.cloudinary.com/di7okmjsx/image/upload/v1773824665/mkslogo1_svink2.png" 
-          alt="MKS Logo" 
-          className="h-16 w-auto object-contain mb-2"
-          referrerPolicy="no-referrer"
-        />
-        <div className="w-16 h-16 bg-brand-blue rounded-2xl flex items-center justify-center text-white shadow-xl shadow-brand-blue/20">
-          <Award size={32} />
+const CertificateTemplate = ({ studentName, courseTitle, date, templateUrl, certificateId }: { studentName: string, courseTitle: string, date: string, templateUrl?: string, certificateId?: string }) => {
+  const displayId = certificateId || `MKS-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+  
+  return (
+    <div 
+      className="print-certificate w-full aspect-[1.414/1] bg-white border-[16px] border-brand-blue p-16 flex flex-col items-center justify-between text-center relative overflow-hidden shadow-xl"
+      style={templateUrl ? { 
+        backgroundImage: `url(${templateUrl})`, 
+        backgroundSize: 'cover', 
+        backgroundPosition: 'center',
+        border: 'none'
+      } : {}}
+    >
+      {!templateUrl && (
+        <>
+          <div className="absolute top-0 left-0 w-48 h-48 bg-brand-blue/5 rounded-br-full" />
+          <div className="absolute bottom-0 right-0 w-48 h-48 bg-brand-blue/5 rounded-tl-full" />
+          <div className="absolute top-0 right-0 w-24 h-24 border-t-8 border-r-8 border-brand-blue/20 m-8" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 border-b-8 border-l-8 border-brand-blue/20 m-8" />
+        </>
+      )}
+      
+      <div className="space-y-6 relative z-10 w-full">
+        <div className="flex justify-center items-center gap-8 mb-4">
+          <img 
+            src="https://res.cloudinary.com/di7okmjsx/image/upload/v1773824665/mkslogo1_svink2.png" 
+            alt="MKS Logo" 
+            className="h-20 w-auto object-contain"
+            referrerPolicy="no-referrer"
+          />
+          <div className="w-px h-16 bg-slate-200" />
+          <div className="w-20 h-20 bg-brand-blue rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-brand-blue/30 rotate-3">
+            <Award size={44} />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-4xl font-black text-slate-900 tracking-[0.2em] uppercase">Certificate</h2>
+          <p className="text-brand-blue font-bold tracking-[0.5em] uppercase text-sm">of Completion</p>
+        </div>
+        <p className="text-slate-400 font-medium italic text-lg">This is to certify that</p>
+      </div>
+
+      <div className="space-y-4 relative z-10 w-full">
+        <h1 className="text-6xl font-black text-slate-900 tracking-tight border-b-4 border-brand-blue inline-block px-8 pb-2">{studentName}</h1>
+        <p className="text-slate-500 font-medium text-xl mt-6">has successfully completed the professional course</p>
+        <h3 className="text-3xl font-bold text-brand-blue uppercase tracking-wide">{courseTitle}</h3>
+      </div>
+
+      <div className="w-full flex justify-between items-end relative z-10 px-4">
+        <div className="text-left space-y-2">
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Date Issued</p>
+          <p className="text-lg font-bold text-slate-900">{date}</p>
+        </div>
+        <div className="text-center space-y-3 pb-2">
+          <img 
+            src="https://res.cloudinary.com/di7okmjsx/image/upload/v1773824665/mkslogo1_svink2.png" 
+            alt="Signature" 
+            className="h-12 w-auto object-contain mx-auto opacity-20 grayscale"
+            referrerPolicy="no-referrer"
+          />
+          <div className="w-48 h-px bg-slate-900 mx-auto" />
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Director of Studies</p>
+        </div>
+        <div className="text-right space-y-2">
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Certificate ID</p>
+          <p className="text-sm font-mono font-bold text-slate-900 bg-slate-50 px-3 py-1 rounded-lg border border-slate-100">{displayId}</p>
         </div>
       </div>
-      <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Certificate of Completion</h2>
-      <p className="text-slate-500 font-medium italic">This is to certify that</p>
     </div>
-
-    <div className="space-y-2 relative z-10">
-      <h1 className="text-5xl font-black text-brand-blue tracking-tight">{studentName}</h1>
-      <div className="h-px bg-slate-200 w-64 mx-auto" />
-      <p className="text-slate-500 font-medium">has successfully completed the course</p>
-      <h3 className="text-2xl font-bold text-slate-900">{courseTitle}</h3>
-    </div>
-
-    <div className="w-full flex justify-between items-end relative z-10">
-      <div className="text-left space-y-1">
-        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Date Issued</p>
-        <p className="font-bold text-slate-900">{date}</p>
-      </div>
-      <div className="text-center space-y-2">
-        <div className="w-32 h-px bg-slate-900 mx-auto" />
-        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Director Signature</p>
-      </div>
-      <div className="text-right space-y-1">
-        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Certificate ID</p>
-        <p className="font-bold text-slate-900">MKS-{Math.random().toString(36).substring(2, 10).toUpperCase()}</p>
-      </div>
-    </div>
-  </div>
-);
+  );
+};
 
 const CertificatesTab = () => {
   const [enrollments, setEnrollments] = useState<any[]>([]);
@@ -2760,13 +2775,14 @@ const CertificatesTab = () => {
               courseTitle={previewCert.courses?.title}
               date={new Date(previewCert.certificates?.[0]?.created_at || new Date()).toLocaleDateString()}
               templateUrl={activeTemplate?.image_url}
+              certificateId={previewCert.certificates?.[0]?.id ? `MKS-${previewCert.certificates[0].id.substring(0, 8).toUpperCase()}` : undefined}
             />
-            <div className="flex gap-4">
+            <div className="flex gap-4 print:hidden">
               <button 
                 onClick={() => window.print()}
                 className="flex-1 px-6 py-3 bg-brand-blue text-white rounded-xl font-bold hover:bg-brand-blue-hover transition-all flex items-center justify-center gap-2"
               >
-                <Download size={20} /> Download PDF
+                <Download size={20} /> Print / Save as PDF
               </button>
               <button 
                 onClick={() => setPreviewCert(null)}
