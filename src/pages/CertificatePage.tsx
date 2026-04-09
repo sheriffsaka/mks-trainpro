@@ -35,24 +35,29 @@ export const CertificatePage = () => {
           ? certificateId.replace('cert-', '') 
           : certificateId;
 
-        // Try to find by enrollment ID (first 8 chars) or full ID
-        const { data, error: fetchError } = await supabase
+        console.log('Fetching certificate for ID:', actualId);
+
+        // Try exact match first
+        const { data: exactData, error: exactError } = await supabase
           .from('certificates')
           .select('*, enrollments(*, profiles(*), courses(*))')
-          .or(`enrollment_id.eq.${actualId},id.eq.${actualId}`)
+          .or(`id.eq.${actualId},enrollment_id.eq.${actualId}`)
           .maybeSingle();
 
-        if (fetchError) throw fetchError;
-
-        if (!data) {
-          // Try searching by enrollment ID prefix if not found
-          const { data: prefixData, error: prefixError } = await supabase
+        if (exactData) {
+          setCertificateData(exactData);
+        } else if (actualId.length >= 8) {
+          // Fallback to prefix search if no exact match and ID is long enough
+          const { data: allCerts, error: allError } = await supabase
             .from('certificates')
             .select('*, enrollments(*, profiles(*), courses(*))');
           
-          if (prefixError) throw prefixError;
+          if (allError) throw allError;
           
-          const match = prefixData?.find(c => c.enrollment_id.startsWith(actualId));
+          const match = allCerts?.find(c => 
+            c.id.toLowerCase().startsWith(actualId.toLowerCase()) || 
+            c.enrollment_id.toLowerCase().startsWith(actualId.toLowerCase())
+          );
           
           if (match) {
             setCertificateData(match);
@@ -60,7 +65,7 @@ export const CertificatePage = () => {
             setError('Certificate not found. Please verify the ID and try again.');
           }
         } else {
-          setCertificateData(data);
+          setError('Certificate not found. Please verify the ID and try again.');
         }
       } catch (err: any) {
         console.error('Error fetching certificate:', err);

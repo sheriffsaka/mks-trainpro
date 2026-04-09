@@ -30,6 +30,7 @@ import {
   ChevronRight,
   Download,
   Play,
+  Printer,
   FileText,
   Award,
   Loader2,
@@ -56,14 +57,14 @@ import { ProfileTab } from '../components/ProfileTab';
 
 // --- Components ---
 
-const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode }) => {
+const Modal = ({ isOpen, onClose, title, children, maxWidth = "max-w-2xl" }: { isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode, maxWidth?: string }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm print:hidden">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl print:max-w-none print:rounded-none print:shadow-none"
+        className={`bg-white rounded-[2.5rem] w-full ${maxWidth} overflow-hidden shadow-2xl print:max-w-none print:rounded-none print:shadow-none`}
       >
         <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center print:hidden">
           <h3 className="text-xl font-bold text-slate-900">{title}</h3>
@@ -2528,6 +2529,7 @@ const CertificatesTab = () => {
   const [loading, setLoading] = useState(true);
   const [eligibilityMap, setEligibilityMap] = useState<{[key: string]: boolean}>({});
   const [generating, setGenerating] = useState<string | null>(null);
+  const [previewCert, setPreviewCert] = useState<any>(null);
   const [activeTemplate, setActiveTemplate] = useState<any>(null);
 
   useEffect(() => {
@@ -2663,13 +2665,22 @@ const CertificatesTab = () => {
                 </td>
                 <td className="px-8 py-5 text-right">
                   {e.certificates && e.certificates.length > 0 ? (
-                    <Link 
-                      to={e.certificates[0].certificate_url}
-                      target="_blank"
-                      className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1 justify-end ml-auto"
-                    >
-                      <Eye size={14} /> View
-                    </Link>
+                    <div className="flex items-center justify-end gap-3">
+                      <button 
+                        onClick={() => setPreviewCert(e)}
+                        className="text-brand-blue hover:underline text-xs font-bold flex items-center gap-1"
+                      >
+                        <Eye size={14} /> Preview
+                      </button>
+                      <Link 
+                        to={e.certificates[0].certificate_url}
+                        target="_blank"
+                        className="text-slate-400 hover:text-brand-blue transition-colors"
+                        title="Open in new tab"
+                      >
+                        <ChevronRight size={14} />
+                      </Link>
+                    </div>
                   ) : (
                     <button 
                       onClick={() => handleIssueCertificate(e)}
@@ -2691,6 +2702,46 @@ const CertificatesTab = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Certificate Preview Modal */}
+      <Modal 
+        isOpen={!!previewCert} 
+        onClose={() => setPreviewCert(null)} 
+        title="Certificate Preview"
+        maxWidth="max-w-6xl"
+      >
+        {previewCert && (
+          <div className="space-y-8">
+            <div className="bg-slate-50 rounded-[2rem] p-4 sm:p-8 border border-slate-100 overflow-hidden">
+              <CertificateTemplate 
+                studentName={previewCert.profiles?.full_name}
+                courseTitle={previewCert.courses?.title}
+                date={new Date(previewCert.certificates?.[0]?.issued_at || new Date()).toLocaleDateString('en-GB', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                })}
+                templateUrl={activeTemplate?.image_url}
+                certificateId={`MKS-${previewCert.certificates?.[0]?.enrollment_id?.substring(0, 8).toUpperCase()}`}
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 print:hidden">
+              <button 
+                onClick={() => window.print()}
+                className="flex-1 px-8 py-4 bg-brand-blue text-white rounded-2xl font-bold hover:bg-brand-blue-hover transition-all shadow-lg shadow-brand-blue/20 flex items-center justify-center gap-2"
+              >
+                <Printer size={20} /> Print / Save as PDF
+              </button>
+              <button 
+                onClick={() => setPreviewCert(null)}
+                className="flex-1 px-8 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
