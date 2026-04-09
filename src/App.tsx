@@ -485,8 +485,8 @@ export default function App() {
             <Route path="/accreditations" element={<AccreditationsPage />} />
             <Route path="/clients" element={<ClientsPage />} />
             <Route path="/contact" element={<ContactPage />} />
-            <Route path="/login" element={<AuthPage type="login" />} />
-            <Route path="/register" element={<AuthPage type="register" />} />
+            <Route path="/login" element={<AuthPage key="login" type="login" />} />
+            <Route path="/register" element={<AuthPage key="register" type="register" />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/instructor" element={<InstructorPage />} />
             <Route path="/courses/:slug/player" element={<CoursePlayerPage />} />

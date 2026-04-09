@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
 
 export const AuthPage = ({ type }: { type: 'login' | 'register' }) => {
   const [email, setEmail] = useState('');
@@ -11,9 +12,31 @@ export const AuthPage = ({ type }: { type: 'login' | 'register' }) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user && !success) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate, success]);
+
+  // Reset state when switching between login and register
+  useEffect(() => {
+    setSuccess(false);
+    setError(null);
+    setLoading(false);
+  }, [type]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log(`Attempting ${type}...`);
+    
+    if (!supabase.auth) {
+      setError('Authentication service is not available. Please check your configuration.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSuccess(false);
@@ -75,7 +98,7 @@ export const AuthPage = ({ type }: { type: 'login' | 'register' }) => {
   }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-slate-50">
+    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-slate-50 relative z-10">
       <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-xl border border-slate-100 p-10">
         <div className="text-center mb-10">
           <h2 className="text-3xl font-bold text-slate-900 mb-2">
