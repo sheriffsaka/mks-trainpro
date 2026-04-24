@@ -42,7 +42,8 @@ import {
   Activity,
   Upload,
   Power,
-  PowerOff
+  PowerOff,
+  MessageSquare
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { CertificateTemplate } from '../components/CertificateTemplate';
@@ -3302,6 +3303,82 @@ const CMSTab = ({ handleSeed, seeding }: any) => {
             </div>
           </div>
         </div>
+
+        {/* Contact Info Editor */}
+        <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+          <h3 className="text-xl font-bold text-slate-900 mb-8">Contact & Working Hours</h3>
+          <div className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Primary Email</label>
+                <input 
+                  type="email" 
+                  defaultValue={settings.contact_email_primary || 'info@mksconsultsltd.com'}
+                  onBlur={(e) => handleSettingChange('contact_email_primary', e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Support Email</label>
+                <input 
+                  type="email" 
+                  defaultValue={settings.contact_email_support || 'support@mksconsultsltd.com'}
+                  onBlur={(e) => handleSettingChange('contact_email_support', e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+                />
+              </div>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Contact Phone</label>
+                <input 
+                  type="text" 
+                  defaultValue={settings.contact_phone || '+44 (0) 20 8000 0000'}
+                  onBlur={(e) => handleSettingChange('contact_phone', e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Office Address (Line 1)</label>
+                <input 
+                  type="text" 
+                  defaultValue={settings.contact_address_line1 || '124 City Road, London'}
+                  onBlur={(e) => handleSettingChange('contact_address_line1', e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"
+                />
+              </div>
+            </div>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Mon-Fri Hours</label>
+                <input 
+                  type="text" 
+                  defaultValue={settings.working_hours_mon_fri || '09:00 - 18:00'}
+                  onBlur={(e) => handleSettingChange('working_hours_mon_fri', e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Sat Hours</label>
+                <input 
+                  type="text" 
+                  defaultValue={settings.working_hours_sat || '10:00 - 14:00'}
+                  onBlur={(e) => handleSettingChange('working_hours_sat', e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Sun Hours</label>
+                <input 
+                  type="text" 
+                  defaultValue={settings.working_hours_sun || 'Closed'}
+                  onBlur={(e) => handleSettingChange('working_hours_sun', e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none text-xs"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
@@ -3404,6 +3481,99 @@ const CMSTab = ({ handleSeed, seeding }: any) => {
         onConfirm={handleFaqDelete}
         title="Delete FAQ"
         message="Are you sure you want to delete this FAQ? This action cannot be undone."
+      />
+    </div>
+  );
+};
+
+const InquiriesTab = () => {
+  const [inquiries, setInquiries] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [inquiryToDelete, setInquiryToDelete] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchInquiries();
+  }, []);
+
+  const fetchInquiries = async () => {
+    try {
+      const data = await adminService.getInquiries();
+      setInquiries(data);
+    } catch (error) {
+      console.error('Error fetching inquiries:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!inquiryToDelete) return;
+    try {
+      await adminService.deleteInquiry(inquiryToDelete);
+      setInquiries(prev => prev.filter(i => i.id !== inquiryToDelete));
+    } catch (error) {
+      console.error('Error deleting inquiry:', error);
+    } finally {
+      setIsConfirmOpen(false);
+      setInquiryToDelete(null);
+    }
+  };
+
+  if (loading) return <div className="text-center py-20">Loading inquiries...</div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+        <div className="flex justify-between items-center mb-8">
+          <h3 className="text-xl font-bold text-slate-900">Contact Inquiries</h3>
+          <span className="text-sm font-medium text-slate-500">{inquiries.length} Messages</span>
+        </div>
+
+        <div className="space-y-4">
+          {inquiries.length === 0 ? (
+            <div className="text-center py-12 text-slate-500">No inquiries found.</div>
+          ) : (
+            inquiries.map((inquiry) => (
+              <div key={inquiry.id} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 relative group">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h4 className="font-bold text-slate-900">{inquiry.name}</h4>
+                    <p className="text-sm text-slate-500">{inquiry.email}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="inline-block px-3 py-1 bg-brand-blue/10 text-brand-blue text-[10px] font-bold rounded-full mb-1">
+                      {inquiry.subject}
+                    </span>
+                    <p className="text-[10px] text-slate-400">
+                      {new Date(inquiry.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 text-slate-700 text-sm italic mb-2">
+                  "{inquiry.message}"
+                </div>
+                <div className="flex justify-end">
+                  <button 
+                    onClick={() => { setInquiryToDelete(inquiry.id); setIsConfirmOpen(true); }}
+                    className="p-2 text-slate-400 hover:text-brand-red transition-all flex items-center gap-1 text-[10px] font-bold"
+                  >
+                    <Trash2 size={14} />
+                    Delete Message
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <ConfirmModal 
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={handleDelete}
+        title="Delete Inquiry"
+        message="Are you sure you want to delete this message? This action cannot be undone."
       />
     </div>
   );
@@ -4207,6 +4377,7 @@ export const AdminPage = () => {
     
     { id: 'announcements', label: 'Announcements', icon: <Megaphone size={20} />, roles: ['admin', 'instructor'], category: 'system' },
     { id: 'cms', label: 'CMS', icon: <Settings size={20} />, roles: ['admin'], category: 'system' },
+    { id: 'inquiries', label: 'Inquiries', icon: <MessageSquare size={20} />, roles: ['admin'], category: 'system' },
     { id: 'profile', label: 'My Profile', icon: <Shield size={20} />, roles: ['admin', 'instructor'], category: 'system' }
   ].filter(tab => tab.roles.includes(profile?.role || (isAdmin ? 'admin' : 'instructor')));
 
@@ -4368,10 +4539,11 @@ export const AdminPage = () => {
             {activeTab === 'announcements' && <AnnouncementsTab />}
             {activeTab === 'reports' && <ReportsTab stats={stats} />}
             {activeTab === 'cms' && <CMSTab handleSeed={handleSeed} seeding={seeding} />}
+            {activeTab === 'inquiries' && <InquiriesTab />}
             {activeTab === 'profile' && <ProfileTab />}
             
             {/* Placeholder for other tabs */}
-            {!['overview', 'courses', 'enrollments', 'users', 'payments', 'installments', 'progress', 'certificates', 'quizzes', 'announcements', 'reports', 'cms', 'attendance', 'schedules', 'assessments', 'assignments', 'certificate-templates', 'profile'].includes(activeTab) && (
+            {!['overview', 'courses', 'enrollments', 'users', 'payments', 'installments', 'progress', 'certificates', 'quizzes', 'announcements', 'reports', 'cms', 'inquiries', 'attendance', 'schedules', 'assessments', 'assignments', 'certificate-templates', 'profile'].includes(activeTab) && (
               <div className="bg-white rounded-[3rem] border border-slate-100 p-20 text-center shadow-sm">
                 <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-8">
                   {tabs.find(t => t.id === activeTab)?.icon}

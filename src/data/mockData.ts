@@ -321,6 +321,16 @@ export const MOCK_SITE_SETTINGS = [
   { key: 'account_name', value: 'MKS Consults Ltd' },
   { key: 'account_number', value: '12345678' },
   { key: 'sort_code', value: '20-30-40' },
+  { key: 'contact_email_primary', value: 'info@mksconsultsltd.com' },
+  { key: 'contact_email_support', value: 'support@mksconsultsltd.com' },
+  { key: 'contact_phone', value: '+44 (0) 20 8000 0000' },
+  { key: 'contact_address_line1', value: '124 City Road, London' },
+  { key: 'contact_address_line2', value: 'EC1V 2NX, United Kingdom' },
+  { key: 'working_hours_mon_fri', value: '09:00 - 18:00' },
+  { key: 'working_hours_sat', value: '10:00 - 14:00' },
+  { key: 'working_hours_sun', value: 'Closed' },
+  { key: 'contact_hero_title', value: 'Get in Touch' },
+  { key: 'contact_hero_subtitle', value: "Have questions about our courses or corporate solutions? We're here to help you every step of the way." },
   { 
     key: 'privacy_policy', 
     value: `# Privacy Policy

@@ -1029,6 +1029,41 @@ export const adminService = {
     }
   },
 
+  // Inquiries
+  async getInquiries() {
+    if (!isSupabaseConfigured) return [];
+    const { data, error } = await supabase
+      .from('contact_inquiries')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      if (error.code === 'PGRST205') return [];
+      throw error;
+    }
+    return data;
+  },
+  async createInquiry(inquiry: any) {
+    if (!isSupabaseConfigured) return { id: Math.random().toString(), ...inquiry };
+    const { data, error } = await supabase
+      .from('contact_inquiries')
+      .insert([inquiry])
+      .select();
+    if (error) {
+       // Graceful failure if table doesn't exist
+       if (error.code === 'PGRST205') return inquiry;
+       throw error;
+    }
+    return data[0];
+  },
+  async deleteInquiry(id: string) {
+    if (!isSupabaseConfigured) return;
+    const { error } = await supabase
+      .from('contact_inquiries')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+
   // Seed Data
   async seedDatabase(force = false) {
     if (!isSupabaseConfigured) return;
