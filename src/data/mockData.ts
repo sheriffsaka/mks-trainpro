@@ -321,4 +321,37 @@ export const MOCK_SITE_SETTINGS = [
   { key: 'account_name', value: 'MKS Consults Ltd' },
   { key: 'account_number', value: '12345678' },
   { key: 'sort_code', value: '20-30-40' },
+  { 
+    key: 'privacy_policy', 
+    value: `# Privacy Policy
+\nAt MKS Consults Ltd, we take your privacy seriously. This policy describes how we collect, use, and protect your personal information.
+\n## 1. Information Collection
+We collect information when you register on our site, enroll in a course, or subscribe to our newsletter. This includes your name, email address, and payment information.
+\n## 2. Use of Information
+Any information we collect may be used to personalize your experience, improve our website, process transactions, and send periodic emails regarding your training.
+\n## 3. Data Protection
+We implement a variety of security measures to maintain the safety of your personal information when you place an order or enter, submit, or access your personal information.` 
+  },
+  { 
+    key: 'terms_of_service', 
+    value: `# Terms of Service
+\nBy accessing this website, you are agreeing to be bound by these Terms of Service.
+\n## 1. Services Provided
+MKS Consults Ltd provides professional training in SAP ERP and Software Testing. We reserve the right to modify or discontinue any course or service at any time.
+\n## 2. User Conduct
+Users are expected to conduct themselves professionally during live sessions and in community forums. Any abuse or violation of intellectual property will result in immediate termination of access without refund.
+\n## 3. Limitation of Liability
+MKS Consults Ltd shall not be held liable for any damages arising out of the use or inability to use the materials on our website.` 
+  },
+  { 
+    key: 'refund_policy', 
+    value: `# Refund Policy
+\nWe want you to be satisfied with our training services.
+\n## 1. Enrollment Deposits
+All deposits paid to secure a seat in a batch are non-refundable but can be moved to a future batch within 6 months.
+\n## 2. Full Refunds
+A full refund of the course fee (less the deposit) is available if requested at least 7 days before the course start date.
+\n## 3. No Refunds
+No refunds are issued once the course has commenced or after access to learning materials has been granted.` 
+  },
 ];

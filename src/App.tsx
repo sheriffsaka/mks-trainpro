@@ -20,6 +20,7 @@ import { CoursePlayerPage } from './pages/CoursePlayerPage';
 import { QuizPage } from './pages/QuizPage';
 import { CertificatePage } from './pages/CertificatePage';
 import { AuthCallback } from './pages/AuthCallback';
+import { LegalPage } from './pages/LegalPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MOCK_COURSES, MOCK_FAQS } from './data/mockData';
 import { GraduationCap, ArrowRight, CheckCircle2, Award, BookOpen, Users, Plus, Minus, Star, Quote, Facebook, Twitter, Instagram, Linkedin, Mail, MapPin, Phone } from 'lucide-react';
@@ -493,6 +494,9 @@ export default function App() {
             <Route path="/courses/:slug/quiz/:quizId" element={<QuizPage />} />
             <Route path="/verify/:certificateId" element={<CertificatePage />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/privacy" element={<LegalPage />} />
+            <Route path="/terms" element={<LegalPage />} />
+            <Route path="/refund" element={<LegalPage />} />
           </Routes>
         </ErrorBoundary>
         

@@ -3304,6 +3304,39 @@ const CMSTab = ({ handleSeed, seeding }: any) => {
         </div>
       </div>
 
+      <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+        <h3 className="text-xl font-bold text-slate-900 mb-8">Legal Policies (Markdown Supported)</h3>
+        <div className="grid lg:grid-cols-3 gap-8">
+          <div className="space-y-4">
+            <label className="block text-sm font-bold text-slate-700">Privacy Policy</label>
+            <textarea 
+              rows={15}
+              defaultValue={settings.privacy_policy || '# Privacy Policy\n\nContent...'}
+              onBlur={(e) => handleSettingChange('privacy_policy', e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-brand-blue outline-none resize-none text-sm font-mono"
+            />
+          </div>
+          <div className="space-y-4">
+            <label className="block text-sm font-bold text-slate-700">Terms of Service</label>
+            <textarea 
+              rows={15}
+              defaultValue={settings.terms_of_service || '# Terms of Service\n\nContent...'}
+              onBlur={(e) => handleSettingChange('terms_of_service', e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-brand-blue outline-none resize-none text-sm font-mono"
+            />
+          </div>
+          <div className="space-y-4">
+            <label className="block text-sm font-bold text-slate-700">Refund Policy</label>
+            <textarea 
+              rows={15}
+              defaultValue={settings.refund_policy || '# Refund Policy\n\nContent...'}
+              onBlur={(e) => handleSettingChange('refund_policy', e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-brand-blue outline-none resize-none text-sm font-mono"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* FAQ Manager */}
       <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
         <div className="flex justify-between items-center mb-8">

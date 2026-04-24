@@ -35,6 +35,7 @@ export const Navbar = () => {
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-8">
+            <Link to="/" className="text-slate-600 hover:text-brand-blue font-medium transition-colors">Home</Link>
             <Link to="/courses" className="text-slate-600 hover:text-brand-blue font-medium transition-colors">Courses</Link>
             <Link to="/corporate" className="text-slate-600 hover:text-brand-blue font-medium transition-colors">Corporate</Link>
             <Link to="/accreditations" className="text-slate-600 hover:text-brand-blue font-medium transition-colors">Accreditations</Link>
@@ -84,19 +85,28 @@ export const Navbar = () => {
       {/* Mobile Nav */}
       {isMenuOpen && (
         <div className="md:hidden bg-white border-b border-slate-100 p-4 space-y-4 animate-in slide-in-from-top duration-200">
-          <Link to="/courses" className="block text-slate-600 font-medium">Courses</Link>
-          <Link to="/corporate" className="block text-slate-600 font-medium">Corporate</Link>
-          <Link to="/accreditations" className="block text-slate-600 font-medium">Accreditations</Link>
-          <Link to="/about" className="block text-slate-600 font-medium">About</Link>
+          <Link to="/" className="block text-slate-600 font-medium" onClick={() => setIsMenuOpen(false)}>Home</Link>
+          <Link to="/courses" className="block text-slate-600 font-medium" onClick={() => setIsMenuOpen(false)}>Courses</Link>
+          <Link to="/corporate" className="block text-slate-600 font-medium" onClick={() => setIsMenuOpen(false)}>Corporate</Link>
+          <Link to="/accreditations" className="block text-slate-600 font-medium" onClick={() => setIsMenuOpen(false)}>Accreditations</Link>
+          <Link to="/about" className="block text-slate-600 font-medium" onClick={() => setIsMenuOpen(false)}>About</Link>
           {user ? (
             <>
-              <Link to={isAdmin ? "/admin" : isInstructor ? "/instructor" : "/dashboard"} className="block text-slate-600 font-medium">Dashboard</Link>
-              <button onClick={signOut} className="block text-brand-red font-medium">Sign Out</button>
+              <Link to={isAdmin ? "/admin" : isInstructor ? "/instructor" : "/dashboard"} className="block text-slate-600 font-medium" onClick={() => setIsMenuOpen(false)}>Dashboard</Link>
+              <button 
+                onClick={() => {
+                  signOut();
+                  setIsMenuOpen(false);
+                }} 
+                className="block text-brand-red font-medium text-left w-full"
+              >
+                Sign Out
+              </button>
             </>
           ) : (
             <div className="pt-4 flex flex-col gap-2">
-              <Link to="/login" className="block text-center py-2 text-slate-600 font-medium">Login</Link>
-              <Link to="/register" className="block text-center py-3 bg-brand-blue text-white rounded-xl font-medium">Enroll Now</Link>
+              <Link to="/login" className="block text-center py-2 text-slate-600 font-medium" onClick={() => setIsMenuOpen(false)}>Login</Link>
+              <Link to="/register" className="block text-center py-3 bg-brand-blue text-white rounded-xl font-medium" onClick={() => setIsMenuOpen(false)}>Enroll Now</Link>
             </div>
           )}
         </div>
